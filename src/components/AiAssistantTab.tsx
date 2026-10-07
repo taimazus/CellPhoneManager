@@ -75,9 +75,23 @@ export const AiAssistantTab: React.FC<AiAssistantTabProps> = ({ device }) => {
           timestamp: data.timestamp
         };
         setMessages(prev => [...prev, aiMsg]);
+      } else {
+        const errAiMsg: ChatMessage = {
+          id: String(Date.now() + 1),
+          sender: 'ai',
+          text: `⚠️ خطا در پاسخگویی: ${data.error || 'خطای سرور'}`,
+          timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, errAiMsg]);
       }
-    } catch {
-      // quiet
+    } catch (err: any) {
+      const errAiMsg: ChatMessage = {
+        id: String(Date.now() + 1),
+        sender: 'ai',
+        text: `⚠️ خطا در برقراری ارتباط با دستیار هوشمند: ${err.message}`,
+        timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, errAiMsg]);
     } finally {
       setLoading(false);
     }
