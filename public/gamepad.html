@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0a0b10">
-  <title>👑 گیم‌پد سلطنتی ویندوز | دو نفره</title>
+  <title>👑 گیم‌پد سلطنتی ویندوز | دو نفره با ویبره هوشمند</title>
   <style>
     * {
       box-sizing: border-box;
@@ -41,32 +41,32 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 10px;
-      gap: 6px;
+      padding: 0 8px;
+      gap: 5px;
       z-index: 50;
     }
     .header-left {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
     }
     .header-right {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
     }
     .player-toggle-btn {
       background: #1e2030;
       color: #38bdf8;
       border: 1.5px solid #0284c7;
       border-radius: 8px;
-      padding: 4px 8px;
+      padding: 4px 7px;
       font-size: 11px;
       font-weight: bold;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 3px;
     }
     .player-toggle-btn.p2 {
       color: #f472b6;
@@ -81,19 +81,37 @@
       font-size: 11px;
       font-weight: bold;
       outline: none;
-      max-width: 110px;
+      max-width: 105px;
+    }
+    .vibrate-btn {
+      background: #1e2030;
+      color: #a3e635;
+      border: 1px solid rgba(163, 230, 53, 0.4);
+      border-radius: 8px;
+      padding: 4px 6px;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .vibrate-btn.muted {
+      color: #9ca3af;
+      border-color: #4b5563;
+      background: #141520;
     }
     .fullscreen-btn {
       background: linear-gradient(135deg, #d97706, #b45309);
       color: #fff;
       border: none;
       border-radius: 8px;
-      padding: 5px 9px;
+      padding: 5px 8px;
       font-size: 11px;
       font-weight: bold;
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 3px;
       cursor: pointer;
       box-shadow: 0 2px 6px rgba(0,0,0,0.4);
     }
@@ -362,6 +380,10 @@
     </div>
 
     <div class="header-right">
+      <button id="vibrateBtn" class="vibrate-btn" onclick="toggleVibration()">
+        <span>📳</span>
+        <span id="vibrateText">ویبره</span>
+      </button>
       <button class="fullscreen-btn" onclick="toggleFullscreen()">
         <span>⛶</span>
         <span>تمام‌صفحه</span>
@@ -444,10 +466,13 @@
 
   <script>
     let ws = null;
+    let isVibrationEnabled = localStorage.getItem('cpm_gamepad_vibrate') !== 'false';
     let currentPlayer = parseInt(localStorage.getItem('cpm_gamepad_player') || '1', 10);
     const statusBadge = document.getElementById('statusBadge');
     const playerToggleBtn = document.getElementById('playerToggleBtn');
     const playerText = document.getElementById('playerText');
+    const vibrateBtn = document.getElementById('vibrateBtn');
+    const vibrateText = document.getElementById('vibrateText');
 
     const profileLabels = {
       fifa: {
@@ -561,10 +586,29 @@
     }
 
     function togglePlayer() {
-      vibrate(30);
+      vibratePattern([30, 20, 30]);
       currentPlayer = currentPlayer === 1 ? 2 : 1;
       localStorage.setItem('cpm_gamepad_player', currentPlayer.toString());
       updatePlayerUI();
+    }
+
+    function updateVibrateUI() {
+      if (isVibrationEnabled) {
+        vibrateBtn.className = 'vibrate-btn';
+        vibrateText.textContent = 'ویبره فعال';
+      } else {
+        vibrateBtn.className = 'vibrate-btn muted';
+        vibrateText.textContent = 'ویبره خاموش';
+      }
+    }
+
+    function toggleVibration() {
+      isVibrationEnabled = !isVibrationEnabled;
+      localStorage.setItem('cpm_gamepad_vibrate', isVibrationEnabled ? 'true' : 'false');
+      updateVibrateUI();
+      if (isVibrationEnabled) {
+        vibratePattern([40, 20, 40]);
+      }
     }
 
     function updateLabels(profile) {
@@ -586,7 +630,7 @@
     }
 
     function toggleFullscreen() {
-      vibrate(30);
+      vibratePattern(40);
       const doc = document.documentElement;
       if (!document.fullscreenElement && !document.webkitFullscreenElement) {
         if (doc.requestFullscreen) {
@@ -606,11 +650,28 @@
       }
     }
 
-    function vibrate(ms = 22) {
+    function vibratePattern(pattern) {
+      if (!isVibrationEnabled) return;
       if (navigator.vibrate) {
         try {
-          navigator.vibrate(ms);
+          navigator.vibrate(pattern);
         } catch {}
+      }
+    }
+
+    function triggerButtonHaptic(btn) {
+      if (btn === 'BTN_B' || btn === 'R2' || btn === 'L2') {
+        // Heavy kick for Shoot / Sprint / Shield
+        vibratePattern(50);
+      } else if (btn === 'START' || btn === 'ENTER' || btn === 'SELECT') {
+        // Double pulse for menu
+        vibratePattern([30, 20, 30]);
+      } else if (btn.startsWith('DPAD_')) {
+        // Fast crisp click for DPad
+        vibratePattern(25);
+      } else {
+        // Standard action button pulse
+        vibratePattern(35);
       }
     }
 
@@ -639,7 +700,7 @@
 
     function sendBtnEvent(button, state) {
       if (state === 'down') {
-        vibrate(22);
+        triggerButtonHaptic(button);
       }
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
@@ -674,6 +735,7 @@
     });
 
     // Initialize
+    updateVibrateUI();
     updatePlayerUI();
     connectWs();
   </script>
