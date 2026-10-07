@@ -273,7 +273,7 @@ export function App() {
               <DiagnosticsTab device={selectedDevice} />
             )}
             {activeTab === 'doctor' && (
-              <DoctorTab />
+              <DoctorTab device={selectedDevice} />
             )}
 
           </div>

@@ -73,7 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, devic
     { id: 'hardware', label: 'آزمایشگاه تست سخت‌افزار', icon: Gauge, desc: 'تست ویبره، صدا، سنسور و شبکه' },
     { id: 'tweaks', label: 'تنظیمات مخفی و سیستمی', icon: Sliders, desc: 'تغییر DPI، انیمیشن، GPS' },
     { id: 'diagnostics', label: 'عیب‌یابی و لاگ زنده', icon: Activity, desc: 'مشاهده Logcat و Syslog' },
-    { id: 'doctor', label: 'پزشک درایورها و واسط‌ها', icon: Stethoscope, desc: 'نصب خودکار ADB و درایورها' },
+    { id: 'doctor', label: 'پزشک سیستم و پاکسازی', icon: Stethoscope, desc: 'پاکسازی فایل‌های اضافی و تعمیرات' },
   ];
 
   return (

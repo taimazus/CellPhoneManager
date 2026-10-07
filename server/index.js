@@ -31,6 +31,7 @@ import { universalBackupManager } from './universalBackupManager.js';
 import { passwordManager } from './passwordManager.js';
 import { audioRecorderManager } from './audioRecorderManager.js';
 import { hardwareLabManager } from './hardwareLabManager.js';
+import { systemDoctorManager } from './systemDoctorManager.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -1501,6 +1502,51 @@ app.get('/api/devices/:id/hardware/network', async (req, res) => {
     }
     const stats = await adbManager.getNetworkStats(id);
     res.json(stats);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// -------------------------------------------------------------
+// 12.1 Deep Junk Cleaning & Automated System Repairs APIs
+// -------------------------------------------------------------
+app.get('/api/devices/:id/system/junk/scan', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await systemDoctorManager.scanJunk(id);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/system/junk/clean', async (req, res) => {
+  const { id } = req.params;
+  const { categories = ['all'] } = req.body;
+  try {
+    const result = await systemDoctorManager.cleanJunk(id, categories);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/devices/:id/system/diagnostics/health', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await systemDoctorManager.runHealthDiagnostics(id);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/system/repair', async (req, res) => {
+  const { id } = req.params;
+  const { action = 'fix_all' } = req.body;
+  try {
+    const result = await systemDoctorManager.performRepair(id, action);
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
