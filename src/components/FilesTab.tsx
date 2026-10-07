@@ -81,6 +81,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
   const [previewFile, setPreviewFile] = useState<{ name: string; url: string; ext: string } | null>(null);
   const [previewTextContent, setPreviewTextContent] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [isMediaLoading, setIsMediaLoading] = useState(true);
   const [imageRotation, setImageRotation] = useState(0);
   const [imageZoom, setImageZoom] = useState(1);
 
@@ -372,6 +373,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
 
     setImageRotation(0);
     setImageZoom(1);
+    setIsMediaLoading(true);
     setPreviewTextContent(null);
     setPreviewFile({ name: item.name, url: previewUrl, ext });
 
@@ -1173,12 +1175,29 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
             </div>
 
             {/* Modal Body */}
-            <div className="relative flex-1 overflow-auto p-6 flex flex-col items-center justify-center bg-[#050914] min-h-[350px]">
+            <div className="relative flex-1 overflow-auto p-6 flex flex-col items-center justify-center bg-[#050914] min-h-[360px]">
+              {/* Floating Media Loading Indicator Overlay */}
+              {isMediaLoading && getFileCategory(previewFile.name) !== 'text' && getFileCategory(previewFile.name) !== 'other' && (
+                <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#050914]/90 backdrop-blur-md rounded-2xl p-6 text-center space-y-4 pointer-events-none animate-fadeIn transition-all">
+                  <div className="relative flex items-center justify-center">
+                    <div className="w-14 h-14 rounded-full border-2 border-cyan-500/20 border-t-cyan-400 animate-spin" />
+                    <RefreshCw className="w-6 h-6 text-cyan-400 absolute inset-0 m-auto animate-pulse" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-bold text-slate-100 flex items-center justify-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping inline-block" />
+                      در حال دریافت و بارگذاری فایل از حافظه گوشی...
+                    </p>
+                    <p className="text-xs text-slate-400 font-mono max-w-sm truncate" dir="ltr">{previewFile.name}</p>
+                  </div>
+                </div>
+              )}
+
               {/* Floating Large Previous / Next Side Buttons */}
               {hasPrev && (
                 <button
                   onClick={handlePrevFile}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-slate-950/80 hover:bg-cyan-500 text-slate-200 hover:text-slate-950 border border-slate-700/80 hover:border-cyan-400 backdrop-blur-md transition-all shadow-2xl hover:scale-110 active:scale-95 group"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-slate-950/80 hover:bg-cyan-500 text-slate-200 hover:text-slate-950 border border-slate-700/80 hover:border-cyan-400 backdrop-blur-md transition-all shadow-2xl hover:scale-110 active:scale-95 group"
                   title="فایل قبلی (کلید جهت‌نمای راست)"
                 >
                   <ChevronRight className="w-6 h-6 group-hover:scale-110 transition-transform" />
@@ -1188,7 +1207,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
               {hasNext && (
                 <button
                   onClick={handleNextFile}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-slate-950/80 hover:bg-cyan-500 text-slate-200 hover:text-slate-950 border border-slate-700/80 hover:border-cyan-400 backdrop-blur-md transition-all shadow-2xl hover:scale-110 active:scale-95 group"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-slate-950/80 hover:bg-cyan-500 text-slate-200 hover:text-slate-950 border border-slate-700/80 hover:border-cyan-400 backdrop-blur-md transition-all shadow-2xl hover:scale-110 active:scale-95 group"
                   title="فایل بعدی (کلید جهت‌نمای چپ)"
                 >
                   <ChevronLeft className="w-6 h-6 group-hover:scale-110 transition-transform" />
@@ -1200,8 +1219,11 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
                 <div className="flex flex-col items-center gap-4 w-full h-full justify-center">
                   <div className="overflow-hidden max-h-[60vh] flex items-center justify-center rounded-2xl border border-slate-800 bg-black/40 p-2">
                     <img
+                      key={previewFile.url}
                       src={previewFile.url}
                       alt={previewFile.name}
+                      onLoad={() => setIsMediaLoading(false)}
+                      onError={() => setIsMediaLoading(false)}
                       style={{
                         transform: `rotate(${imageRotation}deg) scale(${imageZoom})`,
                         transition: 'transform 0.2s ease'
@@ -1270,6 +1292,11 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
                     src={previewFile.url}
                     controls
                     autoPlay
+                    onLoadedData={() => setIsMediaLoading(false)}
+                    onCanPlay={() => setIsMediaLoading(false)}
+                    onWaiting={() => setIsMediaLoading(true)}
+                    onPlaying={() => setIsMediaLoading(false)}
+                    onError={() => setIsMediaLoading(false)}
                     className="max-h-[60vh] max-w-full rounded-2xl border border-slate-800 shadow-2xl bg-black"
                   >
                     مرورگر شما از پخش مستقیم این ویدیو پشتیبانی نمی‌کند.
@@ -1292,6 +1319,11 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
                     src={previewFile.url}
                     controls 
                     autoPlay 
+                    onLoadedData={() => setIsMediaLoading(false)}
+                    onCanPlay={() => setIsMediaLoading(false)}
+                    onWaiting={() => setIsMediaLoading(true)}
+                    onPlaying={() => setIsMediaLoading(false)}
+                    onError={() => setIsMediaLoading(false)}
                     className="w-full"
                   >
                     مرورگر شما از پخش مستقیم این فایل صوتی پشتیبانی نمی‌کند.
@@ -1303,9 +1335,12 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
               {getFileCategory(previewFile.name) === 'text' && (
                 <div className="w-full h-full flex flex-col">
                   {previewLoading ? (
-                    <div className="py-20 text-center text-slate-400">
-                      <RefreshCw className="w-8 h-8 animate-spin text-cyan-400 mx-auto mb-2" />
-                      <span>در حال خواندن فایل...</span>
+                    <div className="py-20 text-center text-slate-400 space-y-3">
+                      <div className="relative w-12 h-12 mx-auto">
+                        <div className="w-12 h-12 rounded-full border-2 border-cyan-500/20 border-t-cyan-400 animate-spin" />
+                        <RefreshCw className="w-5 h-5 text-cyan-400 absolute inset-0 m-auto animate-pulse" />
+                      </div>
+                      <p className="text-sm font-bold text-slate-200">در حال خواندن و بارگذاری فایل متنی از گوشی...</p>
                     </div>
                   ) : (
                     <pre className="p-4 bg-[#080d1a] border border-slate-800 rounded-2xl font-mono text-xs text-cyan-300 max-h-[60vh] overflow-y-auto whitespace-pre-wrap select-text text-left">
@@ -1318,7 +1353,13 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
               {/* PDF PREVIEW */}
               {getFileCategory(previewFile.name) === 'pdf' && (
                 <div className="w-full h-[65vh] rounded-2xl overflow-hidden border border-slate-800">
-                  <iframe key={previewFile.url} src={previewFile.url} className="w-full h-full" title="PDF Preview" />
+                  <iframe 
+                    key={previewFile.url} 
+                    src={previewFile.url} 
+                    onLoad={() => setIsMediaLoading(false)}
+                    className="w-full h-full" 
+                    title="PDF Preview" 
+                  />
                 </div>
               )}
 
