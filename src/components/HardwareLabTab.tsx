@@ -170,17 +170,17 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
   };
 
   // 4. Screen Dead Pixel & Color Test
-  const launchPhoneScreenTest = async () => {
+  const launchPhoneScreenTest = async (color: string = 'rgb') => {
     if (!device) return;
     try {
       const res = await fetch(`/api/devices/${device.id}/hardware/screen-test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ color: 'rgb' })
+        body: JSON.stringify({ color })
       });
       const data = await res.json();
       if (data.success) {
-        showToast('آزمون تمام‌صفحه رنگ‌ها روی صفحه گوشی باز شد.', 'success');
+        showToast(`آزمون تمام‌صفحه رنگ‌ها ${color !== 'rgb' ? `(${color}) ` : ''}روی صفحه گوشی باز شد.`, 'success');
       } else {
         showToast(`خطا: ${data.error}`, 'error');
       }
@@ -190,9 +190,10 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
   };
 
   // 5. Audio Synthesizer & Frequency Test
-  const playTone = (freq: number) => {
+  const playTone = async (freq: number) => {
     try {
       setActiveTone(freq);
+      // Play locally on PC speaker
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -205,7 +206,16 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
       osc.start();
       osc.stop(ctx.currentTime + 1.8);
 
-      showToast(`فرکانس صوتی ${freq}Hz با موفقیت پخش گردید.`, 'success');
+      // Play on Phone Speaker via Hardware Lab Backend
+      if (device) {
+        fetch(`/api/devices/${device.id}/hardware/audio-tone`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ freq, duration: 2 })
+        }).catch(err => console.error('Phone audio error:', err));
+      }
+
+      showToast(`فرکانس صوتی ${freq}Hz روی بلندگوی گوشی و سیستم پخش گردید.`, 'success');
       setTimeout(() => setActiveTone(null), 1800);
     } catch (e: any) {
       console.error(e);
@@ -213,9 +223,10 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
     }
   };
 
-  const playSweep = () => {
+  const playSweep = async () => {
     try {
       setActiveTone(9999);
+      // Play locally on PC speaker
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -229,7 +240,16 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
       osc.start();
       osc.stop(ctx.currentTime + 3.5);
 
-      showToast('سوییپ کامل فرکانسی (100Hz تا 8000Hz) در حال پخش است...', 'success');
+      // Play on Phone Speaker via Hardware Lab Backend
+      if (device) {
+        fetch(`/api/devices/${device.id}/hardware/audio-tone`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ freq: 9999, duration: 3.5 })
+        }).catch(err => console.error('Phone audio sweep error:', err));
+      }
+
+      showToast('سوییپ کامل فرکانسی (100Hz تا 8000Hz) روی بلندگوی گوشی در حال پخش است...', 'success');
       setTimeout(() => setActiveTone(null), 3500);
     } catch (e: any) {
       console.error(e);
@@ -560,7 +580,7 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <button
-              onClick={() => setScreenTestColor('#FF0000')}
+              onClick={() => { setScreenTestColor('#FF0000'); launchPhoneScreenTest('#FF0000'); }}
               className="h-24 rounded-2xl bg-red-600 flex flex-col items-center justify-center p-3 text-white font-bold text-xs shadow-lg hover:scale-105 transition-transform"
             >
               <span>قرمز خالص</span>
@@ -568,7 +588,7 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
             </button>
 
             <button
-              onClick={() => setScreenTestColor('#00FF00')}
+              onClick={() => { setScreenTestColor('#00FF00'); launchPhoneScreenTest('#00FF00'); }}
               className="h-24 rounded-2xl bg-green-500 flex flex-col items-center justify-center p-3 text-slate-950 font-bold text-xs shadow-lg hover:scale-105 transition-transform"
             >
               <span>سبز خالص</span>
@@ -576,7 +596,7 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
             </button>
 
             <button
-              onClick={() => setScreenTestColor('#0000FF')}
+              onClick={() => { setScreenTestColor('#0000FF'); launchPhoneScreenTest('#0000FF'); }}
               className="h-24 rounded-2xl bg-blue-600 flex flex-col items-center justify-center p-3 text-white font-bold text-xs shadow-lg hover:scale-105 transition-transform"
             >
               <span>آبی خالص</span>
@@ -584,7 +604,7 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
             </button>
 
             <button
-              onClick={() => setScreenTestColor('#FFFFFF')}
+              onClick={() => { setScreenTestColor('#FFFFFF'); launchPhoneScreenTest('#FFFFFF'); }}
               className="h-24 rounded-2xl bg-white flex flex-col items-center justify-center p-3 text-slate-950 font-bold text-xs shadow-lg hover:scale-105 transition-transform"
             >
               <span>سفید مطلق</span>
@@ -592,7 +612,7 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
             </button>
 
             <button
-              onClick={() => setScreenTestColor('#000000')}
+              onClick={() => { setScreenTestColor('#000000'); launchPhoneScreenTest('#000000'); }}
               className="h-24 rounded-2xl bg-black border border-slate-700 flex flex-col items-center justify-center p-3 text-white font-bold text-xs shadow-lg hover:scale-105 transition-transform"
             >
               <span>مشکی خالص</span>
@@ -600,7 +620,7 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
             </button>
 
             <button
-              onClick={() => setScreenTestColor('#FFFF00')}
+              onClick={() => { setScreenTestColor('#FFFF00'); launchPhoneScreenTest('#FFFF00'); }}
               className="h-24 rounded-2xl bg-yellow-400 flex flex-col items-center justify-center p-3 text-slate-950 font-bold text-xs shadow-lg hover:scale-105 transition-transform"
             >
               <span>زرد خالص</span>

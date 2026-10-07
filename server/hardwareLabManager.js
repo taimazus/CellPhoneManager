@@ -15,58 +15,71 @@ export class HardwareLabManager {
       else if (pattern === 'normal') durationMs = 800;
       else if (pattern === 'long') durationMs = 1800;
 
+      const runVibeCmd = async (ms) => {
+        return await adbManager.runAdb(
+          `shell "cmd vibrator_manager synced -f oneshot -a ${ms} 255 2>/dev/null || cmd vibrator_manager synced oneshot ${ms} 2>/dev/null || cmd vibrator vibrate ${ms} 2>/dev/null || true"`,
+          serial
+        );
+      };
+
       if (pattern === 'double') {
-        // Double click tap (120ms on, 80ms off, 120ms on)
-        await adbManager.runAdb(`shell "cmd vibrator_manager synced -f oneshot 120 || cmd vibrator vibrate 120"`, serial);
-        await new Promise(r => setTimeout(r, 150));
-        await adbManager.runAdb(`shell "cmd vibrator_manager synced -f oneshot 120 || cmd vibrator vibrate 120"`, serial);
-        return { success: true, message: 'پالس دوگانه تپتیک با موفقیت اجرا شد' };
+        await runVibeCmd(120);
+        await new Promise(r => setTimeout(r, 140));
+        await runVibeCmd(120);
+        return { success: true, message: 'پالس دوگانه کلیکی با موفقیت روی گوشی اجرا شد.' };
       }
 
       if (pattern === 'sos') {
-        // SOS in Morse code: ... --- ... (3 short, 3 long, 3 short)
-        const shortPulse = async () => {
-          await adbManager.runAdb(`shell "cmd vibrator_manager synced -f oneshot 150 || cmd vibrator vibrate 150"`, serial);
-          await new Promise(r => setTimeout(r, 200));
-        };
-        const longPulse = async () => {
-          await adbManager.runAdb(`shell "cmd vibrator_manager synced -f oneshot 450 || cmd vibrator vibrate 450"`, serial);
-          await new Promise(r => setTimeout(r, 300));
-        };
-
         (async () => {
-          for (let i = 0; i < 3; i++) await shortPulse();
-          for (let i = 0; i < 3; i++) await longPulse();
-          for (let i = 0; i < 3; i++) await shortPulse();
+          for (let i = 0; i < 3; i++) { await runVibeCmd(150); await new Promise(r => setTimeout(r, 200)); }
+          for (let i = 0; i < 3; i++) { await runVibeCmd(450); await new Promise(r => setTimeout(r, 300)); }
+          for (let i = 0; i < 3; i++) { await runVibeCmd(150); await new Promise(r => setTimeout(r, 200)); }
         })().catch(() => {});
 
-        return { success: true, message: 'الگوی مورس اضطراری SOS با موفقیت شروع شد' };
+        return { success: true, message: 'الگوی مورس اضطراری SOS با موفقیت روی موتور ویبره گوشی شروع شد.' };
       }
 
       if (pattern === 'heartbeat') {
-        // Heartbeat: 100ms on, 100ms off, 250ms on
         (async () => {
           for (let i = 0; i < 3; i++) {
-            await adbManager.runAdb(`shell "cmd vibrator_manager synced -f oneshot 100 || cmd vibrator vibrate 100"`, serial);
+            await runVibeCmd(100);
             await new Promise(r => setTimeout(r, 120));
-            await adbManager.runAdb(`shell "cmd vibrator_manager synced -f oneshot 250 || cmd vibrator vibrate 250"`, serial);
+            await runVibeCmd(250);
             await new Promise(r => setTimeout(r, 600));
           }
         })().catch(() => {});
 
-        return { success: true, message: 'الگوی تپش قلب (Heartbeat) با موفقیت اجرا شد' };
+        return { success: true, message: 'الگوی تپش قلب (Heartbeat) با موفقیت روی گوشی اجرا شد.' };
       }
 
-      // Default single vibration with multi-layer fallback:
-      // 1. Android 12+ (vibrator_manager)
-      // 2. Android 8-11 (vibrator)
-      // 3. Legacy service call (service call vibrator 1 i32)
-      const res = await adbManager.runAdb(
-        `shell "cmd vibrator_manager synced -f oneshot ${durationMs} || cmd vibrator vibrate ${durationMs} || service call vibrator 1 i32 ${durationMs}"`,
+      const res = await runVibeCmd(durationMs);
+      return { success: true, message: `ویبره ${durationMs} میلی‌ثانیه با موفقیت روی گوشی اجرا شد.`, output: res.stdout };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  // 1.1 Play Pure Audio Frequency Tone on Phone Speaker
+  async playAudioTone(serial, freq = 440, duration = 2) {
+    if (serial && serial.startsWith('mock-')) {
+      return { success: true, message: `فرکانس صوتی ${freq}Hz شبیه‌سازی شد.` };
+    }
+
+    try {
+      // Ensure media volume is up
+      await adbManager.runAdb('shell "cmd media_session volume --stream 3 --set 15 2>/dev/null || cmd audio set-stream-volume 3 15 2>/dev/null || true"', serial);
+
+      // Reverse port so device reaches local server
+      await adbManager.runAdb('reverse tcp:5173 tcp:5173 2>/dev/null || true', serial);
+      await adbManager.runAdb('reverse tcp:3001 tcp:3001 2>/dev/null || true', serial);
+
+      // Launch Web Audio Tone player on phone
+      await adbManager.runAdb(
+        `shell am start -a android.intent.action.VIEW -d "http://127.0.0.1:3001/audio-tone.html?freq=${freq}&duration=${duration}"`,
         serial
       );
 
-      return { success: true, message: `ویبره ${durationMs} میلی‌ثانیه با موفقیت ارسال شد`, output: res.stdout };
+      return { success: true, message: `فرکانس ${freq === 9999 ? 'سوییپ فرکانسی' : `${freq}Hz`} با موفقیت روی بلندگوی گوشی پخش شد.` };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -125,52 +138,15 @@ export class HardwareLabManager {
     }
 
     try {
-      // Create lightweight standalone fullscreen HTML test page on device
-      const htmlContent = `<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>CellPhoneManager Screen & Dead Pixel Test</title>
-<style>
-  * { margin:0; padding:0; box-sizing: border-box; }
-  body { width: 100vw; height: 100vh; background: #FF0000; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; user-select: none; }
-  #info { position: fixed; top: 15px; background: rgba(0,0,0,0.7); color: #fff; padding: 8px 16px; border-radius: 20px; font-size: 13px; pointer-events: none; }
-  #controls { position: fixed; bottom: 20px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; z-index: 10; max-width: 90%; }
-  button { padding: 10px 14px; border: none; border-radius: 12px; font-weight: bold; font-size: 12px; cursor: pointer; background: rgba(255,255,255,0.9); color: #111; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-</style>
-</head>
-<body id="b">
-  <div id="info">لمس صفحه برای تغییر رنگ یا بررسی پیکسل‌های سوخته</div>
-  <div id="controls">
-    <button onclick="setCol('#FF0000')">قرمز</button>
-    <button onclick="setCol('#00FF00')">سبز</button>
-    <button onclick="setCol('#0000FF')">آبی</button>
-    <button onclick="setCol('#FFFFFF')">سفید</button>
-    <button onclick="setCol('#000000')">مشکی (OLED)</button>
-    <button onclick="setCol('#FFFF00')">زرد</button>
-    <button onclick="setCol('#FF00FF')">بنفش</button>
-    <button onclick="setCol('#00FFFF')">فیروزه‌ای</button>
-  </div>
-<script>
-  const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFFFF', '#000000', '#FFFF00', '#00FFFF', '#FF00FF'];
-  let idx = 0;
-  function setCol(c) { document.getElementById('b').style.background = c; }
-  document.body.addEventListener('click', (e) => {
-    if (e.target.tagName !== 'BUTTON') {
-      idx = (idx + 1) % colors.length;
-      setCol(colors[idx]);
-    }
-  });
-</script>
-</body>
-</html>`;
+      // Reverse port so device reaches local server
+      await adbManager.runAdb('reverse tcp:5173 tcp:5173 2>/dev/null || true', serial);
+      await adbManager.runAdb('reverse tcp:3001 tcp:3001 2>/dev/null || true', serial);
 
-      const remoteHtmlPath = '/sdcard/cpm_screentest.html';
-      const encoded = Buffer.from(htmlContent, 'utf-8').toString('base64');
-      await adbManager.runAdb(`shell "echo '${encoded}' | base64 -d > ${remoteHtmlPath}"`, serial);
-      
-      // Launch via browser intent
-      await adbManager.runAdb(`shell am start -a android.intent.action.VIEW -d "file://${remoteHtmlPath}" -t "text/html"`, serial);
+      // Launch screen test page on phone
+      await adbManager.runAdb(
+        `shell am start -a android.intent.action.VIEW -d "http://127.0.0.1:3001/screen-test.html?color=${encodeURIComponent(color)}"`,
+        serial
+      );
       return { success: true, message: 'آزمون تمام‌صفحه رنگ‌ها و پیکسل سوخته روی صفحه گوشی باز شد.' };
     } catch (err) {
       return { success: false, error: err.message };

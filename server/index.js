@@ -1466,6 +1466,126 @@ app.post('/api/devices/:id/hardware/screen-test', async (req, res) => {
   }
 });
 
+app.post('/api/devices/:id/hardware/audio-tone', async (req, res) => {
+  const { id } = req.params;
+  const { freq = 440, duration = 2 } = req.body;
+  try {
+    const result = await hardwareLabManager.playAudioTone(id, freq, duration);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Interactive Standalone HTML pages for phone testing (Dead Pixel & Web Audio Tone)
+app.get('/screen-test.html', (req, res) => {
+  const color = req.query.color || 'rgb';
+  const initialBg = color === 'red' ? '#FF0000' :
+                    color === 'green' ? '#00FF00' :
+                    color === 'blue' ? '#0000FF' :
+                    color === 'white' ? '#FFFFFF' :
+                    color === 'black' ? '#000000' :
+                    color === 'yellow' ? '#FFFF00' : '#FF0000';
+
+  res.send(`<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>تست صفحه نمایش و پیکسل سوخته | CellPhoneManager</title>
+<style>
+  * { margin:0; padding:0; box-sizing: border-box; }
+  html, body { width: 100vw; height: 100vh; background: ${initialBg}; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: space-between; font-family: system-ui, sans-serif; user-select: none; }
+  #info { margin-top: 20px; background: rgba(0,0,0,0.75); color: #fff; padding: 8px 18px; border-radius: 24px; font-size: 13px; font-weight: bold; pointer-events: none; backdrop-filter: blur(8px); }
+  #controls { margin-bottom: 24px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; z-index: 10; max-width: 95%; background: rgba(0,0,0,0.6); padding: 8px; border-radius: 18px; backdrop-filter: blur(8px); }
+  button { padding: 8px 14px; border: none; border-radius: 12px; font-weight: bold; font-size: 12px; cursor: pointer; color: #111; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+</style>
+</head>
+<body id="b">
+  <div id="info">لمس صفحه برای تغییر رنگ و بررسی پیکسل‌های سوخته</div>
+  <div id="controls">
+    <button style="background:#FF0000;color:#fff" onclick="setCol('#FF0000')">قرمز</button>
+    <button style="background:#00FF00;color:#000" onclick="setCol('#00FF00')">سبز</button>
+    <button style="background:#0000FF;color:#fff" onclick="setCol('#0000FF')">آبی</button>
+    <button style="background:#FFFFFF;color:#000" onclick="setCol('#FFFFFF')">سفید</button>
+    <button style="background:#000000;color:#fff;border:1px solid #555" onclick="setCol('#000000')">مشکی</button>
+    <button style="background:#FFFF00;color:#000" onclick="setCol('#FFFF00')">زرد</button>
+  </div>
+<script>
+  const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFFFF', '#000000', '#FFFF00'];
+  let idx = colors.indexOf('${initialBg}');
+  if (idx < 0) idx = 0;
+  function setCol(c) { document.getElementById('b').style.background = c; }
+  document.body.addEventListener('click', (e) => {
+    if (e.target.tagName !== 'BUTTON') {
+      idx = (idx + 1) % colors.length;
+      setCol(colors[idx]);
+    }
+  });
+</script>
+</body>
+</html>`);
+});
+
+app.get('/audio-tone.html', (req, res) => {
+  const freq = parseFloat(req.query.freq) || 440;
+  const duration = parseFloat(req.query.duration) || 2;
+  const isSweep = freq === 9999;
+
+  res.send(`<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تست فرکانس صوتی بلندگو | CellPhoneManager</title>
+<style>
+  body { background: #050813; color: #fff; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center; }
+  .box { background: #0b1328; border: 1px solid #06b6d4; padding: 24px; border-radius: 24px; box-shadow: 0 10px 30px rgba(6,182,212,0.2); max-width: 90%; }
+  h2 { margin: 0 0 8px 0; color: #38bdf8; }
+  p { font-size: 13px; color: #94a3b8; }
+  button { margin-top: 16px; background: #06b6d4; color: #000; border: none; padding: 12px 24px; border-radius: 14px; font-weight: bold; font-size: 14px; cursor: pointer; }
+</style>
+</head>
+<body>
+  <div class="box">
+    <h2>🔊 تست سلامت بلندگوی گوشی</h2>
+    <p>${isSweep ? 'سوییپ فرکانسی کامل (100Hz تا 8000Hz)' : `فرکانس سینوسی خالص ${freq} هرتز`}</p>
+    <button id="btn" onclick="startTone()">▶️ پخش مجدد صدا</button>
+  </div>
+<script>
+  function startTone() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      if (${isSweep}) {
+        osc.frequency.setValueAtTime(100, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(8000, ctx.currentTime + ${duration});
+      } else {
+        osc.frequency.setValueAtTime(${freq}, ctx.currentTime);
+      }
+      gain.gain.setValueAtTime(0.8, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + ${duration});
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + ${duration});
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  window.addEventListener('DOMContentLoaded', () => {
+    startTone();
+  });
+  window.addEventListener('click', () => {
+    startTone();
+  }, { once: true });
+</script>
+</body>
+</html>`);
+});
+
 app.get('/api/devices/:id/hardware/sensors', async (req, res) => {
   const { id } = req.params;
   try {
