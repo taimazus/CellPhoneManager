@@ -155,6 +155,41 @@ export class IosManager {
   async shutdown(udid) {
     return await this.runPyMobileDevice(`diagnostics shutdown --udid ${udid}`);
   }
+
+  // 8. iOS Capabilities Matrix & Diagnostics Suite
+  async getCapabilities(udid) {
+    return {
+      success: true,
+      platform: 'iOS (Apple Darwin)',
+      capabilities: [
+        { id: 'device_info', name: 'اطلاعات کامل و سخت‌افزار', supported: true, tool: 'lockdown' },
+        { id: 'battery_diagnostics', name: 'پایش سلامت و چرخه شارژ باتری', supported: true, tool: 'diagnostics' },
+        { id: 'apps_management', name: 'فهرست، نصب (.ipa) و حذف برنامه‌ها', supported: true, tool: 'installation_proxy' },
+        { id: 'afc_files', name: 'مدیریت فایل و مدیا (AFC)', supported: true, tool: 'afc' },
+        { id: 'gps_simulation', name: 'شبیه‌سازی موقعیت مکانی GPS', supported: true, tool: 'developer' },
+        { id: 'crash_logs', name: 'استخراج گزارش کرش و خطاهای سیستم', supported: true, tool: 'crashreport' },
+        { id: 'sysdiagnose', name: 'گزارش عیب‌یابی عمیق سیستم (Sysdiagnose)', supported: true, tool: 'syslog' },
+        { id: 'screen_mirror', name: 'انتقال تصویر (Screen Mirroring)', supported: true, tool: 'developer ddi / quicktime' }
+      ]
+    };
+  }
+
+  async getCrashLogs(udid) {
+    if (udid.startsWith('mock-')) {
+      return {
+        success: true,
+        logs: [
+          { filename: 'SpringBoard-2026-10-07.ips', timestamp: new Date().toISOString(), reason: 'Memory pressure warning (jetsam)' },
+          { filename: 'CameraApp-2026-10-06.ips', timestamp: new Date(Date.now() - 86400000).toISOString(), reason: 'EXC_BAD_ACCESS (SIGSEGV)' }
+        ]
+      };
+    }
+    const res = await this.runPyMobileDevice(`crash list --udid ${udid}`);
+    if (res.success) {
+      return { success: true, raw: res.stdout };
+    }
+    return { success: false, error: res.error || 'دسترسی به لاگ کرش امکان‌پذیر نیست.' };
+  }
 }
 
 export const iosManager = new IosManager();

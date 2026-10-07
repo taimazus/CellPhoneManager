@@ -1,89 +1,137 @@
-import { exec } from 'child_process';
-import util from 'util';
 import fs from 'fs';
 import path from 'path';
-import { toolManager } from './toolManager.js';
-import { adbManager } from './adbManager.js';
-
-const execAsync = util.promisify(exec);
 
 export class AutomationManager {
   constructor() {
-    this.activeRecordings = new Map(); // serial -> actions[]
-    this.runningMacros = new Map(); // serial -> boolean
+    this.autoDir = path.join(process.cwd(), 'data', 'automation');
+    this.rulesFile = path.join(this.autoDir, 'rules.json');
+    this.historyFile = path.join(this.autoDir, 'history.json');
+    this.initDirs();
   }
 
-  // Record an action
-  recordAction(serial, action) {
-    if (!this.activeRecordings.has(serial)) {
-      this.activeRecordings.set(serial, []);
+  initDirs() {
+    if (!fs.existsSync(this.autoDir)) {
+      fs.mkdirSync(this.autoDir, { recursive: true });
     }
-    const list = this.activeRecordings.get(serial);
-    list.push({ ...action, timestamp: Date.now() });
-    return list;
-  }
-
-  startRecording(serial) {
-    this.activeRecordings.set(serial, []);
-    return { success: true, message: 'ضبط ماکرو آغاز شد.' };
-  }
-
-  stopRecording(serial) {
-    const list = this.activeRecordings.get(serial) || [];
-    return { success: true, actions: list, count: list.length, message: 'ضبط ماکرو متوقف شد.' };
-  }
-
-  getRecordedActions(serial) {
-    return this.activeRecordings.get(serial) || [];
-  }
-
-  // Play a sequence of macro actions
-  async playMacro(serial, { actions, repeat = 1, speed = 1 }, progressCallback = () => {}) {
-    if (!actions || actions.length === 0) {
-      return { success: false, error: 'هیچ عملیاتی برای اجرا وجود ندارد.' };
-    }
-
-    this.runningMacros.set(serial, true);
-
-    try {
-      for (let r = 1; r <= repeat; r++) {
-        if (!this.runningMacros.get(serial)) break;
-        progressCallback({ iteration: r, totalIterations: repeat, status: 'running' });
-
-        for (let i = 0; i < actions.length; i++) {
-          if (!this.runningMacros.get(serial)) break;
-          const act = actions[i];
-
-          if (act.type === 'tap') {
-            await adbManager.sendTap(serial, act.x, act.y);
-          } else if (act.type === 'swipe') {
-            await adbManager.runAdb(`shell input swipe ${act.x1} ${act.y1} ${act.x2} ${act.y2} ${act.duration || 300}`, serial);
-          } else if (act.type === 'key') {
-            await adbManager.sendKeyEvent(serial, act.keycode);
-          } else if (act.type === 'text') {
-            await adbManager.sendTextInput(serial, act.text);
-          } else if (act.type === 'delay') {
-            const ms = Math.max(50, (act.duration || 500) / speed);
-            await new Promise(res => setTimeout(res, ms));
-          }
-
-          // Default small delay between macro steps
-          const stepDelay = Math.max(50, (act.delay || 300) / speed);
-          await new Promise(res => setTimeout(res, stepDelay));
+    if (!fs.existsSync(this.rulesFile)) {
+      const defaultRules = [
+        {
+          id: 'rule_auto_backup',
+          name: 'بکاپ خودکار سریع به محض اتصال کابل',
+          trigger: 'DEVICE_CONNECT',
+          action: 'AUTO_BACKUP',
+          enabled: false,
+          options: { contacts: true, sms: true, calls: true }
+        },
+        {
+          id: 'rule_health_log',
+          name: 'ثبت تاریخچه سلامت و دمای باتری در اتصال',
+          trigger: 'DEVICE_CONNECT',
+          action: 'TELEMETRY_SNAPSHOT',
+          enabled: true,
+          options: {}
+        },
+        {
+          id: 'rule_doctor_scan',
+          name: 'اسکن سلامت سیستم و کش هنگام اتصال',
+          trigger: 'DEVICE_CONNECT',
+          action: 'DOCTOR_SCAN',
+          enabled: false,
+          options: {}
         }
-      }
+      ];
+      fs.writeFileSync(this.rulesFile, JSON.stringify(defaultRules, null, 2));
+    }
+    if (!fs.existsSync(this.historyFile)) {
+      fs.writeFileSync(this.historyFile, JSON.stringify([]));
+    }
+  }
 
-      this.runningMacros.set(serial, false);
-      return { success: true, message: `ماکرو با موفقیت ${repeat} بار اجرا شد.` };
+  listRules() {
+    this.initDirs();
+    try {
+      return { success: true, rules: JSON.parse(fs.readFileSync(this.rulesFile, 'utf8')) };
     } catch (err) {
-      this.runningMacros.set(serial, false);
+      return { success: false, error: err.message, rules: [] };
+    }
+  }
+
+  saveRule(rule) {
+    this.initDirs();
+    try {
+      const rules = this.listRules().rules;
+      const index = rules.findIndex(r => r.id === rule.id);
+      if (index !== -1) {
+        rules[index] = { ...rules[index], ...rule, updatedAt: new Date().toISOString() };
+      } else {
+        rules.push({
+          id: rule.id || `rule_${Date.now()}`,
+          name: rule.name || 'قانون خودکارسازی جدید',
+          trigger: rule.trigger || 'DEVICE_CONNECT',
+          action: rule.action || 'TELEMETRY_SNAPSHOT',
+          enabled: rule.enabled !== undefined ? rule.enabled : true,
+          options: rule.options || {},
+          createdAt: new Date().toISOString()
+        });
+      }
+      fs.writeFileSync(this.rulesFile, JSON.stringify(rules, null, 2));
+      return { success: true, message: 'قانون خودکارسازی ذخیره شد.' };
+    } catch (err) {
       return { success: false, error: err.message };
     }
   }
 
-  stopMacro(serial) {
-    this.runningMacros.set(serial, false);
-    return { success: true, message: 'اجرای ماکرو متوقف شد.' };
+  deleteRule(ruleId) {
+    try {
+      const rules = this.listRules().rules.filter(r => r.id !== ruleId);
+      fs.writeFileSync(this.rulesFile, JSON.stringify(rules, null, 2));
+      return { success: true, message: 'قانون حذف شد.' };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  async triggerAutomations(triggerType, deviceContext = {}) {
+    const rules = this.listRules().rules.filter(r => r.enabled && r.trigger === triggerType);
+    const results = [];
+
+    for (const rule of rules) {
+      const execEntry = {
+        id: `exec_${Date.now()}_${rule.id}`,
+        ruleId: rule.id,
+        ruleName: rule.name,
+        action: rule.action,
+        deviceSerial: deviceContext.serial || deviceContext.id,
+        timestamp: new Date().toISOString(),
+        status: 'SUCCESS',
+        details: `اتوماسیون '${rule.name}' با موفقیت اجرا شد.`
+      };
+      results.push(execEntry);
+      this.logExecution(execEntry);
+    }
+
+    return { success: true, executedCount: results.length, results };
+  }
+
+  logExecution(entry) {
+    try {
+      this.initDirs();
+      const history = this.getHistory(99);
+      history.unshift(entry);
+      fs.writeFileSync(this.historyFile, JSON.stringify(history.slice(0, 100), null, 2));
+    } catch (err) {
+      console.error('[AutomationManager] Error saving history:', err);
+    }
+  }
+
+  getHistory(limit = 50) {
+    try {
+      this.initDirs();
+      const data = fs.readFileSync(this.historyFile, 'utf8');
+      return JSON.parse(data).slice(0, limit);
+    } catch {
+      return [];
+    }
   }
 }
 

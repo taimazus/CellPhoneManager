@@ -1,0 +1,12 @@
+[
+  {
+    "id": "exec_1791383796827_rule_health_log",
+    "ruleId": "rule_health_log",
+    "ruleName": "ثبت تاریخچه سلامت و دمای باتری در اتصال",
+    "action": "TELEMETRY_SNAPSHOT",
+    "deviceSerial": "mock-test-phone",
+    "timestamp": "2026-10-07T14:36:36.827Z",
+    "status": "SUCCESS",
+    "details": "اتوماسیون 'ثبت تاریخچه سلامت و دمای باتری در اتصال' با موفقیت اجرا شد."
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "id": "developer_studio",
+  "name": "استودیوی توسعه‌دهندگان (Dev Studio)",
+  "description": "نمایش ضربات لمسی، مکان نشانگر، فعال بودن صفحه هنگام شارژ و ثانیه در ساعت",
+  "settings": {
+    "showTouches": true,
+    "pointerLocation": false,
+    "stayAwake": true,
+    "clockSeconds": true,
+    "demoMode": false
+  }
+}

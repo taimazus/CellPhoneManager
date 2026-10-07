@@ -395,7 +395,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose,
           </div>
 
           {/* Right / Content Area (8 cols) */}
-          <div className="md:col-span-8 p-6 overflow-y-auto flex flex-col justify-between space-y-6 bg-[#0c142b]/60">
+          <div className="md:col-span-8 p-6 overflow-y-auto flex flex-col justify-between space-y-6 bg-[#101117]/80">
             <div className="space-y-5">
               <div className="border-b border-slate-800 pb-4 space-y-1">
                 <h4 className="text-lg font-black text-white flex items-center gap-2">

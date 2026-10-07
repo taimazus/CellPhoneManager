@@ -1,0 +1,12 @@
+{
+  "id": "gaming_pro",
+  "name": "پروفایل گیمینگ حرفه‌ای (Gaming Pro)",
+  "description": "افزایش نرخ نوسازی به ۱۲۰ هرتز، فعال‌سازی ۴x MSAA و شتاب‌دهنده گرافیکی",
+  "settings": {
+    "refreshRate": 120,
+    "animationScale": 0.5,
+    "forceMsaa": true,
+    "stayAwake": false,
+    "showFps": true
+  }
+}

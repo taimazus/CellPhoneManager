@@ -153,21 +153,21 @@ export const MirrorControlTab: React.FC<MirrorControlTabProps> = ({
       {/* Left / Center Phone Screen Mockup & Interactive Frame (7 cols) */}
       <div className="lg:col-span-7 flex flex-col items-center justify-center p-4">
         {/* Smartphone Bezel */}
-        <div className="relative w-[340px] sm:w-[380px] h-[680px] sm:h-[720px] bg-[#0f172a] rounded-[48px] p-3.5 border-4 border-slate-700 shadow-2xl shadow-cyan-950/60 ring-1 ring-cyan-500/30 flex flex-col">
+        <div className="relative w-[340px] sm:w-[380px] h-[680px] sm:h-[720px] bg-[#14151b] rounded-[48px] p-3.5 border-4 border-amber-500/25 shadow-2xl shadow-amber-950/60 ring-1 ring-amber-500/30 flex flex-col">
           {/* Top Notch / Dynamic Island */}
           <div className="absolute top-6 left-1/2 -translate-x-1/2 w-28 h-5 bg-slate-950 rounded-full flex items-center justify-end px-3 gap-2 z-20 pointer-events-none">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#1e293b] border border-slate-700"></div>
-            <div className="w-2 h-2 rounded-full bg-cyan-500/60 animate-pulse"></div>
+            <div className="w-2.5 h-2.5 rounded-full bg-[#1e2029] border border-amber-500/20"></div>
+            <div className="w-2 h-2 rounded-full bg-amber-500/60 animate-pulse"></div>
           </div>
 
           {/* Quick Refresh Live Badge on Phone */}
           <div className="absolute top-6 right-8 z-30 flex items-center gap-1.5">
             <button
               onClick={(e) => { e.stopPropagation(); fetchLiveFrame(); }}
-              className="p-1.5 rounded-full bg-slate-900/80 hover:bg-cyan-500/20 text-slate-300 hover:text-cyan-400 border border-slate-700/80 transition-all shadow-md"
+              className="p-1.5 rounded-full bg-slate-900/80 hover:bg-amber-500/20 text-slate-300 hover:text-amber-400 border border-amber-500/20 transition-all shadow-md"
               title="بروزرسانی لحظه‌ای تصویر"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isCapturing ? 'animate-spin text-cyan-400' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isCapturing ? 'animate-spin text-amber-400' : ''}`} />
             </button>
           </div>
 
@@ -177,7 +177,7 @@ export const MirrorControlTab: React.FC<MirrorControlTabProps> = ({
             onClick={handleScreenClick}
             className="w-full h-full bg-slate-950 rounded-[36px] overflow-hidden relative flex flex-col justify-between cursor-pointer select-none group"
             style={{
-              backgroundImage: !liveScreenBase64 ? 'radial-gradient(ellipse at center, #111d38 0%, #070c18 100%)' : undefined
+              backgroundImage: !liveScreenBase64 ? 'radial-gradient(ellipse at center, #1a1b24 0%, #0c0d11 100%)' : undefined
             }}
           >
             {/* Real In-Browser Stream Image */}

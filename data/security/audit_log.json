@@ -1,0 +1,20 @@
+[
+  {
+    "id": "sec_1791383795485_qiwpr",
+    "timestamp": "2026-10-07T14:36:35.485Z",
+    "action": "TEST_ACTION",
+    "status": "SUCCESS",
+    "targetDevice": "mock-phone-1",
+    "details": "Audit logging unit test",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "sec_1791383795469_hq4e3",
+    "timestamp": "2026-10-07T14:36:35.469Z",
+    "action": "SESSION_CREATE",
+    "status": "SUCCESS",
+    "targetDevice": null,
+    "details": "نشست جدید امنیتی ایجاد شد",
+    "ip": "127.0.0.1"
+  }
+]

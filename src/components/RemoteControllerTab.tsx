@@ -118,7 +118,7 @@ export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device
 
       {/* Main Mode Content */}
       {mode === 'gamepad' && (
-        <div className="rounded-3xl glass-panel p-8 border border-slate-800 space-y-8 bg-gradient-to-b from-[#0a1228] to-[#040814]">
+        <div className="rounded-3xl glass-panel p-8 border border-amber-500/20 space-y-8 bg-gradient-to-b from-[#14151b] to-[#0c0d11]">
           <div className="flex items-center justify-between text-xs text-slate-400 border-b border-slate-800 pb-4">
             <span className="font-bold text-cyan-400">طرح استاندارد کنترلر بازی (Gaming Layout)</span>
             <span>ارسال مستقیم سیگنال‌های سخت‌افزاری به بازی‌ها</span>

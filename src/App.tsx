@@ -233,7 +233,7 @@ export function App() {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-[#0a0e17] overflow-hidden text-slate-100 antialiased selection:bg-blue-600 selection:text-white">
+    <div className="flex h-screen w-screen bg-[#0c0d11] overflow-hidden text-stone-100 antialiased selection:bg-amber-500 selection:text-black">
       {/* Mobile Sidebar Backdrop Overlay */}
       {isMobileSidebarOpen && (
         <div 
@@ -260,7 +260,7 @@ export function App() {
       </div>
 
       {/* Main Application Area */}
-      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden bg-[#0a0e17]/80">
+      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden bg-[#0c0d11]/90">
         {/* Device Selection & Action Header */}
         <DeviceHeader
           devices={devices}

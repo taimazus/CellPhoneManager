@@ -603,7 +603,7 @@ export const TweaksTab: React.FC<TweaksTabProps> = ({ device }) => {
         </div>
 
         {cmdOutput && (
-          <pre className="bg-[#050914] p-4 rounded-xl border border-slate-800/80 text-xs font-mono text-slate-300 max-h-48 overflow-y-auto whitespace-pre-wrap">
+          <pre className="bg-[#0e0f14] p-4 rounded-xl border border-amber-500/20 text-xs font-mono text-amber-100/90 max-h-48 overflow-y-auto whitespace-pre-wrap">
             {cmdOutput}
           </pre>
         )}

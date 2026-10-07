@@ -1,0 +1,12 @@
+{
+  "id": "battery_saver_ultra",
+  "name": "حالت ذخیره فوق‌العاده باتری (Eco Power)",
+  "description": "کاهش انیمیشن‌ها، حالت تیره اجباری، Doze تهاجمی و نرخ نوسازی ۶۰ هرتز",
+  "settings": {
+    "refreshRate": 60,
+    "animationScale": 0,
+    "darkMode": true,
+    "dozeMode": true,
+    "stayAwake": false
+  }
+}

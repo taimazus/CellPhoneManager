@@ -1,0 +1,30 @@
+[
+  {
+    "id": "rule_auto_backup",
+    "name": "بکاپ خودکار سریع به محض اتصال کابل",
+    "trigger": "DEVICE_CONNECT",
+    "action": "AUTO_BACKUP",
+    "enabled": false,
+    "options": {
+      "contacts": true,
+      "sms": true,
+      "calls": true
+    }
+  },
+  {
+    "id": "rule_health_log",
+    "name": "ثبت تاریخچه سلامت و دمای باتری در اتصال",
+    "trigger": "DEVICE_CONNECT",
+    "action": "TELEMETRY_SNAPSHOT",
+    "enabled": true,
+    "options": {}
+  },
+  {
+    "id": "rule_doctor_scan",
+    "name": "اسکن سلامت سیستم و کش هنگام اتصال",
+    "trigger": "DEVICE_CONNECT",
+    "action": "DOCTOR_SCAN",
+    "enabled": false,
+    "options": {}
+  }
+]

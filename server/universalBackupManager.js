@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { exec } from 'child_process';
 import { adbManager } from './adbManager.js';
 import { iosManager } from './iosManager.js';
@@ -357,6 +358,137 @@ export class UniversalBackupManager {
         }
       });
     });
+  }
+
+  // 6. Pre-Restore Backup Inspector & Integrity Validator
+  async inspectBackupContent(backupId) {
+    try {
+      const backupPath = this.validateAndResolveBackupPath(backupId);
+      if (!backupPath || !fs.existsSync(backupPath)) {
+        return { success: false, error: 'پوشه نسخه پشتیبان یافت نشد.' };
+      }
+
+      const metaPath = path.join(backupPath, 'manifest.json');
+      const manifest = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, 'utf8')) : null;
+
+      const summary = {
+        backupId,
+        manifest,
+        hasContacts: fs.existsSync(path.join(backupPath, 'contacts.json')),
+        hasSms: fs.existsSync(path.join(backupPath, 'messages.json')),
+        hasCalls: fs.existsSync(path.join(backupPath, 'calls.json')),
+        hasApps: fs.existsSync(path.join(backupPath, 'apps')),
+        hasMedia: fs.existsSync(path.join(backupPath, 'media')),
+        sampleContacts: [],
+        sampleMessages: [],
+        sampleCalls: [],
+        isEncrypted: fs.existsSync(path.join(backupPath, 'encrypted_payload.cpm'))
+      };
+
+      if (summary.hasContacts) {
+        try {
+          const cList = JSON.parse(fs.readFileSync(path.join(backupPath, 'contacts.json'), 'utf8'));
+          summary.sampleContacts = cList.slice(0, 5);
+        } catch {}
+      }
+
+      if (summary.hasSms) {
+        try {
+          const mList = JSON.parse(fs.readFileSync(path.join(backupPath, 'messages.json'), 'utf8'));
+          summary.sampleMessages = mList.slice(0, 5);
+        } catch {}
+      }
+
+      if (summary.hasCalls) {
+        try {
+          const callList = JSON.parse(fs.readFileSync(path.join(backupPath, 'calls.json'), 'utf8'));
+          summary.sampleCalls = callList.slice(0, 5);
+        } catch {}
+      }
+
+      return { success: true, summary };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  // 7. AES-256 Backup Encryption
+  async encryptBackup(backupId, password) {
+    try {
+      if (!password || password.length < 4) {
+        return { success: false, error: 'رمز عبور باید حداقل ۴ کاراکتر باشد.' };
+      }
+      const backupPath = this.validateAndResolveBackupPath(backupId);
+      if (!backupPath || !fs.existsSync(backupPath)) {
+        return { success: false, error: 'پوشه نسخه پشتیبان یافت نشد.' };
+      }
+
+      const files = fs.readdirSync(backupPath);
+      const dataToEncrypt = {};
+      for (const f of files) {
+        if (f.endsWith('.json')) {
+          dataToEncrypt[f] = fs.readFileSync(path.join(backupPath, f), 'utf8');
+        }
+      }
+
+      const salt = crypto.randomBytes(16);
+      const key = crypto.scryptSync(password, salt, 32);
+      const iv = crypto.randomBytes(16);
+      const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+      let encrypted = cipher.update(JSON.stringify(dataToEncrypt), 'utf8', 'hex');
+      encrypted += cipher.final('hex');
+
+      const payload = {
+        salt: salt.toString('hex'),
+        iv: iv.toString('hex'),
+        data: encrypted,
+        encryptedAt: new Date().toISOString()
+      };
+
+      fs.writeFileSync(path.join(backupPath, 'encrypted_payload.cpm'), JSON.stringify(payload, null, 2));
+
+      // Remove plaintext json files safely
+      for (const f of files) {
+        if (f !== 'manifest.json' && f.endsWith('.json')) {
+          fs.unlinkSync(path.join(backupPath, f));
+        }
+      }
+
+      return { success: true, message: 'نسخه پشتیبان با الگوریتم AES-256 رمزگذاری شد.' };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  async decryptBackup(backupId, password) {
+    try {
+      const backupPath = this.validateAndResolveBackupPath(backupId);
+      if (!backupPath || !fs.existsSync(backupPath)) {
+        return { success: false, error: 'پوشه نسخه پشتیبان یافت نشد.' };
+      }
+      const encFile = path.join(backupPath, 'encrypted_payload.cpm');
+      if (!fs.existsSync(encFile)) {
+        return { success: false, error: 'این نسخه پشتیبان رمزگذاری نشده است.' };
+      }
+
+      const payload = JSON.parse(fs.readFileSync(encFile, 'utf8'));
+      const salt = Buffer.from(payload.salt, 'hex');
+      const iv = Buffer.from(payload.iv, 'hex');
+      const key = crypto.scryptSync(password, salt, 32);
+      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+      let decrypted = decipher.update(payload.data, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+
+      const restoredFiles = JSON.parse(decrypted);
+      for (const [filename, content] of Object.entries(restoredFiles)) {
+        fs.writeFileSync(path.join(backupPath, filename), content);
+      }
+
+      fs.unlinkSync(encFile);
+      return { success: true, message: 'نسخه پشتیبان با موفقیت رمزگشایی شد.' };
+    } catch (err) {
+      return { success: false, error: 'رمز عبور اشتباه است یا فایل مخدوش شده است.' };
+    }
   }
 }
 

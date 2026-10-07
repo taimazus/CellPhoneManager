@@ -33,6 +33,12 @@ import { audioRecorderManager } from './audioRecorderManager.js';
 import { hardwareLabManager } from './hardwareLabManager.js';
 import { systemDoctorManager } from './systemDoctorManager.js';
 import { pcSpeakerManager } from './pcSpeakerManager.js';
+import { securityManager } from './securityManager.js';
+import { taskQueueManager } from './taskQueueManager.js';
+import { telemetryManager } from './telemetryManager.js';
+import { profileManager } from './profileManager.js';
+import { firmwareGuardManager } from './firmwareGuardManager.js';
+import { automationManager } from './automationManager.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -2611,6 +2617,178 @@ app.get('/api/recordings/download/:filename', (req, res) => {
     return res.status(404).json({ error: 'فایل ویدیو یافت نشد' });
   }
   res.download(filePath, safeFilename);
+});
+
+// -------------------------------------------------------------
+// 30. Security Center & Audit Logging APIs
+// -------------------------------------------------------------
+app.get('/api/security/config', (req, res) => {
+  res.json({ success: true, config: securityManager.getAuthConfig() });
+});
+
+app.post('/api/security/config', (req, res) => {
+  const result = securityManager.setAuthConfig(req.body);
+  res.json(result);
+});
+
+app.get('/api/security/audit', (req, res) => {
+  const limit = parseInt(req.query.limit, 10) || 100;
+  res.json({ success: true, logs: securityManager.getAuditLogs(limit) });
+});
+
+app.post('/api/security/audit/clear', (req, res) => {
+  res.json(securityManager.clearAuditLogs());
+});
+
+// -------------------------------------------------------------
+// 31. Multi-Device Task Queue Manager APIs
+// -------------------------------------------------------------
+app.get('/api/queue/status', (req, res) => {
+  res.json({ success: true, ...taskQueueManager.getStatus() });
+});
+
+app.post('/api/queue/enqueue', (req, res) => {
+  const result = taskQueueManager.enqueue(req.body);
+  res.json(result);
+});
+
+app.post('/api/queue/cancel', (req, res) => {
+  const { jobId } = req.body;
+  res.json(taskQueueManager.cancelJob(jobId));
+});
+
+app.post('/api/queue/pause', (req, res) => {
+  res.json(taskQueueManager.pause());
+});
+
+app.post('/api/queue/resume', (req, res) => {
+  res.json(taskQueueManager.resume());
+});
+
+// -------------------------------------------------------------
+// 32. Device Health & Telemetry History APIs
+// -------------------------------------------------------------
+app.get('/api/devices/:id/telemetry', (req, res) => {
+  const { id } = req.params;
+  const limit = parseInt(req.query.limit, 10) || 50;
+  res.json(telemetryManager.getHistory(id, limit));
+});
+
+app.post('/api/devices/:id/telemetry/record', (req, res) => {
+  const { id } = req.params;
+  res.json(telemetryManager.recordSnapshot(id, req.body));
+});
+
+// -------------------------------------------------------------
+// 33. Configuration Profiles, Diff & Snapshot Rollback APIs
+// -------------------------------------------------------------
+app.get('/api/profiles', (req, res) => {
+  res.json(profileManager.listProfiles());
+});
+
+app.post('/api/profiles', (req, res) => {
+  res.json(profileManager.saveProfile(req.body));
+});
+
+app.delete('/api/profiles/:id', (req, res) => {
+  res.json(profileManager.deleteProfile(req.params.id));
+});
+
+app.post('/api/devices/:id/profiles/diff', async (req, res) => {
+  const { id } = req.params;
+  const { targetSettings } = req.body;
+  try {
+    const currentTweaks = await adbManager.getCurrentTweaks(id);
+    const diff = profileManager.calculateDiff(currentTweaks, targetSettings || {});
+    res.json({ success: true, diff, current: currentTweaks });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/profiles/snapshot', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const current = await adbManager.getCurrentTweaks(id);
+    const snapshot = profileManager.createSnapshot(id, current);
+    res.json({ success: true, snapshot, message: 'اسنپ‌شات وضعیت فعلی گوشی با موفقیت ثبت شد.' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/devices/:id/profiles/snapshots', (req, res) => {
+  res.json(profileManager.listSnapshots(req.params.id));
+});
+
+// -------------------------------------------------------------
+// 34. Safe Firmware & ROM Flashing Guard APIs
+// -------------------------------------------------------------
+app.post('/api/firmware/inspect', async (req, res) => {
+  const { filePath, targetDevice } = req.body;
+  res.json(await firmwareGuardManager.inspectFirmware(filePath, targetDevice));
+});
+
+app.post('/api/firmware/checksum', async (req, res) => {
+  const { filePath, algorithm = 'sha256' } = req.body;
+  try {
+    const hash = await firmwareGuardManager.computeChecksum(filePath, algorithm);
+    res.json({ success: true, algorithm, hash });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// -------------------------------------------------------------
+// 35. Advanced Backup Inspection & AES Encryption APIs
+// -------------------------------------------------------------
+app.get('/api/backups/:backupId/inspect', async (req, res) => {
+  res.json(await universalBackupManager.inspectBackupContent(req.params.backupId));
+});
+
+app.post('/api/backups/:backupId/encrypt', async (req, res) => {
+  const { password } = req.body;
+  res.json(await universalBackupManager.encryptBackup(req.params.backupId, password));
+});
+
+app.post('/api/backups/:backupId/decrypt', async (req, res) => {
+  const { password } = req.body;
+  res.json(await universalBackupManager.decryptBackup(req.params.backupId, password));
+});
+
+// -------------------------------------------------------------
+// 36. iOS Capability Transparency & Crash Logs APIs
+// -------------------------------------------------------------
+app.get('/api/devices/:id/ios/capabilities', async (req, res) => {
+  res.json(await iosManager.getCapabilities(req.params.id));
+});
+
+app.get('/api/devices/:id/ios/crash-logs', async (req, res) => {
+  res.json(await iosManager.getCrashLogs(req.params.id));
+});
+
+// -------------------------------------------------------------
+// 37. Smart Scheduled Automations APIs
+// -------------------------------------------------------------
+app.get('/api/automation/rules', (req, res) => {
+  res.json(automationManager.listRules());
+});
+
+app.post('/api/automation/rules', (req, res) => {
+  res.json(automationManager.saveRule(req.body));
+});
+
+app.delete('/api/automation/rules/:id', (req, res) => {
+  res.json(automationManager.deleteRule(req.params.id));
+});
+
+app.get('/api/automation/history', (req, res) => {
+  res.json({ success: true, history: automationManager.getHistory() });
+});
+
+app.post('/api/devices/:id/automation/trigger', async (req, res) => {
+  const { triggerType = 'DEVICE_CONNECT' } = req.body;
+  res.json(await automationManager.triggerAutomations(triggerType, { id: req.params.id }));
 });
 
 // API 404 Handler - Never return HTML for /api/* requests
