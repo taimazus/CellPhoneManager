@@ -236,21 +236,24 @@ export class PcGamepadManager {
       // 1. Setup ADB reverse port forwarding for USB
       await this.setupAdbReverse(serial);
 
-      // 2. Wake up screen and dismiss lockscreen if possible
+      // 2. Wake up screen and dismiss lockscreen
       try {
         await adbManager.runAdb(['shell', 'input', 'keyevent', '224'], serial);
+        await adbManager.runAdb(['shell', 'input', 'keyevent', '82'], serial);
         await adbManager.runAdb(['shell', 'wm', 'dismiss-keyguard'], serial);
       } catch {
         // non-fatal
       }
 
-      // 3. Try to launch using browser packages in sequence with LAN URL
+      // 3. Try to launch using modern Android browser intents in prioritized order
       const browserIntents = [
-        ['shell', 'am', 'start', '-n', 'com.android.chrome/com.google.android.apps.chrome.Main', '-d', lanUrl, '-f', '0x10000000'],
+        ['shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', lanUrl, '-f', '0x10000000', '--user', '0'],
+        ['shell', 'am', 'start', '-n', 'com.android.chrome/org.chromium.chrome.browser.ChromeTabbedActivity', '-d', lanUrl, '-f', '0x10000000'],
+        ['shell', 'am', 'start', '-n', 'com.android.chrome/com.google.android.apps.chrome.IntentDispatcher', '-d', lanUrl, '-f', '0x10000000'],
+        ['shell', 'am', 'start', '-n', 'org.mozilla.firefox/org.mozilla.fenix.HomeActivity', '-a', 'android.intent.action.VIEW', '-d', lanUrl, '-f', '0x10000000'],
         ['shell', 'am', 'start', '-n', 'com.mi.globalbrowser/com.android.browser.BrowserActivity', '-d', lanUrl, '-f', '0x10000000'],
         ['shell', 'am', 'start', '-n', 'com.sec.android.app.sbrowser/com.sec.android.app.sbrowser.SBrowserMainActivity', '-d', lanUrl, '-f', '0x10000000'],
-        ['shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', lanUrl, '-f', '0x10000000'],
-        ['shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', localhostUrl, '-f', '0x10000000']
+        ['shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', lanUrl]
       ];
 
       let launched = false;
@@ -258,7 +261,7 @@ export class PcGamepadManager {
       for (const intentArgs of browserIntents) {
         try {
           const res = await adbManager.runAdb(intentArgs, serial);
-          if (res && res.success && !res.stdout?.includes('Error:') && !res.stdout?.includes('does not exist')) {
+          if (res && res.success && !res.stdout?.includes('Error:') && !res.stdout?.includes('does not exist') && !res.stdout?.includes('Permission Denial')) {
             launched = true;
             break;
           }
