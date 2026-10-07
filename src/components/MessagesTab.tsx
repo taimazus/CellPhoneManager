@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Phone, 
   PhoneCall, 
@@ -112,6 +112,10 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [callFilter, setCallFilter] = useState<'all' | 'incoming' | 'outgoing' | 'missed'>('all');
   const [dialNumber, setDialNumber] = useState<string>('');
+  const [showDialerContactModal, setShowDialerContactModal] = useState<boolean>(false);
+  const [dialerContactSearch, setDialerContactSearch] = useState<string>('');
+  const [dialerContactName, setDialerContactName] = useState<string>('');
+  const [dialerContactSourceFilter, setDialerContactSourceFilter] = useState<string>('all');
 
   // --- Contacts State ---
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -1059,6 +1063,42 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       return 0;
     });
 
+  // Quick dialer auto-complete matches (when typing phone or name in dialer)
+  const dialerMatches = useMemo(() => {
+    if (!dialNumber || dialNumber.trim().length < 2) return [];
+    const q = dialNumber.trim().toLowerCase();
+    const cleanDigits = q.replace(/[^0-9+]/g, '');
+    return contacts.filter(c => {
+      const nameMatch = (c.name || '').toLowerCase().includes(q);
+      const phoneClean = (c.phone || '').replace(/[^0-9+]/g, '');
+      const phoneMatch = cleanDigits.length >= 2 && phoneClean.includes(cleanDigits);
+      return nameMatch || phoneMatch;
+    }).slice(0, 5);
+  }, [dialNumber, contacts]);
+
+  // Dialer Contact Picker Modal Filtered List
+  const dialerModalContacts = useMemo(() => {
+    return contacts.filter(c => {
+      if (dialerContactSourceFilter !== 'all') {
+        if (dialerContactSourceFilter === 'messengers') {
+          if (!['whatsapp', 'whatsapp_business', 'telegram', 'eitaa', 'meet'].includes(c.sourceKey || '')) return false;
+        } else if (c.sourceKey !== dialerContactSourceFilter) {
+          return false;
+        }
+      }
+      if (dialerContactSearch.trim()) {
+        const q = dialerContactSearch.toLowerCase().trim();
+        const cleanDigits = q.replace(/[^0-9+]/g, '');
+        const nameMatch = (c.name || '').toLowerCase().includes(q);
+        const phoneClean = (c.phone || '').replace(/[^0-9+]/g, '');
+        const phoneMatch = cleanDigits.length >= 2 && phoneClean.includes(cleanDigits);
+        const emailMatch = (c.email || '').toLowerCase().includes(q);
+        return nameMatch || phoneMatch || emailMatch;
+      }
+      return true;
+    }).slice(0, 150);
+  }, [contacts, dialerContactSourceFilter, dialerContactSearch]);
+
   // Group SMS by threadId or number
   const smsThreads: { [key: string]: SmsMessage[] } = {};
   smsList.forEach(m => {
@@ -1396,23 +1436,96 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                 </p>
               </div>
 
-              {/* Number Input Screen */}
+              {/* Number Input Screen with Contact Picker & Autocomplete */}
               <div className="relative">
-                <input
-                  type="text"
-                  placeholder="شماره تماس یا کد دستوری..."
-                  value={dialNumber}
-                  onChange={(e) => setDialNumber(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleMakeCall(dialNumber)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-lg font-mono font-bold text-cyan-300 text-center tracking-wider focus:outline-none focus:border-cyan-500 shadow-inner"
-                />
-                {dialNumber && (
+                {dialerContactName && (
+                  <div className="text-center text-xs text-cyan-400 font-bold mb-1.5 flex items-center justify-center gap-1.5 bg-cyan-950/60 py-1 px-3 rounded-xl border border-cyan-500/30 max-w-fit mx-auto shadow-sm animate-fadeIn">
+                    <Users className="w-3.5 h-3.5 text-cyan-300" />
+                    <span>مخاطب: {dialerContactName}</span>
+                    <button 
+                      type="button"
+                      onClick={() => setDialerContactName('')} 
+                      className="text-slate-400 hover:text-rose-400 mr-1 transition-colors"
+                      title="پاک کردن برچسب مخاطب"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    placeholder="شماره تماس یا جستجوی مخاطب..."
+                    value={dialNumber}
+                    onChange={(e) => {
+                      setDialNumber(e.target.value);
+                      if (!e.target.value) setDialerContactName('');
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleMakeCall(dialNumber, dialerContactName || 'تماس')}
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl pr-12 pl-12 py-3 text-lg font-mono font-bold text-cyan-300 text-center tracking-wider focus:outline-none focus:border-cyan-500 shadow-inner"
+                  />
+
+                  {/* Pick from contacts modal button */}
                   <button
-                    onClick={() => setDialNumber('')}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                    type="button"
+                    onClick={() => {
+                      setDialerContactSearch('');
+                      setShowDialerContactModal(true);
+                    }}
+                    className="absolute right-2 p-2 rounded-lg bg-slate-800 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-300 border border-slate-700 transition-all shadow-sm"
+                    title="انتخاب از دفترچه مخاطبین گوشی"
                   >
-                    <Delete className="w-4 h-4" />
+                    <Users className="w-4 h-4" />
                   </button>
+
+                  {/* Delete / Clear button */}
+                  {dialNumber && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDialNumber('');
+                        setDialerContactName('');
+                      }}
+                      className="absolute left-2 p-2 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-800/80 transition-all"
+                      title="پاک کردن شماره"
+                    >
+                      <Delete className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Instant Matching Contacts Dropdown */}
+                {dialerMatches.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1.5 z-30 bg-[#0c142b]/95 border border-cyan-500/40 rounded-2xl p-1.5 shadow-2xl backdrop-blur-md divide-y divide-slate-800/60 max-h-48 overflow-y-auto animate-fadeIn">
+                    <div className="px-2.5 py-1 text-[10px] text-slate-400 flex items-center justify-between font-sans">
+                      <span className="font-semibold text-slate-300">مخاطبین منطبق ({dialerMatches.length}):</span>
+                      <span className="text-cyan-400 text-[10px]">لمس جهت انتخاب</span>
+                    </div>
+                    {dialerMatches.map((c) => (
+                      <div
+                        key={c.id}
+                        onClick={() => {
+                          setDialNumber(c.phone || '');
+                          setDialerContactName(c.name);
+                        }}
+                        className="p-2 hover:bg-cyan-500/15 rounded-xl cursor-pointer flex items-center justify-between gap-2 transition-colors text-right"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-300 text-xs font-bold font-sans">
+                            {(c.name || 'م')[0]}
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-white truncate max-w-[130px] font-sans">{c.name}</div>
+                            <div className="text-[10px] text-slate-400 font-mono text-left" dir="ltr">{c.phone}</div>
+                          </div>
+                        </div>
+                        <span className="text-[10px] px-2 py-0.5 rounded-lg bg-slate-800 text-cyan-300 border border-slate-700 font-sans">
+                          {c.sourceLabel || 'مخاطب'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
 
@@ -2509,6 +2622,137 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                 className="px-5 py-2 rounded-xl text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 transition-all shadow-md shadow-cyan-500/20 disabled:opacity-50"
               >
                 ارسال پیامک
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- DIALER CONTACT PICKER MODAL --- */}
+      {showDialerContactModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-[#0c142b] border border-cyan-500/40 rounded-3xl p-6 w-full max-w-lg text-right space-y-4 shadow-2xl flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Users className="w-5 h-5 text-cyan-400" />
+                <span>انتخاب مخاطب برای تماس ({contacts.length} مخاطب)</span>
+              </h3>
+              <button 
+                onClick={() => setShowDialerContactModal(false)} 
+                className="text-slate-400 hover:text-slate-200 p-1"
+                title="بستن"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Search Bar in Modal */}
+            <div className="relative">
+              <Search className="w-4 h-4 absolute right-3.5 top-3 text-slate-400" />
+              <input
+                type="text"
+                autoFocus
+                placeholder="جستجو بر اساس نام، شماره تلفن، شرکت یا ایمیل..."
+                value={dialerContactSearch}
+                onChange={(e) => setDialerContactSearch(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-2xl pr-10 pl-9 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500 shadow-inner"
+              />
+              {dialerContactSearch && (
+                <button
+                  onClick={() => setDialerContactSearch('')}
+                  className="absolute left-3 top-2.5 text-slate-500 hover:text-slate-300"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Source Filter Chips */}
+            <div className="flex flex-wrap gap-1.5 pt-0.5">
+              {contactSources.map((source) => (
+                <button
+                  key={source.key}
+                  type="button"
+                  onClick={() => setDialerContactSourceFilter(source.key)}
+                  className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold transition-all flex items-center gap-1.5 ${
+                    dialerContactSourceFilter === source.key
+                      ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm shadow-cyan-500/20'
+                      : 'bg-slate-900/90 text-slate-400 hover:text-slate-200 border border-slate-800'
+                  }`}
+                >
+                  <span>{source.label}</span>
+                  <span className={`text-[10px] px-1 py-0.2 rounded-full font-mono ${
+                    dialerContactSourceFilter === source.key ? 'bg-slate-950/30 text-slate-950' : 'bg-slate-800 text-slate-400'
+                  }`}>
+                    {source.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Contacts Scrollable List */}
+            <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 max-h-[380px] divide-y divide-slate-800/40">
+              {dialerModalContacts.length === 0 ? (
+                <div className="p-8 text-center text-slate-500 text-xs font-sans">
+                  مخاطبی مطابق با جستجوی شما یافت نشد.
+                </div>
+              ) : (
+                dialerModalContacts.map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => {
+                      setDialNumber(c.phone || '');
+                      setDialerContactName(c.name);
+                      setShowDialerContactModal(false);
+                    }}
+                    className="p-3 hover:bg-cyan-500/10 rounded-2xl cursor-pointer flex items-center justify-between gap-3 transition-all border border-transparent hover:border-cyan-500/30 group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600/30 to-blue-600/30 border border-cyan-500/30 flex items-center justify-center text-cyan-300 font-bold text-sm">
+                        {(c.name || 'م')[0]}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs font-bold text-white group-hover:text-cyan-300 transition-colors">
+                          {c.name}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-cyan-400 font-mono" dir="ltr">{c.phone}</span>
+                          {c.company && (
+                            <span className="text-[10px] text-slate-500">({c.company})</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] px-2 py-0.5 rounded-lg bg-slate-900 text-slate-400 border border-slate-800">
+                        {c.sourceLabel || 'مخاطب'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMakeCall(c.phone, c.name);
+                          setShowDialerContactModal(false);
+                        }}
+                        className="p-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 transition-all border border-emerald-500/30"
+                        title="برقراری تماس مستقیم"
+                      >
+                        <PhoneCall className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex items-center justify-end pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowDialerContactModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-300 hover:text-white border border-slate-800"
+              >
+                بستن پنجره
               </button>
             </div>
           </div>
