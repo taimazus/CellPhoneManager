@@ -1733,11 +1733,17 @@ app.get('/api/devices/:id/ocr/extract', async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// 24. Audio FX & Volume Hack APIs
+// 24. Audio FX & Volume Hack & Phone-to-PC Audio Relay APIs
 // -------------------------------------------------------------
+app.get('/api/devices/:id/audio/volumes', async (req, res) => {
+  const { id } = req.params;
+  const result = await audioFxManager.getVolumes(id);
+  res.json(result);
+});
+
 app.post('/api/devices/:id/audio/volume', async (req, res) => {
   const { id } = req.params;
-  const { stream, level } = req.body;
+  const { stream = 3, level = 15 } = req.body;
   const result = await audioFxManager.setVolume(id, { stream, level });
   res.json(result);
 });
@@ -1746,6 +1752,25 @@ app.post('/api/devices/:id/audio/boost', async (req, res) => {
   const { id } = req.params;
   const { enable } = req.body;
   const result = await audioFxManager.boostGain(id, { enable });
+  res.json(result);
+});
+
+app.post('/api/devices/:id/audio/relay/start', async (req, res) => {
+  const { id } = req.params;
+  const { mode, codec, buffer } = req.body || {};
+  const result = await audioFxManager.startAudioRelay(id, { mode, codec, buffer });
+  res.json(result);
+});
+
+app.post('/api/devices/:id/audio/relay/stop', (req, res) => {
+  const { id } = req.params;
+  const result = audioFxManager.stopAudioRelay(id);
+  res.json(result);
+});
+
+app.get('/api/devices/:id/audio/relay/status', (req, res) => {
+  const { id } = req.params;
+  const result = audioFxManager.getAudioRelayStatus(id);
   res.json(result);
 });
 
