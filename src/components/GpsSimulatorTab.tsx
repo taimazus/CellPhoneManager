@@ -91,13 +91,37 @@ export const GpsSimulatorTab: React.FC<GpsSimulatorTabProps> = ({ device }) => {
     }
   };
 
+  const handleSyncVpnLocation = async () => {
+    if (!device) return;
+    try {
+      showToast('در حال دریافت لوکیشن سرور VPN فعال...', 'success');
+      const res = await fetch('/api/network/vpn-location');
+      const data = await res.json();
+      if (data.success && data.lat && data.lng) {
+        setLat(data.lat);
+        setLng(data.lng);
+        await handleSetGps(data.lat, data.lng);
+        showToast(`موقعیت مکانی روی سرور VPN (${data.country} - ${data.city}) تنظیم شد.`, 'success');
+      } else {
+        showToast('موقعیت VPN دریافت نشد، لطفاً از موقعیت‌های آماده استفاده کنید.', 'error');
+      }
+    } catch (err: any) {
+      showToast(`خطا در همگام‌سازی VPN: ${err.message}`, 'error');
+    }
+  };
+
   const cityPresets = [
-    { name: 'تهران (برج میلاد)', lat: 35.7448, lng: 51.3753 },
-    { name: 'تهران (میدان آزادی)', lat: 35.6997, lng: 51.3380 },
-    { name: 'دبی (برج خلیفه)', lat: 25.1972, lng: 55.2744 },
-    { name: 'پاریس (برج ایفل)', lat: 48.8584, lng: 2.2945 },
-    { name: 'نیویورک (تایمز اسکوئر)', lat: 40.7580, lng: -73.9855 },
-    { name: 'استانبول (میدان تکسیم)', lat: 41.0370, lng: 28.9850 }
+    { name: 'آلمان (فرانکفورت)', lat: 50.1109, lng: 8.6821, flag: '🇩🇪' },
+    { name: 'آلمان (برلین)', lat: 52.5200, lng: 13.4050, flag: '🇩🇪' },
+    { name: 'انگلستان (لندن)', lat: 51.5074, lng: -0.1278, flag: '🇬🇧' },
+    { name: 'انگلستان (منچستر)', lat: 53.4808, lng: -2.2426, flag: '🇬🇧' },
+    { name: 'هلند (آمستردام)', lat: 52.3676, lng: 4.9041, flag: '🇳🇱' },
+    { name: 'فرانسه (پاریس - ایفل)', lat: 48.8584, lng: 2.2945, flag: '🇫🇷' },
+    { name: 'ترکیه (استانبول - تکسیم)', lat: 41.0370, lng: 28.9850, flag: '🇹🇷' },
+    { name: 'امارات (دبی - برج خلیفه)', lat: 25.1972, lng: 55.2744, flag: '🇦🇪' },
+    { name: 'آمریکا (نیویورک - تایمز)', lat: 40.7580, lng: -73.9855, flag: '🇺🇸' },
+    { name: 'ایران (تهران - برج میلاد)', lat: 35.7448, lng: 51.3753, flag: '🇮🇷' },
+    { name: 'ایران (تهران - آزادی)', lat: 35.6997, lng: 51.3380, flag: '🇮🇷' }
   ];
 
   return (
@@ -167,6 +191,15 @@ export const GpsSimulatorTab: React.FC<GpsSimulatorTabProps> = ({ device }) => {
               </button>
 
               <button
+                onClick={handleSyncVpnLocation}
+                className="w-full py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 hover:from-emerald-500/30 hover:to-cyan-500/30 text-emerald-300 font-bold text-xs border border-emerald-500/40 shadow-sm transition-all flex items-center justify-center gap-2"
+                title="تشخیص خودکار موقعیت جغرافیایی بر اساس آی‌پی و سرور فیلترشکن متصل"
+              >
+                <Globe className="w-4 h-4 text-emerald-400" />
+                <span>همگام‌سازی با موقعیت VPN سیستم</span>
+              </button>
+
+              <button
                 onClick={handleClearGps}
                 className="w-full py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs border border-slate-700 transition-all"
               >
@@ -219,8 +252,18 @@ export const GpsSimulatorTab: React.FC<GpsSimulatorTabProps> = ({ device }) => {
           </div>
 
           {/* City Presets Grid */}
-          <div className="space-y-2 pt-2 border-t border-slate-800">
-            <h4 className="text-xs font-bold text-slate-300">موقعیت‌های مکانی آماده (Quick City Presets):</h4>
+          <div className="space-y-3 pt-2 border-t border-slate-800">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-slate-300">موقعیت‌های مکانی آماده (Quick City Presets):</h4>
+              <button
+                onClick={handleSyncVpnLocation}
+                className="px-3 py-1 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[11px] font-bold flex items-center gap-1.5 transition-all"
+              >
+                <Globe className="w-3.5 h-3.5 text-cyan-400" />
+                <span>لوکیشن VPN فعال</span>
+              </button>
+            </div>
+
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               {cityPresets.map((c) => (
                 <button
@@ -230,10 +273,15 @@ export const GpsSimulatorTab: React.FC<GpsSimulatorTabProps> = ({ device }) => {
                     setLng(c.lng);
                     handleSetGps(c.lat, c.lng);
                   }}
-                  className="p-3 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 text-right transition-all"
+                  className="p-3 rounded-2xl bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-cyan-500/40 text-right transition-all group"
                 >
-                  <div className="text-xs font-bold text-white">{c.name}</div>
-                  <div className="text-[10px] font-mono text-slate-500 mt-0.5">{c.lat.toFixed(2)}, {c.lng.toFixed(2)}</div>
+                  <div className="text-xs font-bold text-white flex items-center justify-between">
+                    <span>{c.name}</span>
+                    <span className="text-sm">{c.flag}</span>
+                  </div>
+                  <div className="text-[10px] font-mono text-slate-500 mt-0.5 group-hover:text-cyan-400/80 transition-colors">
+                    {c.lat.toFixed(2)}, {c.lng.toFixed(2)}
+                  </div>
                 </button>
               ))}
             </div>

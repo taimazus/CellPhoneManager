@@ -1287,6 +1287,15 @@ app.get('/api/network/public-ip', async (req, res) => {
   }
 });
 
+app.get('/api/network/vpn-location', async (req, res) => {
+  try {
+    const result = await networkManager.getVpnLocation();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // -------------------------------------------------------------
 // 12. Hardware & Fastboot Diagnostics APIs
 // -------------------------------------------------------------
