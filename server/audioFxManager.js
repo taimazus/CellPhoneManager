@@ -101,7 +101,7 @@ export class AudioFxManager {
   }
 
   // Stream internal phone music/audio to PC speakers
-  async startAudioRelay(serial, { mode = 'pc_only', codec = 'opus', buffer = 20 } = {}) {
+  async startAudioRelay(serial, { mode = 'pc_only', codec = 'opus', buffer = 60 } = {}) {
     const scrcpyPath = await toolManager.getScrcpyPath();
     if (!scrcpyPath) {
       return { success: false, error: 'نرم‌افزار Scrcpy یافت نشد.' };

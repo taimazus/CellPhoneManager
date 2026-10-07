@@ -141,7 +141,7 @@ export const AudioFxTab: React.FC<AudioFxTabProps> = ({ device }) => {
         const res = await fetch(`/api/devices/${encodeURIComponent(device.id)}/audio/relay/start`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mode: relayMode, codec: 'opus', buffer: 20 })
+          body: JSON.stringify({ mode: relayMode, codec: 'opus', buffer: 60 })
         });
         const data = await res.json();
         if (data.success) {
