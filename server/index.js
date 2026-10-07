@@ -892,21 +892,82 @@ app.get('/api/devices/:id/files', async (req, res) => {
   }
 });
 
-app.post('/api/devices/:id/files/upload', upload.single('file'), async (req, res) => {
+app.post('/api/devices/:id/files/upload', upload.any(), async (req, res) => {
   const { id } = req.params;
   const targetDir = req.body.targetDir || '/sdcard/Download/';
-  const file = req.file;
+  const files = req.files || (req.file ? [req.file] : []);
+  let relativePaths = [];
+  try {
+    if (req.body.relativePaths) {
+      relativePaths = JSON.parse(req.body.relativePaths);
+    }
+  } catch (_) {}
 
-  if (!file) {
+  if (!files || files.length === 0) {
     return res.status(400).json({ error: 'هیچ فایلی برای ارسال انتخاب نشده است' });
   }
 
   try {
-    const result = await fileManager.pushFile(id, file.path, targetDir);
-    if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-    res.json(result);
+    const results = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      let destDir = targetDir;
+      if (relativePaths[i]) {
+        const relDir = path.dirname(relativePaths[i]).replace(/\\/g, '/');
+        if (relDir && relDir !== '.') {
+          destDir = targetDir.endsWith('/') ? `${targetDir}${relDir}/` : `${targetDir}/${relDir}/`;
+          await fileManager.createDirectory(id, destDir);
+        }
+      }
+      const resPush = await fileManager.pushFile(id, file.path, destDir);
+      if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      results.push(resPush);
+    }
+    res.json({ success: true, count: files.length, results });
   } catch (err) {
-    if (file && fs.existsSync(file.path)) fs.unlinkSync(file.path);
+    if (files) {
+      files.forEach(f => { if (fs.existsSync(f.path)) fs.unlinkSync(f.path); });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/files/batch-download', async (req, res) => {
+  const { id } = req.params;
+  const { paths } = req.body;
+  if (!paths || !Array.isArray(paths) || paths.length === 0) {
+    return res.status(400).json({ error: 'حداقل یک فایل برای دانلود الزامی است' });
+  }
+
+  const batchFolder = path.join(uploadsDir, `batch_${Date.now()}`);
+  const zipPath = path.join(uploadsDir, `bundle_${Date.now()}.zip`);
+  fs.mkdirSync(batchFolder, { recursive: true });
+
+  try {
+    for (const remotePath of paths) {
+      const safeName = path.basename(remotePath).replace(/[^a-zA-Z0-9._-]/g, '_') || 'file';
+      const localFile = path.join(batchFolder, safeName);
+      await fileManager.pullFile(id, remotePath, localFile);
+    }
+
+    // Zip with powershell Compress-Archive on Windows
+    await execAsync(`powershell -Command "Compress-Archive -Path '${batchFolder}\\*' -DestinationPath '${zipPath}' -Force"`);
+
+    if (fs.existsSync(zipPath)) {
+      res.download(zipPath, `Selected_Files_${Date.now()}.zip`, () => {
+        try {
+          if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
+          if (fs.existsSync(batchFolder)) fs.rmSync(batchFolder, { recursive: true, force: true });
+        } catch (_) {}
+      });
+    } else {
+      res.status(500).json({ error: 'خطا در ایجاد فایل فشرده' });
+    }
+  } catch (err) {
+    try {
+      if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
+      if (fs.existsSync(batchFolder)) fs.rmSync(batchFolder, { recursive: true, force: true });
+    } catch (_) {}
     res.status(500).json({ error: err.message });
   }
 });

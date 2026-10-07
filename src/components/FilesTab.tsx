@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Folder, 
@@ -44,7 +44,12 @@ import {
   ChevronsRight,
   ChevronsLeft,
   Layers,
-  ArrowUpDown
+  ArrowUpDown,
+  FolderDown,
+  FolderUp,
+  Send,
+  Package,
+  CheckCheck
 } from 'lucide-react';
 import { Device } from '../types';
 
@@ -55,6 +60,11 @@ interface FileItem {
   sizeBytes?: number;
   permissions: string;
   modified: string;
+}
+
+interface UploadFileItem {
+  file: File;
+  relativePath: string;
 }
 
 interface FilesTabProps {
@@ -82,8 +92,18 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [typeFilter, setTypeFilter] = useState<'all' | 'video' | 'image' | 'audio' | 'text' | 'pdf' | 'folder'>('all');
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{
+    current: number;
+    total: number;
+    percentage: number;
+    currentName: string;
+  } | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  // File & Folder Input Refs
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
   // Modals State
   const [showNewFolderModal, setShowNewFolderModal] = useState(false);
@@ -100,6 +120,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
 
   // Multi-select
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
 
   // Preview Modal State
   const [previewFile, setPreviewFile] = useState<{ name: string; url: string; ext: string } | null>(null);
@@ -118,6 +139,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
     if (!device) return;
     setLoading(true);
     setSelectedItems(new Set());
+    setLastSelectedIndex(null);
     try {
       const res = await fetch(`/api/devices/${device.id}/files?path=${encodeURIComponent(targetPath)}`);
       const data = await res.json();
@@ -156,18 +178,63 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
     fetchFiles(target);
   };
 
-  // Upload Multiple Files
-  const handleUploadFiles = async (files: FileList | null) => {
-    if (!files || files.length === 0 || !device) return;
+  // Traverse dropped directory tree recursively
+  const traverseFileTree = async (item: any, path = ''): Promise<UploadFileItem[]> => {
+    return new Promise((resolve) => {
+      if (item.isFile) {
+        item.file((file: File) => {
+          resolve([{ file, relativePath: path + file.name }]);
+        }, () => resolve([]));
+      } else if (item.isDirectory) {
+        const dirReader = item.createReader();
+        const entries: UploadFileItem[] = [];
+        const readEntries = () => {
+          dirReader.readEntries(async (resultEntries: any[]) => {
+            if (resultEntries.length === 0) {
+              resolve(entries);
+            } else {
+              for (const entry of resultEntries) {
+                const nested = await traverseFileTree(entry, path + item.name + '/');
+                entries.push(...nested);
+              }
+              readEntries();
+            }
+          }, () => resolve(entries));
+        };
+        readEntries();
+      } else {
+        resolve([]);
+      }
+    });
+  };
+
+  // Upload entries (Files or Folders with preserved structure)
+  const handleUploadEntries = async (entries: UploadFileItem[]) => {
+    if (!entries || entries.length === 0 || !device) return;
 
     setIsUploading(true);
-    let successCount = 0;
+    setUploadProgress({ current: 0, total: entries.length, percentage: 0, currentName: entries[0].file.name });
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+    let successCount = 0;
+    const chunkSize = 5;
+    for (let i = 0; i < entries.length; i += chunkSize) {
+      const chunk = entries.slice(i, i + chunkSize);
       const formData = new FormData();
-      formData.append('file', file);
+      const relPaths: string[] = [];
+
+      chunk.forEach(entry => {
+        formData.append('files', entry.file);
+        relPaths.push(entry.relativePath);
+      });
+      formData.append('relativePaths', JSON.stringify(relPaths));
       formData.append('targetDir', currentPath);
+
+      setUploadProgress({
+        current: Math.min(i + chunk.length, entries.length),
+        total: entries.length,
+        percentage: Math.round(((i + chunk.length) / entries.length) * 100),
+        currentName: chunk[0].file.name
+      });
 
       try {
         const res = await fetch(`/api/devices/${device.id}/files/upload`, {
@@ -176,27 +243,143 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
         });
         const data = await res.json();
         if (data.success) {
-          successCount++;
+          successCount += (data.count || chunk.length);
         }
-      } catch (err: any) {
-        console.error('Upload error:', err);
+      } catch (err) {
+        console.error('Upload chunk error:', err);
       }
     }
 
     setIsUploading(false);
+    setUploadProgress(null);
     if (successCount > 0) {
-      showToast(`${successCount} فایل با موفقیت به این پوشه منتقل شد.`, 'success');
+      showToast(`${successCount} فایل و پوشه با موفقیت به گوشی منتقل شدند.`, 'success');
       fetchFiles(currentPath);
     } else {
-      showToast('خطا در ارسال فایل‌ها.', 'error');
+      showToast('خطا در ارسال فایل‌ها به گوشی.', 'error');
     }
   };
 
-  // Download File
+  // Handle Drag & Drop with folder detection
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const itemsList = e.dataTransfer.items;
+    if (itemsList && itemsList.length > 0) {
+      const allEntries: UploadFileItem[] = [];
+      const promises: Promise<UploadFileItem[]>[] = [];
+
+      for (let i = 0; i < itemsList.length; i++) {
+        const item = itemsList[i];
+        if (typeof item.webkitGetAsEntry === 'function') {
+          const entry = item.webkitGetAsEntry();
+          if (entry) {
+            promises.push(traverseFileTree(entry));
+          }
+        } else {
+          const file = item.getAsFile();
+          if (file) {
+            allEntries.push({ file, relativePath: file.name });
+          }
+        }
+      }
+
+      if (promises.length > 0) {
+        const nested = await Promise.all(promises);
+        nested.forEach(arr => allEntries.push(...arr));
+      }
+
+      if (allEntries.length > 0) {
+        await handleUploadEntries(allEntries);
+        return;
+      }
+    }
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const entries: UploadFileItem[] = Array.from(e.dataTransfer.files).map(f => ({
+        file: f,
+        relativePath: f.webkitRelativePath || f.name
+      }));
+      await handleUploadEntries(entries);
+    }
+  };
+
+  // Handle File Input selection
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const entries: UploadFileItem[] = Array.from(e.target.files).map(f => ({
+        file: f,
+        relativePath: f.webkitRelativePath || f.name
+      }));
+      handleUploadEntries(entries);
+      e.target.value = '';
+    }
+  };
+
+  // Handle Folder Input selection
+  const handleFolderInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const entries: UploadFileItem[] = Array.from(e.target.files).map(f => ({
+        file: f,
+        relativePath: f.webkitRelativePath || f.name
+      }));
+      handleUploadEntries(entries);
+      e.target.value = '';
+    }
+  };
+
+  // Download Single File
   const handleDownload = (fileName: string) => {
     if (!device) return;
     const fullPath = currentPath.endsWith('/') ? `${currentPath}${fileName}` : `${currentPath}/${fileName}`;
     window.open(`/api/devices/${device.id}/files/download?remotePath=${encodeURIComponent(fullPath)}`);
+  };
+
+  // Batch Download Selected Items as ZIP
+  const handleBatchDownload = async () => {
+    if (!device || selectedItems.size === 0) return;
+    const selectedList = Array.from(selectedItems);
+
+    if (selectedList.length === 1) {
+      const single = selectedList[0];
+      const item = items.find(i => i.name === single);
+      if (item && !item.isDir) {
+        handleDownload(single);
+        return;
+      }
+    }
+
+    showToast('در حال بسته‌بندی و دانلود فایل‌های انتخابی (ZIP)...', 'success');
+    const fullPaths = selectedList.map(name => 
+      currentPath.endsWith('/') ? `${currentPath}${name}` : `${currentPath}/${name}`
+    );
+
+    try {
+      const res = await fetch(`/api/devices/${device.id}/files/batch-download`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paths: fullPaths })
+      });
+
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Phone_Export_${Date.now()}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        showToast('دانلود فایل‌های انتخابی انجام شد.', 'success');
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        showToast(`خطا در دانلود دسته‌جمعی: ${errData.error || 'ناشناخته'}`, 'error');
+      }
+    } catch (err: any) {
+      showToast(`خطا در ارتباط: ${err.message}`, 'error');
+    }
   };
 
   // Delete Single Item (File or Folder)
@@ -370,23 +553,6 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
     }
   };
 
-  // Toggle Item Selection
-  const toggleSelect = (name: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const next = new Set(selectedItems);
-    if (next.has(name)) next.delete(name);
-    else next.add(name);
-    setSelectedItems(next);
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedItems.size === filteredItems.length) {
-      setSelectedItems(new Set());
-    } else {
-      setSelectedItems(new Set(filteredItems.map(i => i.name)));
-    }
-  };
-
   // Open Preview Modal
   const handleOpenPreview = async (item: FileItem) => {
     if (!device || item.isDir) return;
@@ -537,6 +703,67 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
   const startIndex = pageSize === 'all' ? 0 : (safeCurrentPage - 1) * effectivePageSize;
   const paginatedItems = pageSize === 'all' ? filteredItems : filteredItems.slice(startIndex, startIndex + effectivePageSize);
 
+  // Toggle Item Selection with Shift + Click range support
+  const toggleSelect = (name: string, e: React.MouseEvent, index?: number) => {
+    e.stopPropagation();
+    const next = new Set(selectedItems);
+
+    if (e.shiftKey && lastSelectedIndex !== null && typeof index === 'number') {
+      const start = Math.min(lastSelectedIndex, index);
+      const end = Math.max(lastSelectedIndex, index);
+      for (let i = start; i <= end; i++) {
+        if (paginatedItems[i]) {
+          next.add(paginatedItems[i].name);
+        }
+      }
+    } else {
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+    }
+
+    if (typeof index === 'number') {
+      setLastSelectedIndex(index);
+    }
+    setSelectedItems(next);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedItems.size === filteredItems.length && filteredItems.length > 0) {
+      setSelectedItems(new Set());
+      setLastSelectedIndex(null);
+    } else {
+      setSelectedItems(new Set(filteredItems.map(i => i.name)));
+    }
+  };
+
+  const invertSelection = () => {
+    const next = new Set<string>();
+    filteredItems.forEach(i => {
+      if (!selectedItems.has(i.name)) next.add(i.name);
+    });
+    setSelectedItems(next);
+    setLastSelectedIndex(null);
+  };
+
+  const deselectAll = () => {
+    setSelectedItems(new Set());
+    setLastSelectedIndex(null);
+  };
+
+  const selectedCount = selectedItems.size;
+  const totalSelectedSizeBytes = Array.from(selectedItems).reduce((acc, name) => {
+    const item = items.find(i => i.name === name);
+    return acc + (item ? getSizeBytes(item) : 0);
+  }, 0);
+
+  const formatSelectedSize = (bytes: number): string => {
+    if (bytes <= 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  };
+
   // Previous & Next file navigation in preview modal
   const previewableFiles = filteredItems.filter(i => !i.isDir);
   const currentFileIndex = previewFile ? previewableFiles.findIndex(i => i.name === previewFile.name) : -1;
@@ -590,11 +817,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
       className="space-y-6 animate-fadeIn"
       onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
       onDragLeave={() => setIsDragOver(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setIsDragOver(false);
-        handleUploadFiles(e.dataTransfer.files);
-      }}
+      onDrop={handleDrop}
     >
       {/* Toast Notification */}
       {toast && (
@@ -606,6 +829,22 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
         </div>
       )}
 
+      {/* Hidden File & Folder Inputs */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        multiple
+        onChange={handleFileInputChange}
+        className="hidden"
+      />
+      <input
+        type="file"
+        ref={folderInputRef}
+        {...({ webkitdirectory: '', directory: '', multiple: true } as any)}
+        onChange={handleFolderInputChange}
+        className="hidden"
+      />
+
       {/* Header & Quick Action Bar */}
       <div className="rounded-2xl glass-panel p-6 border border-cyan-500/20 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="space-y-1 text-right">
@@ -614,32 +853,49 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
             <span>مدیریت فایل و چندرسانه‌ای گوشی (File Explorer & Studio)</span>
           </h2>
           <p className="text-xs text-slate-400">
-            حذف، تغییر نام، انتقال به پوشه‌ها، دانلود، آپلود دسته‌جمعی، ساخت و حذف پوشه، و پیش‌نمایش زنده تصاویر و موزیک
+            درگ و دراپ فایل و پوشه، پابلیش و آپلود، دانلود دسته‌جمعی، ساخت و حذف پوشه، تغییر نام، انتقال و پیش‌نمایش
           </p>
         </div>
 
         {/* Global Toolbar Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* Upload Button */}
-          <input
-            type="file"
-            id="fileUploadInput"
-            multiple
-            onChange={(e) => handleUploadFiles(e.target.files)}
+          {/* Upload Files Button */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className="hidden"
-          />
-          <label
-            htmlFor="fileUploadInput"
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all shadow-md ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 ${
               isUploading
                 ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                 : 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 shadow-cyan-500/20'
             }`}
+            title="انتخاب و ارسال چندین فایل به این پوشه"
           >
             <Upload className={`w-4 h-4 ${isUploading ? 'animate-bounce' : ''}`} />
-            <span>{isUploading ? 'در حال ارسال...' : 'آپلود فایل به این پوشه'}</span>
-          </label>
+            <span>{isUploading ? 'در حال ارسال...' : 'پابلیش / آپلود فایل'}</span>
+          </button>
+
+          {/* Upload Entire Folder Button */}
+          <button
+            onClick={() => folderInputRef.current?.click()}
+            disabled={isUploading}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-400 border border-cyan-500/40 text-xs font-bold transition-all shadow-sm active:scale-95 hover:border-cyan-400"
+            title="ارسال یک پوشه کامل از سیستم با حفظ ساختار فایل‌ها"
+          >
+            <FolderUp className="w-4 h-4 text-cyan-400" />
+            <span>آپلود پوشه کامل</span>
+          </button>
+
+          {/* Batch Download Selected Button (Header shortcut) */}
+          {selectedItems.size > 0 && (
+            <button
+              onClick={handleBatchDownload}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition-all shadow-lg shadow-emerald-500/20 active:scale-95 animate-scaleIn"
+              title="دانلود فایل‌های انتخاب شده بصورت ZIP"
+            >
+              <Download className="w-4 h-4" />
+              <span>دانلود انتخابی ({selectedItems.size})</span>
+            </button>
+          )}
 
           {/* New Folder Button */}
           <button
@@ -673,12 +929,43 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
         </div>
       </div>
 
+      {/* Upload Progress Bar Banner */}
+      {isUploading && uploadProgress && (
+        <div className="p-4 rounded-2xl bg-cyan-950/70 border border-cyan-500/40 space-y-2 animate-fadeIn shadow-xl backdrop-blur-md">
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 text-cyan-300 font-bold">
+              <RefreshCw className="w-4 h-4 animate-spin text-cyan-400" />
+              <span>در حال ارسال به گوشی: {uploadProgress.currentName}</span>
+            </div>
+            <span className="font-mono text-cyan-400 font-bold">
+              {uploadProgress.current} از {uploadProgress.total} ({uploadProgress.percentage}%)
+            </span>
+          </div>
+          <div className="w-full bg-slate-950 rounded-full h-2.5 overflow-hidden border border-slate-800">
+            <div 
+              className="bg-gradient-to-r from-cyan-500 to-emerald-400 h-full transition-all duration-300 rounded-full shadow-md shadow-cyan-500/50" 
+              style={{ width: `${uploadProgress.percentage}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Drag & Drop Overlay Indicator */}
       {isDragOver && (
-        <div className="p-8 border-2 border-dashed border-cyan-400 rounded-3xl bg-cyan-500/10 text-center animate-pulse">
-          <Upload className="w-12 h-12 text-cyan-400 mx-auto mb-2" />
-          <h3 className="text-base font-bold text-white">فایل‌ها را همین‌جا رها کنید تا در این پوشه آپلود شوند</h3>
-          <p className="text-xs text-cyan-300 font-mono mt-1">{currentPath}</p>
+        <div className="p-10 border-2 border-dashed border-cyan-400 rounded-3xl bg-cyan-950/60 backdrop-blur-md text-center animate-pulse space-y-3 shadow-2xl shadow-cyan-950">
+          <div className="w-16 h-16 rounded-3xl bg-cyan-500/20 border border-cyan-400/40 mx-auto flex items-center justify-center text-cyan-400 shadow-xl shadow-cyan-900/50">
+            <FolderUp className="w-8 h-8 animate-bounce" />
+          </div>
+          <h3 className="text-lg font-black text-white">
+            فایل‌ها یا پوشه‌ها را همین‌جا رها (Drop) کنید
+          </h3>
+          <p className="text-xs text-cyan-300 max-w-md mx-auto">
+            پشتیبانی هوشمند از ارسال همزمان چندین فایل و پوشه‌های تو در تو با حفظ کامل ساختار در حافظه گوشی
+          </p>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-800 text-amber-400 font-mono text-xs">
+            <span>مسیر مقصد:</span>
+            <span>{currentPath}</span>
+          </div>
         </div>
       )}
 
@@ -1573,6 +1860,60 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* FLOATING BATCH SELECTION ACTION BAR */}
+      {selectedItems.size > 0 && (
+        <div className="fixed bottom-6 inset-x-0 mx-auto w-full max-w-2xl px-4 z-40 animate-slideUp">
+          <div className="bg-slate-900/95 backdrop-blur-xl border border-cyan-500/40 rounded-2xl p-3 sm:p-4 shadow-2xl shadow-cyan-950/90 flex flex-wrap items-center justify-between gap-3 text-white">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="px-3 py-1.5 rounded-xl bg-cyan-500/20 text-cyan-300 font-bold font-mono border border-cyan-500/30">
+                {selectedCount} مورد انتخاب شده
+              </span>
+              {totalSelectedSizeBytes > 0 && (
+                <span className="text-emerald-400 font-mono text-[11px] font-bold px-2.5 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                  حجم کل: {formatSelectedSize(totalSelectedSizeBytes)}
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                onClick={handleBatchDownload}
+                className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1.5 active:scale-95"
+                title="دانلود همه فایل‌های انتخاب شده بصورت یک فایل فشرده ZIP"
+              >
+                <Download className="w-4 h-4" />
+                <span>دانلود انتخابی (ZIP)</span>
+              </button>
+
+              <button
+                onClick={invertSelection}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-cyan-300 border border-slate-700 text-xs transition-all"
+                title="معکوس‌سازی انتخاب‌ها"
+              >
+                <RotateCw className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={handleBatchDelete}
+                className="px-3.5 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-bold transition-all flex items-center gap-1 active:scale-95"
+                title="حذف دسته‌جمعی موارد انتخاب شده"
+              >
+                <Trash2 className="w-4 h-4 text-rose-400" />
+                <span>حذف</span>
+              </button>
+
+              <button
+                onClick={deselectAll}
+                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition-all"
+                title="لغو انتخاب‌ها"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
