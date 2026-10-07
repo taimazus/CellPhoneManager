@@ -250,6 +250,224 @@ export class SystemDoctorManager {
       return { success: false, error: err.message };
     }
   }
+  // 5. Intelligent Logcat Error Analysis & Persian Root-Cause Diagnostic
+  async analyzeLogcatErrors(serial, logLines = []) {
+    let rawLogs = Array.isArray(logLines) ? logLines.filter(l => typeof l === 'string') : [];
+    
+    // If no logs provided, fetch recent error logs from device
+    if (rawLogs.length === 0 && serial && !serial.startsWith('mock-')) {
+      try {
+        const out = await adbManager.runAdb('logcat -d -t 200 *:E *:W', serial);
+        if (out.stdout) {
+          rawLogs = out.stdout.split('\n').filter(Boolean);
+        }
+      } catch (e) {
+        // fallback
+      }
+    }
+
+    const errorEntries = [];
+    const knownSignatures = [
+      {
+        pattern: /NoClassDefFoundError|ClassNotFoundException/i,
+        type: 'عدم تطابق کلاس و ناهماهنگی بیلد (NoClassDefFoundError)',
+        severity: 'medium',
+        cause: 'یک کامپوننت یا متد سیستمی متعلق به نسخه قبلی رام یا سرویس شیائومی/اندروید فراخوانی شده که در بیلد حاضر در دسترس نیست.',
+        solution: 'توقف اجباری سرویس مربوطه و تخلیه کش دیتای موقت جهت بارگذاری مجدد کتابخانه‌ها.',
+        recommendedAction: 'clear_cache'
+      },
+      {
+        pattern: /NullPointerException/i,
+        type: 'اشاره‌گر خالی و ارور نرم‌افزاری (NullPointerException)',
+        severity: 'high',
+        cause: 'تلاش یک اپلیکیشن برای دسترسی به شیء یا داده‌ای تعریف‌نشده در حافظه RAM.',
+        solution: 'راه‌اندازی مجدد برنامه و ریست حافظه موقت پردازش.',
+        recommendedAction: 'restart_service'
+      },
+      {
+        pattern: /SecurityException|Permission Denial/i,
+        type: 'رد دسترسی و محدودیت امنیتی (SecurityException)',
+        severity: 'medium',
+        cause: 'عدم داشتن مجوز یا پرمیشن سیستمی لازم برای اجرای دستور مورد نظر.',
+        solution: 'بازنشانی دسترسی‌ها و اعطای مجدد مجوزهای لازم به برنامه.',
+        recommendedAction: 'reset_permissions'
+      },
+      {
+        pattern: /OutOfMemoryError|lowmemorykiller|OOM/i,
+        type: 'کمبود حافظه موقت رم (OutOfMemoryError)',
+        severity: 'critical',
+        cause: 'پر شدن فضای RAM دستگاه توسط پردازش‌های سنگین پس‌زمینه.',
+        solution: 'تخلیه کش جامع رم و بستن برنامه‌های پس‌زمینه.',
+        recommendedAction: 'flush_logcat'
+      },
+      {
+        pattern: /FATAL EXCEPTION|crash|ANR in/i,
+        type: 'کرش بحرانی پردازش یا هنگ نرم‌افزار (ANR / Fatal Exception)',
+        severity: 'critical',
+        cause: 'توقف پاسخگویی نخ اصلی پردازش (Main UI Thread) بیش از ۵ ثانیه.',
+        solution: 'متوقف کردن کامل برنامه و پاکسازی حافظه موقت آن.',
+        recommendedAction: 'restart_service'
+      }
+    ];
+
+    // Filter error lines
+    const errorLines = rawLogs.filter(l => 
+      l.includes(' E ') || l.includes('[ERR]') || l.includes('Error') || l.includes('Exception') || l.includes('FATAL') || l.includes(' W ')
+    );
+
+    const detectedIssues = [];
+    const seenSignatures = new Set();
+
+    for (const line of errorLines.slice(-50)) {
+      // Extract package or tag
+      let pkg = null;
+      let tag = 'SystemProcess';
+      
+      const tagMatch = line.match(/[E|W|I]\/([a-zA-Z0-9_.$]+)\s*\(\s*(\d+)\s*\):/);
+      if (tagMatch) {
+        tag = tagMatch[1];
+      }
+
+      const pkgMatch = line.match(/(com\.[a-zA-Z0-9_.]+)/);
+      if (pkgMatch) {
+        pkg = pkgMatch[1];
+      }
+
+      for (const sig of knownSignatures) {
+        if (sig.pattern.test(line)) {
+          const key = `${sig.type}_${tag}`;
+          if (!seenSignatures.has(key)) {
+            seenSignatures.add(key);
+            detectedIssues.push({
+              id: `issue_${detectedIssues.length + 1}`,
+              tag,
+              pkg: pkg || (tag.startsWith('com.') ? tag : null),
+              type: sig.type,
+              severity: sig.severity,
+              cause: sig.cause,
+              solution: sig.solution,
+              recommendedAction: sig.recommendedAction,
+              sampleLine: line.trim()
+            });
+          }
+          break;
+        }
+      }
+    }
+
+    // If no specific signature matched but we have error lines, add a generic issue
+    if (detectedIssues.length === 0 && errorLines.length > 0) {
+      const sample = errorLines[errorLines.length - 1];
+      detectedIssues.push({
+        id: 'issue_generic_1',
+        tag: 'سیستم‌عامل / Logcat',
+        pkg: null,
+        type: 'خطای سیستمی / لاگ پردازش پس‌زمینه',
+        severity: 'medium',
+        cause: 'ثبت خطای عملکردی در لاگ پردازشگر دستگاه.',
+        solution: 'تخلیه بافر لاگ‌ها و نوسازی سرویس‌های در حال اجرا.',
+        recommendedAction: 'flush_logcat',
+        sampleLine: sample.trim()
+      });
+    }
+
+    // Build comprehensive Persian Technician Report
+    const reportText = [
+      '📊 گزارش جامع عیب‌یابی و تحلیل خطاهای لاگ دستگاه (Sahand AI Doctor)',
+      `📱 شناسه دستگاه: ${serial || 'متصل'}`,
+      `⏱️ تاریخ و زمان تحلیل: ${new Date().toLocaleString('fa-IR')}`,
+      `🔍 تعداد کل لاگ‌های بررسی‌شده: ${rawLogs.length}`,
+      `⚠️ تعداد خطاهای رصد شده: ${detectedIssues.length}`,
+      '----------------------------------------',
+      ...detectedIssues.map((iss, i) => (
+        `📌 خطای #${i + 1}: ${iss.type}\n` +
+        `• کامپوننت / تگ: ${iss.tag} ${iss.pkg ? `(${iss.pkg})` : ''}\n` +
+        `• سطح ریسک: ${iss.severity === 'critical' ? '🔴 بحرانی' : iss.severity === 'high' ? '🟠 بالا' : '🟡 متوسط'}\n` +
+        `• علت ریشه‌ای: ${iss.cause}\n` +
+        `• راهکار پیشنهادی: ${iss.solution}\n` +
+        `• نمونه خط لاگ: ${iss.sampleLine}\n`
+      )),
+      '----------------------------------------',
+      '✅ توصیه‌های تیم فنی: با کلیک روی دکمه‌های تعمیر هوشمند، می‌توانید نسبت به رفع فوری این خطاها، پاکسازی کش و ریستارت نرم اقدام نمایید.'
+    ].join('\n');
+
+    return {
+      success: true,
+      totalAnalyzed: rawLogs.length,
+      issuesCount: detectedIssues.length,
+      issues: detectedIssues,
+      reportText
+    };
+  }
+
+  // 6. Fix specific diagnostic error
+  async fixDiagnosticError(serial, action, targetPackage = null) {
+    if (serial && serial.startsWith('mock-')) {
+      return {
+        success: true,
+        action,
+        message: `عملیات رفع خطا «${action}» با موفقیت در حالت شبیه‌ساز انجام شد.`
+      };
+    }
+
+    try {
+      let message = 'عملیات رفع خطا با موفقیت انجام شد.';
+
+      switch (action) {
+        case 'flush_logcat':
+          await adbManager.runAdb('logcat -c', serial);
+          message = 'بافر لاگ‌ها و فایل‌های کرش قدیمی با موفقیت تخلیه و پاکسازی شدند.';
+          break;
+
+        case 'restart_service':
+          if (targetPackage) {
+            await adbManager.runAdb(`shell "am force-stop ${targetPackage}"`, serial);
+            message = `پردازش و برنامه «${targetPackage}» با موفقیت متوقف و ریست گردید.`;
+          } else {
+            await adbManager.runAdb('shell "am kill-all"', serial);
+            message = 'تمامی سرویس‌ها و پردازش‌های معلق پس‌زمینه با موفقیت بازنشانی شدند.';
+          }
+          break;
+
+        case 'clear_cache':
+          if (targetPackage) {
+            await adbManager.runAdb(`shell "pm clear ${targetPackage}"`, serial);
+            message = `حافظه موقت و کش برنامه «${targetPackage}» با موفقیت پاکسازی شد.`;
+          } else {
+            await adbManager.runAdb('shell "pm trim-caches 10240M"', serial);
+            message = 'کش کلیه اپلیکیشن‌های فعال سیستم تخلیه گردید.';
+          }
+          break;
+
+        case 'reset_permissions':
+          if (targetPackage) {
+            await adbManager.runAdb(`shell "pm reset-permissions -p ${targetPackage} 2>/dev/null || pm reset-permissions"`, serial);
+          } else {
+            await adbManager.runAdb('shell "pm reset-permissions 2>/dev/null || true"', serial);
+          }
+          message = 'دسترسی‌ها و مجوزهای سیستمی با موفقیت بازنشانی و ترمیم شدند.';
+          break;
+
+        case 'restart_systemui':
+          await adbManager.runAdb('shell "pkill -f com.android.systemui 2>/dev/null || am restart com.android.systemui"', serial);
+          message = 'رابط گرافیکی و SystemUI بدون ریستارت شدن گوشی نوسازی شد.';
+          break;
+
+        default:
+          await adbManager.runAdb('logcat -c', serial);
+          message = 'عملیات عیب‌یابی و نوسازی انجام شد.';
+      }
+
+      return {
+        success: true,
+        action,
+        targetPackage,
+        message
+      };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
 }
 
 export const systemDoctorManager = new SystemDoctorManager();

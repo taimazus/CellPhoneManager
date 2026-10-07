@@ -1552,6 +1552,29 @@ app.post('/api/devices/:id/system/repair', async (req, res) => {
   }
 });
 
+// Real-time AI Logcat Error Analyzer & 1-Click Repair
+app.post('/api/devices/:id/diagnostics/analyze-errors', async (req, res) => {
+  const { id } = req.params;
+  const { logs = [] } = req.body;
+  try {
+    const result = await systemDoctorManager.analyzeLogcatErrors(id, logs);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/diagnostics/fix-error', async (req, res) => {
+  const { id } = req.params;
+  const { action, targetPackage } = req.body;
+  try {
+    const result = await systemDoctorManager.fixDiagnosticError(id, action, targetPackage);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/fastboot/run', async (req, res) => {
   const { command } = req.body;
   if (!command) return res.status(400).json({ error: 'دستور Fastboot الزامی است' });

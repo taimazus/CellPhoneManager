@@ -25,4 +25,22 @@ describe('SystemDoctorManager Test Suite', () => {
     expect(res.success).toBe(true);
     expect(res.message).toBeDefined();
   });
+
+  it('should analyze logcat errors and return Persian diagnostic report', async () => {
+    const sampleLogs = [
+      'W/FeatureFlagsImplExport(23306): java.lang.NoClassDefFoundError: Class not found using the boot class loader',
+      'E/AndroidRuntime(1234): NullPointerException: Attempt to invoke virtual method on a null object reference'
+    ];
+    const res = await systemDoctorManager.analyzeLogcatErrors('mock-device', sampleLogs);
+    expect(res.success).toBe(true);
+    expect(res.issuesCount).toBeGreaterThan(0);
+    expect(res.reportText).toContain('گزارش جامع عیب‌یابی');
+    expect(res.issues[0].recommendedAction).toBeDefined();
+  });
+
+  it('should fix specific diagnostic error on mock device', async () => {
+    const res = await systemDoctorManager.fixDiagnosticError('mock-device', 'clear_cache', 'com.miui.securitycenter');
+    expect(res.success).toBe(true);
+    expect(res.action).toBe('clear_cache');
+  });
 });
