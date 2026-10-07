@@ -170,6 +170,30 @@ export class ToolManager {
         }
       }
 
+      if (toolId === 'vbcable') {
+        logCallback('در حال نصب درایور کابل مجازی صدا (VB-Audio Virtual Cable)...');
+        const localZip = path.join(this.binDir, 'drivers', 'vbcable.zip');
+        if (fs.existsSync(localZip)) {
+          logCallback('استفاده از پکیج آفلاین همراه نرم‌افزار...');
+          await execAsync(`powershell -NoProfile -Command "Expand-Archive -Path '${localZip}' -DestinationPath '$env:TEMP\\cpm_vbcable' -Force; Start-Process -FilePath '$env:TEMP\\cpm_vbcable\\VBCABLE_Setup_x64.exe' -Verb RunAs"`);
+          return { success: true, message: 'نصاب درایور VB-Cable با موفقیت اجرا شد' };
+        }
+        await execAsync('powershell -NoProfile -Command "Invoke-WebRequest -Uri \'https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack45.zip\' -OutFile \'$env:TEMP\\VBCABLE.zip\'; Expand-Archive -Path \'$env:TEMP\\VBCABLE.zip\' -DestinationPath \'$env:TEMP\\VBCABLE\' -Force; Start-Process -FilePath \'$env:TEMP\\VBCABLE\\VBCABLE_Setup_x64.exe\' -Verb RunAs"');
+        return { success: true, message: 'نصاب درایور VB-Cable اجرا شد' };
+      }
+
+      if (toolId === 'vigembus') {
+        logCallback('در حال نصب درایور دسته بازی مجازی (ViGEmBus)...');
+        const localExe = path.join(this.binDir, 'drivers', 'vigembus_setup.exe');
+        if (fs.existsSync(localExe)) {
+          logCallback('استفاده از پکیج نصبی آفلاین همراه نرم‌افزار...');
+          await execAsync(`powershell -NoProfile -Command "Start-Process -FilePath '${localExe}' -Verb RunAs"`);
+          return { success: true, message: 'نصاب درایور ViGEmBus با موفقیت اجرا شد' };
+        }
+        await execAsync('powershell -NoProfile -Command "Invoke-WebRequest -Uri \'https://github.com/nefarius/ViGEmBus/releases/download/v1.22.0/ViGEmBus_1.22.0_x64_x86_arm64.exe\' -OutFile \'$env:TEMP\\ViGEmBus_Setup.exe\'; Start-Process -FilePath \'$env:TEMP\\ViGEmBus_Setup.exe\' -Verb RunAs"');
+        return { success: true, message: 'نصاب درایور ViGEmBus اجرا شد' };
+      }
+
       return { success: false, message: `ابزار ناشناخته: ${toolId}` };
     } catch (err) {
       logCallback(`خطا در نصب: ${err.message}`);
