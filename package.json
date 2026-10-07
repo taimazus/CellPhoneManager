@@ -1,0 +1,49 @@
+{
+  "name": "cell-phone-manager",
+  "version": "3.0.0",
+  "description": "نرم‌افزار جامع مدیریت، عیب‌یابی، روت، فلش و کنترل پیشرفته گوشی‌های هوشمند - توسعه داده شده برای شرکت راهکار الکترونیک سهند (https://irres.ir)",
+  "author": "راهکار الکترونیک سهند (Sahand Electronic Solutions) <https://irres.ir>",
+  "homepage": "https://irres.ir",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/taimazus/CellPhoneManager.git"
+  },
+  "main": "server/index.js",
+  "type": "module",
+  "scripts": {
+    "dev:server": "node server/index.js",
+    "dev:client": "vite",
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"blue,green\" \"npm run dev:server\" \"npm run dev:client\"",
+    "build": "vite build",
+    "start": "node server/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "axios": "^1.8.2",
+    "clsx": "^2.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "lucide-react": "^1.16.0",
+    "multer": "^1.4.5-lts.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.0.2",
+    "ws": "^8.18.1"
+  },
+  "devDependencies": {
+    "@esbuild/win32-x64": "^0.28.2",
+    "@rollup/rollup-win32-x64-msvc": "^4.64.0",
+    "@types/node": "^22.13.9",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.21",
+    "concurrently": "^9.1.2",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0",
+    "vitest": "^3.0.8"
+  }
+}

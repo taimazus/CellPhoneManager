@@ -1,0 +1,40 @@
+# Functional Specification: CellPhoneManager Desktop Suite
+
+## 1. Overview & Objective
+A unified Windows management control center for both **Android** and **iOS (iPhone/iPad)** devices providing:
+1. Automated Driver & Tool Setup (ADB, Fastboot, Scrcpy, Apple Drivers, pymobiledevice3).
+2. Real-time Device Discovery, Telemetry, and Multi-device selection.
+3. Screen Mirroring & Remote Interaction (Low-latency display, click/touch, key navigation, recording, screenshots).
+4. App Manager (Install APK/XAPK/IPA, Uninstall, Disable Bloatware, Extract, Clear Cache).
+5. Deep Diagnostics & Troubleshooting (Logcat/Syslog live streaming, Battery health & cycle analysis, Storage inspector, Network test).
+6. Hidden & System Settings Tweaks (DPI/Resolution modifier, Animation scales, Global/Secure settings editor, Developer mode, Location spoofer).
+7. File Explorer & Transfer (Push, Pull, Delete, Explore internal storage).
+
+## 2. Architecture & Modules
+- **Backend Bridge (`server/`)**:
+  - Express + WebSocket server on port 5174 / 3001.
+  - Native process spawners with robust error handling and stream forwarding.
+  - `adbManager.js`: Android ADB & Fastboot commands wrapper (file push/pull, apk extraction, permissions, fastboot flashing).
+  - `fileManager.js`: File push/pull, directory tree navigation, file deletions and creations.
+  - `iosManager.js`: iOS device detection and management wrapper.
+  - `toolManager.js`: Automated dependency checker, downloader, and driver doctor.
+  - `mirrorManager.js`: Scrcpy orchestrator and in-browser live frame stream.
+- **Frontend App (`src/`)**:
+  - React 19 + TypeScript + Vite + Tailwind CSS + Lucide Icons.
+  - Dedicated Modules:
+    - Overview & Telemetry (`OverviewTab.tsx`)
+    - Real-time Screen Mirror & Remote Control (`MirrorControlTab.tsx`)
+    - App Manager & Bloatware Freezing (`AppsTab.tsx`)
+    - File Explorer & Transfer (`FilesTab.tsx`)
+    - Fastboot & Flashing Toolkit (`FastbootTab.tsx`)
+    - Backup, APK Extractor & Remote Typing (`BackupTab.tsx`)
+    - Hardware Lab & Sensor Diagnostics (`HardwareLabTab.tsx`)
+    - Hidden & System Settings Tweaks (`TweaksTab.tsx`)
+    - Live Logs & Diagnostics (`DiagnosticsTab.tsx`)
+    - Driver & Tool Doctor (`DoctorTab.tsx`)
+
+
+## 3. Acceptance Criteria
+- **Given** an Android or iOS device connected via USB or Wi-Fi (or simulated in mock mode for testing without hardware),
+- **When** the user launches CellPhoneManager and accesses any module (Apps, Settings, Mirroring, Diagnostics, Files),
+- **Then** the app accurately detects the device, presents telemetry, allows operations (app install/uninstall, settings tweaks, diagnostics, live log streaming), and gracefully handles errors with explicit actionable notifications.

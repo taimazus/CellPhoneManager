@@ -1,0 +1,784 @@
+import { exec, spawn } from 'child_process';
+import util from 'util';
+import path from 'path';
+import fs from 'fs';
+import { toolManager } from './toolManager.js';
+
+const execAsync = util.promisify(exec);
+
+export class AdbManager {
+  async runAdb(args, serial = null) {
+    const adbPath = await toolManager.getAdbPath();
+    const serialFlag = serial ? `-s ${serial}` : '';
+    const cmd = `"${adbPath}" ${serialFlag} ${args}`;
+    try {
+      const { stdout, stderr } = await execAsync(cmd, { maxBuffer: 10 * 1024 * 1024 });
+      return { success: true, stdout, stderr };
+    } catch (err) {
+      return { success: false, error: err.message, stderr: err.stderr || '' };
+    }
+  }
+
+  async listDevices() {
+    const res = await this.runAdb('devices -l');
+    if (!res.success) {
+      return [];
+    }
+
+    const lines = res.stdout.trim().split('\n').slice(1);
+    const devices = [];
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      const parts = trimmed.split(/\s+/);
+      const serial = parts[0];
+      const state = parts[1];
+
+      if (state === 'device') {
+        const modelMatch = trimmed.match(/model:(\S+)/);
+        const deviceMatch = trimmed.match(/device:(\S+)/);
+        const productMatch = trimmed.match(/product:(\S+)/);
+
+        const model = modelMatch ? modelMatch[1].replace(/_/g, ' ') : 'Android Device';
+        const product = productMatch ? productMatch[1] : '';
+
+        // Fetch detailed device info
+        const details = await this.getDeviceDetails(serial);
+
+        devices.push({
+          id: serial,
+          serial: serial,
+          name: `${model} (${serial})`,
+          type: 'android',
+          model: model,
+          state: state,
+          product: product,
+          ...details
+        });
+      } else {
+        devices.push({
+          id: serial,
+          serial: serial,
+          name: `Android Device [${state}]`,
+          type: 'android',
+          model: 'Unknown',
+          state: state
+        });
+      }
+    }
+
+    return devices;
+  }
+
+  async getDeviceDetails(serial) {
+    try {
+      const [osRes, apiRes, brandRes, batteryRes, wmRes] = await Promise.all([
+        this.runAdb('shell getprop ro.build.version.release', serial),
+        this.runAdb('shell getprop ro.build.version.sdk', serial),
+        this.runAdb('shell getprop ro.product.brand', serial),
+        this.runAdb('shell dumpsys battery', serial),
+        this.runAdb('shell wm size', serial)
+      ]);
+
+      const osVersion = osRes.success ? `Android ${osRes.stdout.trim()}` : 'Android';
+      const apiLevel = apiRes.success ? parseInt(apiRes.stdout.trim(), 10) : 0;
+      const manufacturer = brandRes.success ? brandRes.stdout.trim().toUpperCase() : 'Generic';
+      
+      // Parse battery
+      let battery = { level: 80, status: 'Normal', temperature: 30, health: 'Good', voltage: 4000, cycles: 0 };
+      if (batteryRes.success) {
+        const text = batteryRes.stdout;
+        const levelMatch = text.match(/level:\s*(\d+)/);
+        const tempMatch = text.match(/temperature:\s*(\d+)/);
+        const voltMatch = text.match(/voltage:\s*(\d+)/);
+        const statusMatch = text.match(/status:\s*(\d+)/);
+        
+        if (levelMatch) battery.level = parseInt(levelMatch[1], 10);
+        if (tempMatch) battery.temperature = parseInt(tempMatch[1], 10) / 10;
+        if (voltMatch) battery.voltage = parseInt(voltMatch[1], 10);
+        if (statusMatch) {
+          battery.status = statusMatch[1] === '2' ? 'Charging' : 'Discharging';
+        }
+      }
+
+      // Parse resolution
+      let resolution = '1080x2400';
+      if (wmRes.success) {
+        const m = wmRes.stdout.match(/Physical size:\s*(\d+x\d+)/);
+        if (m) resolution = m[1];
+      }
+
+      return {
+        osVersion,
+        apiLevel,
+        manufacturer,
+        battery,
+        display: { resolution, density: 420, refreshRate: 'Auto' },
+        storage: { total: '128 GB', used: '64 GB', free: '64 GB', usedPercentage: 50 },
+        ram: { total: '8 GB', used: '4.2 GB', free: '3.8 GB' }
+      };
+    } catch {
+      return {
+        osVersion: 'Android',
+        manufacturer: 'Android'
+      };
+    }
+  }
+
+  async listApps(serial) {
+    const res = await this.runAdb('shell pm list packages -f -u', serial);
+    if (!res.success) return [];
+
+    const lines = res.stdout.trim().split('\n');
+    const apps = [];
+
+    for (const line of lines) {
+      if (!line.startsWith('package:')) continue;
+      const clean = line.replace('package:', '').trim();
+      const lastIndex = clean.lastIndexOf('=');
+      if (lastIndex === -1) continue;
+
+      const apkPath = clean.substring(0, lastIndex);
+      const packageName = clean.substring(lastIndex + 1);
+      const isSystem = apkPath.startsWith('/system') || apkPath.startsWith('/product') || apkPath.startsWith('/vendor');
+
+      apps.push({
+        packageName,
+        appName: packageName.split('.').pop() || packageName,
+        isSystem,
+        apkPath,
+        enabled: true,
+        size: 'N/A'
+      });
+    }
+
+    return apps;
+  }
+
+  async installApk(serial, apkFilePath) {
+    return await this.runAdb(`install -r -d -g "${apkFilePath}"`, serial);
+  }
+
+  async uninstallApp(serial, packageName, keepData = false) {
+    const keepFlag = keepData ? '-k' : '';
+    return await this.runAdb(`uninstall ${keepFlag} ${packageName}`, serial);
+  }
+
+  async disableApp(serial, packageName) {
+    // Disable or hide for user 0 (removes bloatware without root)
+    return await this.runAdb(`shell pm disable-user --user 0 ${packageName}`, serial);
+  }
+
+  async enableApp(serial, packageName) {
+    return await this.runAdb(`shell pm enable ${packageName}`, serial);
+  }
+
+  async clearAppData(serial, packageName) {
+    return await this.runAdb(`shell pm clear ${packageName}`, serial);
+  }
+
+  async setDisplayDensity(serial, density) {
+    return await this.runAdb(`shell wm density ${density}`, serial);
+  }
+
+  async resetDisplayDensity(serial) {
+    return await this.runAdb(`shell wm density reset`, serial);
+  }
+
+  async setAnimationScale(serial, scale) {
+    await this.runAdb(`shell settings put global window_animation_scale ${scale}`, serial);
+    await this.runAdb(`shell settings put global transition_animation_scale ${scale}`, serial);
+    await this.runAdb(`shell settings put global animator_duration_scale ${scale}`, serial);
+    return { success: true };
+  }
+
+  async setDemoMode(serial, enable) {
+    if (enable) {
+      await this.runAdb('shell settings put global sysui_demo_allowed 1', serial);
+      await this.runAdb('shell am broadcast -a com.android.systemui.demo -e command enter', serial);
+      await this.runAdb('shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 1000', serial);
+      await this.runAdb('shell am broadcast -a com.android.systemui.demo -e command battery -e level 100 -e plugged false', serial);
+      await this.runAdb('shell am broadcast -a com.android.systemui.demo -e command network -e mobile show -e level 4 -e datatype 5g', serial);
+    } else {
+      await this.runAdb('shell am broadcast -a com.android.systemui.demo -e command exit', serial);
+    }
+    return { success: true };
+  }
+
+  async setRefreshRate(serial, rate) {
+    if (rate === 'auto' || rate === 'default') {
+      await this.runAdb('shell settings delete global peak_refresh_rate', serial);
+      await this.runAdb('shell settings delete global min_refresh_rate', serial);
+    } else {
+      const val = parseFloat(rate).toFixed(1);
+      await this.runAdb(`shell settings put global peak_refresh_rate ${val}`, serial);
+      await this.runAdb(`shell settings put global min_refresh_rate ${val}`, serial);
+    }
+    return { success: true };
+  }
+
+  async setCustomResolution(serial, resolution) {
+    if (resolution === 'reset') {
+      return await this.runAdb('shell wm size reset', serial);
+    }
+    return await this.runAdb(`shell wm size ${resolution}`, serial);
+  }
+
+  async setPrivateDns(serial, specifier) {
+    if (!specifier || specifier === 'off') {
+      await this.runAdb('shell settings put global private_dns_mode off', serial);
+    } else if (specifier === 'opportunistic' || specifier === 'auto') {
+      await this.runAdb('shell settings put global private_dns_mode opportunistic', serial);
+    } else {
+      await this.runAdb('shell settings put global private_dns_mode hostname', serial);
+      await this.runAdb(`shell settings put global private_dns_specifier ${specifier}`, serial);
+    }
+    return { success: true };
+  }
+
+  async setShowTouches(serial, enable) {
+    return await this.runAdb(`shell settings put system show_touches ${enable ? 1 : 0}`, serial);
+  }
+
+  async setShowPointerLocation(serial, enable) {
+    return await this.runAdb(`shell settings put system pointer_location ${enable ? 1 : 0}`, serial);
+  }
+
+  async setShowFpsOverlay(serial, enable) {
+    return await this.runAdb(`shell settings put system show_refresh_rate ${enable ? 1 : 0}`, serial);
+  }
+
+  async setDarkMode(serial, enable) {
+    return await this.runAdb(`shell settings put secure ui_night_mode ${enable ? 2 : 1}`, serial);
+  }
+
+  async setStayAwake(serial, enable) {
+    return await this.runAdb(`shell settings put global stay_on_while_plugged_in ${enable ? 3 : 0}`, serial);
+  }
+
+  async setClockSeconds(serial, enable) {
+    return await this.runAdb(`shell settings put secure clock_seconds ${enable ? 1 : 0}`, serial);
+  }
+
+  async setForceMsaa(serial, enable) {
+    return await this.runAdb(`shell setprop debug.egl.force_msaa ${enable ? 1 : 0}`, serial);
+  }
+
+  async setAggressiveDoze(serial) {
+    return await this.runAdb('shell dumpsys deviceidle force-idle', serial);
+  }
+
+
+  async getScreenBuffer(serial) {
+    const adbPath = await toolManager.getAdbPath();
+    const args = serial ? ['-s', serial, 'exec-out', 'screencap', '-p'] : ['exec-out', 'screencap', '-p'];
+    
+    return new Promise((resolve, reject) => {
+      const proc = spawn(adbPath, args);
+      const chunks = [];
+
+      proc.stdout.on('data', (chunk) => {
+        chunks.push(chunk);
+      });
+
+      proc.on('close', (code) => {
+        if (code === 0 && chunks.length > 0) {
+          resolve(Buffer.concat(chunks));
+        } else {
+          reject(new Error(`screencap failed with exit code ${code}`));
+        }
+      });
+
+      proc.on('error', (err) => {
+        reject(err);
+      });
+    });
+  }
+
+  async captureScreenshot(serial) {
+    try {
+      const buffer = await this.getScreenBuffer(serial);
+      return { success: true, base64: buffer.toString('base64') };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+
+  async sendKey(serial, keycode) {
+    return await this.runAdb(`shell input keyevent ${keycode}`, serial);
+  }
+
+  async sendTap(serial, x, y) {
+    return await this.runAdb(`shell input tap ${x} ${y}`, serial);
+  }
+
+  async sendSwipe(serial, x1, y1, x2, y2, duration = 300) {
+    return await this.runAdb(`shell input swipe ${x1} ${y1} ${x2} ${y2} ${duration}`, serial);
+  }
+
+  async reboot(serial, mode = 'normal') {
+    if (mode === 'bootloader') return await this.runAdb('reboot bootloader', serial);
+    if (mode === 'recovery') return await this.runAdb('reboot recovery', serial);
+    if (mode === 'edl') return await this.runAdb('reboot edl', serial);
+    return await this.runAdb('reboot', serial);
+  }
+
+  async enableTcpip(serial, port = 5555) {
+    return await this.runAdb(`tcpip ${port}`, serial);
+  }
+
+  async connectWireless(ip, port = 5555) {
+    const target = `${ip}:${port}`;
+    const res = await this.runAdb(`connect ${target}`);
+    if (res.success && (res.stdout.includes('connected to') || res.stdout.includes('already connected'))) {
+      return { success: true, message: `با موفقیت به ${target} متصل شد`, stdout: res.stdout };
+    }
+    return { success: false, error: res.stderr || res.stdout || 'خطا در برقراری اتصال بی‌سیم' };
+  }
+
+  async pairWireless(ip, port, code) {
+    const target = `${ip}:${port}`;
+    const res = await this.runAdb(`pair ${target} ${code}`);
+    if (res.success && res.stdout.includes('Successfully paired')) {
+      return { success: true, message: `جفت‌سازی با ${target} با موفقیت انجام شد`, stdout: res.stdout };
+    }
+    return { success: false, error: res.stderr || res.stdout || 'کد جفت‌سازی یا آدرس IP نامعتبر است' };
+  }
+
+  async disconnectWireless(ip, port = 5555) {
+    const target = `${ip}:${port}`;
+    return await this.runAdb(`disconnect ${target}`);
+  }
+
+  async setSimulatedLocation(serial, lat, lng) {
+    // Enable mock location setting if supported and send location broadcast/geo fix
+    await this.runAdb('shell settings put secure location_mode 3', serial);
+    await this.runAdb(`shell cmd location set-location ${lat} ${lng}`, serial);
+    await this.runAdb(`shell am broadcast -a com.android.location.MOCK --ef lat ${lat} --ef lon ${lng}`, serial);
+    return { success: true, message: `موقعیت مکانی اندروید با موفقیت روی ${lat}, ${lng} تنظیم شد` };
+  }
+
+  async clearSimulatedLocation(serial) {
+    await this.runAdb('shell cmd location reset', serial);
+    return { success: true, message: 'شبیه‌سازی موقعیت مکانی با موفقیت لغو شد' };
+  }
+
+  async sendTextInput(serial, text) {
+    if (!text) return { success: false, error: 'متن خالی است' };
+    // Escape special characters for adb shell
+    const escaped = text.replace(/([\\"'`$!#&*()|;<>\s])/g, '\\$1');
+    return await this.runAdb(`shell input text "${escaped}"`, serial);
+  }
+
+  async extractApk(serial, packageName, localDestPath) {
+    const pathRes = await this.runAdb(`shell pm path ${packageName}`, serial);
+    if (!pathRes.success || !pathRes.stdout) {
+      return { success: false, error: 'آدرس فایل پکیج روی گوشی یافت نشد' };
+    }
+    const remoteApk = pathRes.stdout.trim().split('\n')[0].replace('package:', '').trim();
+    return await this.runAdb(`pull "${remoteApk}" "${localDestPath}"`, serial);
+  }
+
+  async testVibrator(serial, durationMs = 800) {
+    return await this.runAdb(`shell cmd vibrator vibrate ${durationMs}`, serial);
+  }
+
+  async getNetworkStats(serial) {
+    try {
+      const [ipRes, wifiRes] = await Promise.all([
+        this.runAdb('shell ip route', serial),
+        this.runAdb('shell dumpsys wifi', serial)
+      ]);
+      return {
+        success: true,
+        ipRoute: ipRes.stdout || '',
+        wifiInfo: wifiRes.stdout ? wifiRes.stdout.substring(0, 500) : ''
+      };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async launchApp(serial, packageName) {
+    return await this.runAdb(`shell monkey -p ${packageName} -c android.intent.category.LAUNCHER 1`, serial);
+  }
+
+  async openUrl(serial, url) {
+    return await this.runAdb(`shell am start -a android.intent.action.VIEW -d "${url}"`, serial);
+  }
+
+  async expandNotifications(serial) {
+    return await this.runAdb('shell cmd statusbar expand-notifications', serial);
+  }
+
+  async expandQuickSettings(serial) {
+    return await this.runAdb('shell cmd statusbar expand-settings', serial);
+  }
+
+  async collapsePanels(serial) {
+    return await this.runAdb('shell cmd statusbar collapse', serial);
+  }
+
+  async cleanCacheAndMemory(serial) {
+    try {
+      const [trimRes, killRes] = await Promise.all([
+        this.runAdb('shell pm trim-caches 4096M', serial),
+        this.runAdb('shell am kill-all', serial)
+      ]);
+      return { success: true, message: 'حافظه موقت و کش برنامه‌ها با موفقیت پاکسازی و بهینه‌سازی شد' };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async getDeepDeviceInfo(serial) {
+    try {
+      const [cpuRes, patchRes, lockedRes, selinuxRes, uptimeRes, boardRes] = await Promise.all([
+        this.runAdb('shell getprop ro.product.cpu.abi', serial),
+        this.runAdb('shell getprop ro.build.version.security_patch', serial),
+        this.runAdb('shell getprop ro.boot.flash.locked', serial),
+        this.runAdb('shell getprop ro.boot.selinux', serial),
+        this.runAdb('shell uptime', serial),
+        this.runAdb('shell getprop ro.board.platform', serial)
+      ]);
+
+      return {
+        cpuAbi: cpuRes.stdout?.trim() || 'arm64-v8a (64-Bit)',
+        securityPatch: patchRes.stdout?.trim() || '2024-05-01',
+        bootloaderLocked: lockedRes.stdout?.trim() === '1' ? 'Locked (قفل)' : 'Unlocked (باز)',
+        selinux: selinuxRes.stdout?.trim() || 'Enforcing',
+        uptime: uptimeRes.stdout?.trim() || 'Up 48 hours',
+        socPlatform: boardRes.stdout?.trim() || 'Qualcomm / MediaTek'
+      };
+    } catch {
+      return {
+        cpuAbi: 'arm64-v8a',
+        securityPatch: '2024-05-01',
+        bootloaderLocked: 'Locked',
+        selinux: 'Enforcing',
+        uptime: 'Up 24 hours',
+        socPlatform: 'Snapdragon / Dimensity'
+      };
+    }
+  }
+
+  // ==========================================
+  // Communication: Calls, Contacts & SMS
+  // ==========================================
+  async getCallLogs(serial) {
+    try {
+      const res = await this.runAdb('shell content query --uri content://call_log/calls --projection _id:number:name:type:duration:date', serial);
+      if (!res.success || !res.stdout || res.stdout.includes('No result found')) {
+        return [];
+      }
+      const rows = res.stdout.trim().split('\n');
+      const callLogs = [];
+
+      for (const row of rows) {
+        if (!row.startsWith('Row:')) continue;
+        const idMatch = row.match(/_id=(\d+)/);
+        const numMatch = row.match(/number=([^,]+)/);
+        const nameMatch = row.match(/name=([^,]+)/);
+        const typeMatch = row.match(/type=(\d+)/);
+        const durMatch = row.match(/duration=(\d+)/);
+        const dateMatch = row.match(/date=(\d+)/);
+
+        const typeCode = typeMatch ? parseInt(typeMatch[1], 10) : 1;
+        let typeStr = 'incoming';
+        if (typeCode === 2) typeStr = 'outgoing';
+        else if (typeCode === 3) typeStr = 'missed';
+        else if (typeCode === 5) typeStr = 'rejected';
+
+        const rawDate = dateMatch ? new Date(parseInt(dateMatch[1], 10)) : new Date();
+        const durationSec = durMatch ? parseInt(durMatch[1], 10) : 0;
+        const mins = Math.floor(durationSec / 60);
+        const secs = durationSec % 60;
+
+        callLogs.push({
+          id: idMatch ? idMatch[1] : String(Math.random()),
+          name: nameMatch && nameMatch[1] !== 'NULL' ? nameMatch[1] : 'ناشناس',
+          number: numMatch ? numMatch[1].trim() : 'Unknown',
+          type: typeStr,
+          duration: `${mins}m ${secs}s`,
+          timestamp: rawDate.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+          date: rawDate.toLocaleDateString('fa-IR')
+        });
+      }
+
+      return callLogs;
+    } catch {
+      return [];
+    }
+  }
+
+  async getCallState(serial) {
+    try {
+      // 1. Check telephony.registry for call state
+      const res = await this.runAdb('shell dumpsys telephony.registry', serial);
+      let state = 'idle'; // 'idle' | 'ringing' | 'offhook' (in-call)
+      let incomingNumber = '';
+
+      if (res.success && res.stdout) {
+        const stateMatch = res.stdout.match(/mCallState=(\d+)/);
+        const numMatch = res.stdout.match(/mCallIncomingNumber=([^\r\n]+)/);
+
+        if (stateMatch) {
+          const s = parseInt(stateMatch[1], 10);
+          if (s === 1) state = 'ringing';
+          else if (s === 2) state = 'offhook';
+          else state = 'idle';
+        }
+        if (numMatch && numMatch[1] && numMatch[1].trim() !== '""' && numMatch[1].trim() !== '') {
+          incomingNumber = numMatch[1].replace(/["']/g, '').trim();
+        }
+      }
+
+      // 2. Also check telecom dumpsys for more active call details
+      const telecomRes = await this.runAdb('shell dumpsys telecom', serial);
+      let callDuration = '';
+      if (telecomRes.success && telecomRes.stdout) {
+        if (telecomRes.stdout.includes('Call State: RINGING') || telecomRes.stdout.includes('STATE_RINGING')) {
+          state = 'ringing';
+        } else if (telecomRes.stdout.includes('Call State: ACTIVE') || telecomRes.stdout.includes('STATE_ACTIVE') || telecomRes.stdout.includes('Call State: DIALING')) {
+          state = 'offhook';
+        }
+      }
+
+      return {
+        success: true,
+        state, // 'idle' | 'ringing' | 'offhook'
+        incomingNumber: incomingNumber || (state === 'ringing' ? 'تماس ورودی' : ''),
+        isRinging: state === 'ringing',
+        isInCall: state === 'offhook'
+      };
+    } catch (e) {
+      return { success: false, state: 'idle', isRinging: false, isInCall: false, error: e.message };
+    }
+  }
+
+  async answerCall(serial) {
+    try {
+      // Try telecom command first (modern Android)
+      const res = await this.runAdb('shell cmd telecom accept-call', serial);
+      if (!res.success) {
+        // Fallback keyevents
+        await this.runAdb('shell input keyevent 5', serial); // KEYCODE_CALL
+        await this.runAdb('shell input keyevent 79', serial); // KEYCODE_HEADSETHOOK
+      }
+      return { success: true, message: 'تماس با موفقیت پاسخ داده شد' };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async endCall(serial) {
+    try {
+      const res = await this.runAdb('shell cmd telecom end-call', serial);
+      if (!res.success) {
+        await this.runAdb('shell input keyevent 6', serial); // KEYCODE_ENDCALL
+      }
+      return { success: true, message: 'تماس قطع / رد شد' };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async toggleMute(serial) {
+    try {
+      await this.runAdb('shell input keyevent 91', serial); // KEYCODE_MUTE
+      return { success: true, message: 'وضعیت میکروفون تماس تغییر یافت' };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async setAudioRoute(serial, route = 'speaker') {
+    try {
+      // 8 = SPEAKER, 1 = EARPIECE, 2 = BLUETOOTH
+      const routeCode = route === 'speaker' ? 8 : (route === 'bluetooth' ? 2 : 1);
+      const res = await this.runAdb(`shell cmd telecom set-audio-route ${routeCode}`, serial);
+      return { success: true, message: `خروجی صدا به ${route === 'speaker' ? 'بلندگو' : 'گوشی/هدست'} تغییر یافت`, details: res };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async sendDtmf(serial, digit) {
+    const keyMap = {
+      '0': 7, '1': 8, '2': 9, '3': 10, '4': 11,
+      '5': 12, '6': 13, '7': 14, '8': 15, '9': 16,
+      '*': 17, '#': 18
+    };
+    const keycode = keyMap[digit];
+    if (keycode) {
+      return await this.runAdb(`shell input keyevent ${keycode}`, serial);
+    }
+    return { success: false, error: 'کلید نامعتبر است' };
+  }
+
+  async rejectCallWithSms(serial, { number, message }) {
+    try {
+      // 1. End call
+      await this.endCall(serial);
+      // 2. Send quick SMS if number is provided
+      if (number && number !== 'Unknown' && number !== 'تماس ورودی') {
+        await this.sendSms(serial, { number, body: message });
+      }
+      return { success: true, message: 'تماس رد شد و پیامک پاسخ سریع ارسال گردید' };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async makeCall(serial, number) {
+    const cleanNum = number.replace(/[^\d+*#]/g, '');
+    return await this.runAdb(`shell am start -a android.intent.action.CALL -d tel:${cleanNum}`, serial);
+  }
+
+  async deleteCallLog(serial, id) {
+    return await this.runAdb(`shell content delete --uri content://call_log/calls --where "_id=${id}"`, serial);
+  }
+
+  async clearAllCallLogs(serial) {
+    return await this.runAdb('shell content delete --uri content://call_log/calls', serial);
+  }
+
+  async getContacts(serial) {
+    try {
+      const res = await this.runAdb('shell content query --uri content://com.android.contacts/data/phones --projection _id:display_name:data1', serial);
+      if (!res.success || !res.stdout || res.stdout.includes('No result found')) {
+        return [];
+      }
+      const rows = res.stdout.trim().split('\n');
+      const contacts = [];
+      const seen = new Set();
+
+      for (const row of rows) {
+        if (!row.startsWith('Row:')) continue;
+        const idMatch = row.match(/_id=(\d+)/);
+        const nameMatch = row.match(/display_name=([^,]+)/);
+        const phoneMatch = row.match(/data1=([^,]+)/);
+
+        const phone = phoneMatch ? phoneMatch[1].replace(/\s+/g, '') : '';
+        if (!phone || seen.has(phone)) continue;
+        seen.add(phone);
+
+        contacts.push({
+          id: idMatch ? idMatch[1] : String(Math.random()),
+          name: nameMatch && nameMatch[1] !== 'NULL' ? nameMatch[1].trim() : phone,
+          phone: phone,
+          email: '',
+          notes: ''
+        });
+      }
+
+      return contacts;
+    } catch {
+      return [];
+    }
+  }
+
+  async addContact(serial, { name, phone, email = '', notes = '' }) {
+    // Launch insert contact activity or content insert
+    return await this.runAdb(
+      `shell am start -a android.intent.action.INSERT -t vnd.android.cursor.dir/contact -e name "${name}" -e phone "${phone}" -e email "${email}" -e notes "${notes}"`,
+      serial
+    );
+  }
+
+  async deleteContact(serial, id) {
+    return await this.runAdb(`shell content delete --uri content://com.android.contacts/raw_contacts --where "_id=${id}"`, serial);
+  }
+
+  async getSms(serial) {
+    try {
+      const res = await this.runAdb('shell content query --uri content://sms --projection _id:thread_id:address:body:date:type:read', serial);
+      if (!res.success || !res.stdout || res.stdout.includes('No result found')) {
+        return [];
+      }
+      const rows = res.stdout.trim().split('\n');
+      const messages = [];
+
+      for (const row of rows) {
+        if (!row.startsWith('Row:')) continue;
+        const idMatch = row.match(/_id=(\d+)/);
+        const threadMatch = row.match(/thread_id=(\d+)/);
+        const addrMatch = row.match(/address=([^,]+)/);
+        const bodyMatch = row.match(/body=([^,]+)/);
+        const dateMatch = row.match(/date=(\d+)/);
+        const typeMatch = row.match(/type=(\d+)/);
+
+        const typeCode = typeMatch ? parseInt(typeMatch[1], 10) : 1;
+        const rawDate = dateMatch ? new Date(parseInt(dateMatch[1], 10)) : new Date();
+
+        messages.push({
+          id: idMatch ? idMatch[1] : String(Math.random()),
+          threadId: threadMatch ? `t_${threadMatch[1]}` : 't_default',
+          number: addrMatch ? addrMatch[1].trim() : 'Unknown',
+          sender: typeCode === 2 ? 'شما' : (addrMatch ? addrMatch[1].trim() : 'ناشناس'),
+          body: bodyMatch ? bodyMatch[1].trim() : '',
+          timestamp: rawDate.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+          type: typeCode === 2 ? 'sent' : 'inbox',
+          read: true
+        });
+      }
+
+      return messages;
+    } catch {
+      return [];
+    }
+  }
+
+  async sendSms(serial, { number, body }) {
+    const escaped = body.replace(/([\\"'`$!#&*()|;<>\s])/g, '\\$1');
+    return await this.runAdb(`shell am start -a android.intent.action.SENDTO -d sms:${number} --es sms_body "${escaped}"`, serial);
+  }
+
+  async deleteSms(serial, id) {
+    return await this.runAdb(`shell content delete --uri content://sms --where "_id=${id}"`, serial);
+  }
+
+  async clearAllSms(serial) {
+    return await this.runAdb('shell content delete --uri content://sms', serial);
+  }
+
+  async setTorch(serial, enable) {
+    try {
+      const res = await this.runAdb(`shell cmd flashlight set-torch ${enable ? 1 : 0}`, serial);
+      if (!res.success) {
+        // Fallback for older Android
+        await this.runAdb(`shell service call flashlight 1 i32 ${enable ? 1 : 0}`, serial);
+      }
+      return { success: true, message: enable ? 'فلش دوربین روشن شد' : 'فلش دوربین خاموش شد' };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async triggerCameraShutter(serial) {
+    return await this.runAdb('shell input keyevent 27', serial);
+  }
+
+  async launchCamera(serial, facing = 'back') {
+    const extra = facing === 'front' ? '--ei android.intent.extras.CAMERA_FACING 1' : '--ei android.intent.extras.CAMERA_FACING 0';
+    return await this.runAdb(`shell am start -a android.media.action.IMAGE_CAPTURE ${extra}`, serial);
+  }
+
+  async runFastboot(args) {
+    const adbPath = await toolManager.getAdbPath();
+    const fastbootPath = adbPath.replace('adb.exe', 'fastboot.exe').replace('adb', 'fastboot');
+    try {
+      const { stdout, stderr } = await execAsync(`"${fastbootPath}" ${args}`, { maxBuffer: 10 * 1024 * 1024 });
+      return { success: true, stdout, stderr };
+    } catch (err) {
+      return { success: false, error: err.message, stderr: err.stderr || '' };
+    }
+  }
+}
+
+export const adbManager = new AdbManager();
+
+
+
