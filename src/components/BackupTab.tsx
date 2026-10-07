@@ -23,13 +23,16 @@ import {
   MessageSquare,
   PhoneCall,
   Image as ImageIcon,
+  Folder,
   FolderOpen,
   Check,
   Laptop,
   CheckSquare,
   Square,
   Sliders,
-  Share2
+  Share2,
+  Edit3,
+  X
 } from 'lucide-react';
 import { Device, DeviceApp } from '../types';
 import { AppIcon } from './AppIcon';
@@ -41,6 +44,7 @@ interface BackupTabProps {
 
 interface BackupItem {
   id: string;
+  path?: string;
   deviceName: string;
   deviceType: string;
   serial: string;
@@ -78,6 +82,9 @@ export const BackupTab: React.FC<BackupTabProps> = ({ device }) => {
   });
 
   const [backups, setBackups] = useState<BackupItem[]>([]);
+  const [backupDirectory, setBackupDirectory] = useState<string>('');
+  const [isEditingDir, setIsEditingDir] = useState<boolean>(false);
+  const [customDirInput, setCustomDirInput] = useState<string>('');
   const [loadingBackups, setLoadingBackups] = useState<boolean>(false);
   const [isBackingUp, setIsBackingUp] = useState<boolean>(false);
   const [isRestoring, setIsRestoring] = useState<string | null>(null);
@@ -112,6 +119,10 @@ export const BackupTab: React.FC<BackupTabProps> = ({ device }) => {
       const data = await res.json();
       if (data.success && data.backups) {
         setBackups(data.backups);
+      }
+      if (data.backupDir) {
+        setBackupDirectory(data.backupDir);
+        setCustomDirInput(data.backupDir);
       }
     } catch (err: any) {
       console.error('Error fetching backups:', err);
@@ -246,9 +257,38 @@ export const BackupTab: React.FC<BackupTabProps> = ({ device }) => {
     }
   };
 
+  const handleSaveDirectory = async () => {
+    if (!customDirInput.trim()) {
+      showToast('لطفاً مسیر معتبری وارد کنید.', 'error');
+      return;
+    }
+    try {
+      const res = await fetch('/api/backups/directory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ directory: customDirInput.trim() })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBackupDirectory(data.backupDir);
+        setIsEditingDir(false);
+        showToast(data.message || 'مسیر ذخیره‌سازی نسخه پشتیبان تغییر یافت.', 'success');
+        fetchBackups();
+      } else {
+        showToast(`خطا: ${data.error}`, 'error');
+      }
+    } catch (err: any) {
+      showToast(`خطا: ${err.message}`, 'error');
+    }
+  };
+
   const handleOpenBackupFolder = async () => {
     try {
-      const res = await fetch('/api/backups/open-folder', { method: 'POST' });
+      const res = await fetch('/api/backups/open-folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customPath: backupDirectory })
+      });
       const data = await res.json();
       if (data.success) {
         showToast('پوشه ذخیره‌سازی نسخه‌های پشتیبان در کامپیوتر باز شد.', 'success');
@@ -257,6 +297,31 @@ export const BackupTab: React.FC<BackupTabProps> = ({ device }) => {
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
+    }
+  };
+
+  const handleOpenFileInExplorer = async (backupId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      const res = await fetch(`/api/backups/${encodeURIComponent(backupId)}/open-folder`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message || 'پوشه این نسخه پشتیبان در ویندوز باز شد.', 'success');
+      } else {
+        showToast(`خطا: ${data.error}`, 'error');
+      }
+    } catch (err: any) {
+      showToast(`خطا: ${err.message}`, 'error');
+    }
+  };
+
+  const handleCopyPath = async (pathText: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(pathText);
+      showToast('مسیر در حافظه کلیپ‌بورد کپی شد.', 'success');
+    } catch {
+      showToast('خطا در کپی کردن مسیر.', 'error');
     }
   };
 
@@ -421,322 +486,445 @@ export const BackupTab: React.FC<BackupTabProps> = ({ device }) => {
 
       {/* Section 1: Universal Backup & Restore Hub */}
       {activeSection === 'backup_restore' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* Create Backup Card (5 cols) */}
-          <div className="lg:col-span-5 p-6 rounded-3xl glass-panel border border-slate-800 space-y-5 flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Archive className="w-5 h-5 text-cyan-400" />
-                  <span>تهیه نسخه پشتیبان (Backup)</span>
-                </h3>
-                <p className="text-xs text-slate-400">
-                  انتخاب نحوه پشتیبان‌گیری (کامل یا سفارشی) و محل ذخیره (کامپیوتر یا گوشی)
-                </p>
+        <div className="space-y-6">
+          {/* Backup Directory Storage Control Bar */}
+          <div className="rounded-2xl glass-panel p-4 border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-3 w-full md:w-auto flex-1">
+              <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <Folder className="w-5 h-5" />
               </div>
-
-              {/* Mode Selector: Full vs Custom */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300">نوع پشتیبان‌گیری:</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleModeChange('full')}
-                    className={`flex items-center justify-center gap-2 p-3 rounded-2xl border text-xs font-bold transition-all ${
-                      backupMode === 'full'
-                        ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 shadow-md shadow-cyan-500/10'
-                        : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <Sparkles className="w-4 h-4 text-cyan-400" />
-                    <span>پشتیبان‌گیری کامل (۱ کلیک)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleModeChange('custom')}
-                    className={`flex items-center justify-center gap-2 p-3 rounded-2xl border text-xs font-bold transition-all ${
-                      backupMode === 'custom'
-                        ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 shadow-md shadow-cyan-500/10'
-                        : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <Sliders className="w-4 h-4 text-purple-400" />
-                    <span>پشتیبان‌گیری سفارشی</span>
-                  </button>
+              <div className="flex-1 min-w-0">
+                <div className="text-[11px] font-bold text-slate-400 flex flex-wrap items-center gap-2">
+                  <span>محل ذخیره‌سازی نسخه‌های پشتیبان در کامپیوتر (PC Storage):</span>
+                  <span className="text-[10px] text-amber-400/80 font-normal">کلیک روی دکمه باز کردن برای مشاهده مستقیم در Explorer</span>
                 </div>
-              </div>
-
-              {/* Storage Destination Target */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300">محل ذخیره‌سازی نسخه پشتیبان:</label>
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setDestinationTarget('pc')}
-                    className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-[11px] font-bold transition-all text-center gap-1 ${
-                      destinationTarget === 'pc'
-                        ? 'bg-blue-500/20 border-blue-500 text-blue-300'
-                        : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <Laptop className="w-4 h-4 text-blue-400" />
-                    <span>روی کامپیوتر</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setDestinationTarget('phone')}
-                    className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-[11px] font-bold transition-all text-center gap-1 ${
-                      destinationTarget === 'phone'
-                        ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
-                        : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <Smartphone className="w-4 h-4 text-emerald-400" />
-                    <span>روی حافظه گوشی</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setDestinationTarget('both')}
-                    className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-[11px] font-bold transition-all text-center gap-1 ${
-                      destinationTarget === 'both'
-                        ? 'bg-purple-500/20 border-purple-500 text-purple-300'
-                        : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <Share2 className="w-4 h-4 text-purple-400" />
-                    <span>همزمان هر دو</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Items Selection */}
-              <div className="space-y-2 p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
-                <div className="flex items-center justify-between text-[11px] text-slate-400 pb-1 border-b border-slate-800">
-                  <span>آیتم‌های مشمول پشتیبان‌گیری:</span>
-                  {backupMode === 'custom' ? (
-                    <span className="text-purple-400 font-bold">حالت سفارشی فعال است</span>
-                  ) : (
-                    <span className="text-cyan-400 font-bold">انتخاب کامل خودکار</span>
-                  )}
-                </div>
-
-                <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-800/50 transition-all">
-                  <div className="flex items-center gap-2.5 text-xs text-slate-200">
-                    <Users className="w-4 h-4 text-cyan-400" />
-                    <span>مخاطبین تلفن (خروجی vCard استاندارد vcf و JSON)</span>
+                {isEditingDir ? (
+                  <div className="flex items-center gap-2 mt-1.5 w-full">
+                    <input
+                      type="text"
+                      value={customDirInput}
+                      onChange={(e) => setCustomDirInput(e.target.value)}
+                      placeholder="مسیر پوشه مورد نظر مثلاً: D:\PhoneBackups یا C:\MyBackups"
+                      className="flex-1 bg-slate-900 border border-amber-500/50 rounded-xl px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-amber-400 text-left"
+                      dir="ltr"
+                    />
+                    <button
+                      onClick={handleSaveDirectory}
+                      className="p-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold transition-all"
+                      title="تایید و ذخیره مسیر جدید"
+                    >
+                      <Check className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsEditingDir(false);
+                        setCustomDirInput(backupDirectory);
+                      }}
+                      className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold transition-all"
+                      title="انصراف"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={backupOptions.contacts}
-                    onChange={(e) => setBackupOptions({ ...backupOptions, contacts: e.target.checked })}
-                    className="w-4 h-4 rounded text-cyan-500 focus:ring-0 bg-slate-800 border-slate-700"
-                  />
-                </label>
-
-                <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-800/50 transition-all">
-                  <div className="flex items-center gap-2.5 text-xs text-slate-200">
-                    <MessageSquare className="w-4 h-4 text-emerald-400" />
-                    <span>پیامک‌ها و گفتگوهای SMS</span>
+                ) : (
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="font-mono text-xs font-bold text-amber-300 truncate select-all text-left bg-slate-950/60 px-2.5 py-1 rounded-lg border border-slate-800 flex-1" dir="ltr">
+                      {backupDirectory || 'در حال بارگذاری مسیر...'}
+                    </div>
+                    {backupDirectory && (
+                      <button
+                        onClick={(e) => handleCopyPath(backupDirectory, e)}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all text-xs"
+                        title="کپی مسیر پوشه اصلی پشتیبان"
+                      >
+                        <Clipboard className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={backupOptions.sms}
-                    onChange={(e) => setBackupOptions({ ...backupOptions, sms: e.target.checked })}
-                    className="w-4 h-4 rounded text-cyan-500 focus:ring-0 bg-slate-800 border-slate-700"
-                  />
-                </label>
-
-                <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-800/50 transition-all">
-                  <div className="flex items-center gap-2.5 text-xs text-slate-200">
-                    <PhoneCall className="w-4 h-4 text-purple-400" />
-                    <span>تاریخچه تماس‌های ورودی، خروجی و از دست رفته</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={backupOptions.calls}
-                    onChange={(e) => setBackupOptions({ ...backupOptions, calls: e.target.checked })}
-                    className="w-4 h-4 rounded text-cyan-500 focus:ring-0 bg-slate-800 border-slate-700"
-                  />
-                </label>
-
-                <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-800/50 transition-all">
-                  <div className="flex items-center gap-2.5 text-xs text-slate-200">
-                    <ImageIcon className="w-4 h-4 text-pink-400" />
-                    <span>آلبوم تصاویر دوربین و گالری (DCIM)</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={backupOptions.media}
-                    onChange={(e) => setBackupOptions({ ...backupOptions, media: e.target.checked })}
-                    className="w-4 h-4 rounded text-cyan-500 focus:ring-0 bg-slate-800 border-slate-700"
-                  />
-                </label>
-
-                <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-800/50 transition-all">
-                  <div className="flex items-center gap-2.5 text-xs text-slate-200">
-                    <Layers className="w-4 h-4 text-amber-400" />
-                    <span>فهرست و پکیج برنامه‌های نصب‌شده</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={backupOptions.apps}
-                    onChange={(e) => setBackupOptions({ ...backupOptions, apps: e.target.checked })}
-                    className="w-4 h-4 rounded text-cyan-500 focus:ring-0 bg-slate-800 border-slate-700"
-                  />
-                </label>
-              </div>
-
-              <div className="p-3 rounded-xl bg-cyan-950/20 border border-cyan-500/20 text-[11px] text-cyan-300 leading-relaxed">
-                💡 این نسخه پشتیبان با فرمت استاندارد جهانی ذخیره می‌شود و می‌توانید آن را در آینده روی هر مدل گوشی (سامسونگ، شیائومی، هواوی یا آیفون) بازیابی کنید.
+                )}
               </div>
             </div>
 
-            <button
-              onClick={handleCreateBackup}
-              disabled={isBackingUp || !device}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
-            >
-              <Archive className={`w-4 h-4 ${isBackingUp ? 'animate-bounce' : ''}`} />
-              <span>
-                {isBackingUp 
-                  ? 'در حال پردازش و استخراج نسخه پشتیبان...' 
-                  : `شروع پشتیبان‌گیری ${backupMode === 'full' ? 'کامل' : 'سفارشی'} (${destinationTarget === 'phone' ? 'روی گوشی' : (destinationTarget === 'both' ? 'کامپیوتر و گوشی' : 'روی کامپیوتر')})`
-                }
-              </span>
-            </button>
+            <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+              {!isEditingDir && (
+                <button
+                  onClick={() => setIsEditingDir(true)}
+                  className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all"
+                >
+                  <Edit3 className="w-4 h-4 text-amber-400" />
+                  <span>تغییر محل ذخیره</span>
+                </button>
+              )}
+
+              <button
+                onClick={handleOpenBackupFolder}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600/30 to-yellow-600/30 hover:from-amber-600/50 hover:to-yellow-600/50 text-amber-200 hover:text-white border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 transition-all shadow-lg shadow-amber-950"
+                title="مشاهده پوشه اصلی پشتیبان‌ها در ویندوز اکسپلورر"
+              >
+                <FolderOpen className="w-4 h-4 text-amber-300" />
+                <span>باز کردن پوشه بک‌آپ‌ها (Explorer)</span>
+              </button>
+            </div>
           </div>
 
-          {/* Saved Backups & Restore Hub (7 cols) */}
-          <div className="lg:col-span-7 p-6 rounded-3xl glass-panel border border-slate-800 space-y-4 flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <div className="space-y-0.5">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Create Backup Card (5 cols) */}
+            <div className="lg:col-span-5 p-6 rounded-3xl glass-panel border border-slate-800 space-y-5 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div className="space-y-1">
                   <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <HardDrive className="w-5 h-5 text-cyan-400" />
-                    <span>آرشیو نسخه‌های پشتیبان و استودیوی بازیابی (Restore)</span>
+                    <Archive className="w-5 h-5 text-cyan-400" />
+                    <span>تهیه نسخه پشتیبان (Backup)</span>
                   </h3>
                   <p className="text-xs text-slate-400">
-                    بازیابی کامل یا سفارشی روی دستگاه متصل فعلی: <span className="text-cyan-400 font-bold font-mono">{device?.name || 'دستگاهی متصل نیست'}</span>
+                    انتخاب نحوه پشتیبان‌گیری (کامل یا سفارشی) و محل ذخیره (کامپیوتر یا گوشی)
                   </p>
                 </div>
 
-                <button
-                  onClick={fetchBackups}
-                  disabled={loadingBackups}
-                  className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-all active:scale-95"
-                  title="تازه‌سازی لیست"
-                >
-                  <RefreshCw className={`w-4 h-4 ${loadingBackups ? 'animate-spin' : ''}`} />
-                </button>
+                {/* Mode Selector: Full vs Custom */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300">نوع پشتیبان‌گیری:</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleModeChange('full')}
+                      className={`flex items-center justify-center gap-2 p-3 rounded-2xl border text-xs font-bold transition-all ${
+                        backupMode === 'full'
+                          ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 shadow-md shadow-cyan-500/10'
+                          : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Sparkles className="w-4 h-4 text-cyan-400" />
+                      <span>پشتیبان‌گیری کامل (۱ کلیک)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleModeChange('custom')}
+                      className={`flex items-center justify-center gap-2 p-3 rounded-2xl border text-xs font-bold transition-all ${
+                        backupMode === 'custom'
+                          ? 'bg-cyan-500/20 border-cyan-500 text-cyan-300 shadow-md shadow-cyan-500/10'
+                          : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Sliders className="w-4 h-4 text-purple-400" />
+                      <span>پشتیبان‌گیری سفارشی</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Storage Destination Target */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-300">محل ذخیره‌سازی نسخه پشتیبان:</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setDestinationTarget('pc')}
+                      className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-[11px] font-bold transition-all text-center gap-1 ${
+                        destinationTarget === 'pc'
+                          ? 'bg-blue-500/20 border-blue-500 text-blue-300'
+                          : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Laptop className="w-4 h-4 text-blue-400" />
+                      <span>روی کامپیوتر</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setDestinationTarget('phone')}
+                      className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-[11px] font-bold transition-all text-center gap-1 ${
+                        destinationTarget === 'phone'
+                          ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
+                          : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Smartphone className="w-4 h-4 text-emerald-400" />
+                      <span>روی حافظه گوشی</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setDestinationTarget('both')}
+                      className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-[11px] font-bold transition-all text-center gap-1 ${
+                        destinationTarget === 'both'
+                          ? 'bg-purple-500/20 border-purple-500 text-purple-300'
+                          : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Share2 className="w-4 h-4 text-purple-400" />
+                      <span>همزمان هر دو</span>
+                    </button>
+                  </div>
+
+                  {/* Destination Info Pill */}
+                  <div className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] text-slate-300 flex items-center justify-between gap-2">
+                    <span className="text-slate-400 shrink-0">مسیر مقصد:</span>
+                    <span className="font-mono text-amber-300 truncate text-left dir-ltr" dir="ltr">
+                      {destinationTarget === 'phone' 
+                        ? '/sdcard/CellPhoneManager_Backups/' 
+                        : (destinationTarget === 'both' 
+                            ? `PC (${backupDirectory || 'backups/'}) + Phone (/sdcard/...)` 
+                            : (backupDirectory || 'پوشه backups کامپیوتر'))}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Items Selection */}
+                <div className="space-y-2 p-4 rounded-2xl bg-slate-900/60 border border-slate-800">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pb-1 border-b border-slate-800">
+                    <span>آیتم‌های مشمول پشتیبان‌گیری:</span>
+                    {backupMode === 'custom' ? (
+                      <span className="text-purple-400 font-bold">حالت سفارشی فعال است</span>
+                    ) : (
+                      <span className="text-cyan-400 font-bold">انتخاب کامل خودکار</span>
+                    )}
+                  </div>
+
+                  <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-800/50 transition-all">
+                    <div className="flex items-center gap-2.5 text-xs text-slate-200">
+                      <Users className="w-4 h-4 text-cyan-400" />
+                      <span>مخاطبین تلفن (خروجی vCard استاندارد vcf و JSON)</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={backupOptions.contacts}
+                      onChange={(e) => setBackupOptions({ ...backupOptions, contacts: e.target.checked })}
+                      className="w-4 h-4 rounded text-cyan-500 focus:ring-0 bg-slate-800 border-slate-700"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-800/50 transition-all">
+                    <div className="flex items-center gap-2.5 text-xs text-slate-200">
+                      <MessageSquare className="w-4 h-4 text-emerald-400" />
+                      <span>پیامک‌ها و گفتگوهای SMS</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={backupOptions.sms}
+                      onChange={(e) => setBackupOptions({ ...backupOptions, sms: e.target.checked })}
+                      className="w-4 h-4 rounded text-cyan-500 focus:ring-0 bg-slate-800 border-slate-700"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-800/50 transition-all">
+                    <div className="flex items-center gap-2.5 text-xs text-slate-200">
+                      <PhoneCall className="w-4 h-4 text-purple-400" />
+                      <span>تاریخچه تماس‌های ورودی، خروجی و از دست رفته</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={backupOptions.calls}
+                      onChange={(e) => setBackupOptions({ ...backupOptions, calls: e.target.checked })}
+                      className="w-4 h-4 rounded text-cyan-500 focus:ring-0 bg-slate-800 border-slate-700"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-800/50 transition-all">
+                    <div className="flex items-center gap-2.5 text-xs text-slate-200">
+                      <ImageIcon className="w-4 h-4 text-pink-400" />
+                      <span>آلبوم تصاویر دوربین و گالری (DCIM)</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={backupOptions.media}
+                      onChange={(e) => setBackupOptions({ ...backupOptions, media: e.target.checked })}
+                      className="w-4 h-4 rounded text-cyan-500 focus:ring-0 bg-slate-800 border-slate-700"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-slate-800/50 transition-all">
+                    <div className="flex items-center gap-2.5 text-xs text-slate-200">
+                      <Layers className="w-4 h-4 text-amber-400" />
+                      <span>فهرست و پکیج برنامه‌های نصب‌شده</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={backupOptions.apps}
+                      onChange={(e) => setBackupOptions({ ...backupOptions, apps: e.target.checked })}
+                      className="w-4 h-4 rounded text-cyan-500 focus:ring-0 bg-slate-800 border-slate-700"
+                    />
+                  </label>
+                </div>
+
+                <div className="p-3 rounded-xl bg-cyan-950/20 border border-cyan-500/20 text-[11px] text-cyan-300 leading-relaxed">
+                  💡 این نسخه پشتیبان با فرمت استاندارد جهانی ذخیره می‌شود و می‌توانید آن را در آینده روی هر مدل گوشی (سامسونگ، شیائومی، هواوی یا آیفون) بازیابی کنید.
+                </div>
               </div>
 
-              {/* Backups List */}
-              <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
-                {backups.length === 0 ? (
-                  <div className="p-8 text-center rounded-2xl bg-slate-900/40 border border-slate-800/80 space-y-2">
-                    <Archive className="w-8 h-8 text-slate-600 mx-auto" />
-                    <p className="text-xs text-slate-400 font-bold">هنوز نسخه پشتیبانی در سیستم ذخیره نشده است.</p>
-                    <p className="text-[11px] text-slate-500">از پنل سمت راست برای ایجاد اولین پشتیبان‌گیری کامل یا سفارشی اقدام کنید.</p>
+              <button
+                onClick={handleCreateBackup}
+                disabled={isBackingUp || !device}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+              >
+                <Archive className={`w-4 h-4 ${isBackingUp ? 'animate-bounce' : ''}`} />
+                <span>
+                  {isBackingUp 
+                    ? 'در حال پردازش و استخراج نسخه پشتیبان...' 
+                    : `شروع پشتیبان‌گیری ${backupMode === 'full' ? 'کامل' : 'سفارشی'} (${destinationTarget === 'phone' ? 'روی گوشی' : (destinationTarget === 'both' ? 'کامپیوتر و گوشی' : 'روی کامپیوتر')})`
+                  }
+                </span>
+              </button>
+            </div>
+
+            {/* Saved Backups & Restore Hub (7 cols) */}
+            <div className="lg:col-span-7 p-6 rounded-3xl glass-panel border border-slate-800 space-y-4 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="space-y-0.5">
+                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                      <HardDrive className="w-5 h-5 text-cyan-400" />
+                      <span>آرشیو نسخه‌های پشتیبان و استودیوی بازیابی (Restore)</span>
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      بازیابی کامل یا سفارشی روی دستگاه متصل فعلی: <span className="text-cyan-400 font-bold font-mono">{device?.name || 'دستگاهی متصل نیست'}</span>
+                    </p>
                   </div>
-                ) : (
-                  backups.map((bak) => (
-                    <div 
-                      key={bak.id}
-                      className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-slate-700 transition-all space-y-3"
-                    >
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <Smartphone className="w-4 h-4 text-cyan-400" />
-                          <span className="text-xs font-bold text-white">{bak.deviceName}</span>
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono">
-                            {bak.backupMode === 'full' ? 'کامل' : 'سفارشی'}
-                          </span>
-                          {bak.destinationTarget === 'phone' && (
-                            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                              ذخیره روی گوشی
-                            </span>
-                          )}
-                        </div>
 
-                        <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
-                          <Clock className="w-3.5 h-3.5 text-slate-500" />
-                          <span>{formatPersianDate(bak.createdAt)}</span>
-                        </div>
-                      </div>
+                  <button
+                    onClick={fetchBackups}
+                    disabled={loadingBackups}
+                    className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white transition-all active:scale-95"
+                    title="تازه‌سازی لیست"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${loadingBackups ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
 
-                      {/* Items Pills */}
-                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-300">
-                        <span className="px-2 py-1 rounded-lg bg-slate-800/80 border border-slate-700/50">
-                          👤 {bak.items?.contactsCount || 0} مخاطب
-                        </span>
-                        <span className="px-2 py-1 rounded-lg bg-slate-800/80 border border-slate-700/50">
-                          💬 {bak.items?.smsCount || 0} پیامک
-                        </span>
-                        <span className="px-2 py-1 rounded-lg bg-slate-800/80 border border-slate-700/50">
-                          📞 {bak.items?.callsCount || 0} تماس
-                        </span>
-                        <span className="px-2 py-1 rounded-lg bg-slate-800/80 border border-slate-700/50">
-                          📦 {bak.items?.appsCount || 0} برنامه
-                        </span>
-                        {bak.items?.mediaFilesCount ? (
-                          <span className="px-2 py-1 rounded-lg bg-slate-800/80 border border-slate-700/50">
-                            🖼️ {bak.items.mediaFilesCount} عکس
-                          </span>
-                        ) : null}
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-800/60">
-                        <span className="text-[10px] text-slate-500 font-mono truncate max-w-[200px]" title={bak.id}>
-                          {bak.id}
-                        </span>
-
-                        <div className="flex items-center gap-2">
-                          {/* Custom Restore Trigger */}
-                          <button
-                            onClick={() => {
-                              setCustomRestoreModal(bak);
-                              setRestoreOptions({
-                                contacts: (bak.items?.contactsCount || 0) > 0,
-                                sms: (bak.items?.smsCount || 0) > 0,
-                                calls: (bak.items?.callsCount || 0) > 0
-                              });
-                            }}
-                            disabled={!device || isRestoring === bak.id}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 text-xs font-bold transition-all active:scale-95 disabled:opacity-50"
-                            title="انتخاب دستی بخش‌های مورد نظر جهت بازیابی"
-                          >
-                            <Sliders className="w-3.5 h-3.5" />
-                            <span>بازیابی سفارشی</span>
-                          </button>
-
-                          {/* Full 1-Click Restore */}
-                          <button
-                            onClick={() => handleRestoreBackup(bak.id)}
-                            disabled={isRestoring === bak.id || !device}
-                            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md transition-all active:scale-95 disabled:opacity-50"
-                          >
-                            <RotateCcw className={`w-3.5 h-3.5 ${isRestoring === bak.id ? 'animate-spin' : ''}`} />
-                            <span>بازیابی کامل</span>
-                          </button>
-
-                          {/* Delete */}
-                          <button
-                            onClick={() => handleDeleteBackup(bak.id)}
-                            className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all"
-                            title="حذف بک‌آپ"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
+                {/* Backups List */}
+                <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
+                  {backups.length === 0 ? (
+                    <div className="p-8 text-center rounded-2xl bg-slate-900/40 border border-slate-800/80 space-y-2">
+                      <Archive className="w-8 h-8 text-slate-600 mx-auto" />
+                      <p className="text-xs text-slate-400 font-bold">هنوز نسخه پشتیبانی در سیستم ذخیره نشده است.</p>
+                      <p className="text-[11px] text-slate-500">از پنل سمت راست برای ایجاد اولین پشتیبان‌گیری کامل یا سفارشی اقدام کنید.</p>
                     </div>
-                  ))
-                )}
+                  ) : (
+                    backups.map((bak) => {
+                      const fullItemPath = bak.path || (backupDirectory ? `${backupDirectory}\\${bak.id}` : bak.id);
+                      return (
+                        <div 
+                          key={bak.id}
+                          className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-slate-700 transition-all space-y-3"
+                        >
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <Smartphone className="w-4 h-4 text-cyan-400" />
+                              <span className="text-xs font-bold text-white">{bak.deviceName}</span>
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-mono">
+                                {bak.backupMode === 'full' ? 'کامل' : 'سفارشی'}
+                              </span>
+                              {bak.destinationTarget === 'phone' && (
+                                <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                  ذخیره روی گوشی
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
+                              <Clock className="w-3.5 h-3.5 text-slate-500" />
+                              <span>{formatPersianDate(bak.createdAt)}</span>
+                            </div>
+                          </div>
+
+                          {/* Items Pills */}
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-300">
+                            <span className="px-2 py-1 rounded-lg bg-slate-800/80 border border-slate-700/50">
+                              👤 {bak.items?.contactsCount || 0} مخاطب
+                            </span>
+                            <span className="px-2 py-1 rounded-lg bg-slate-800/80 border border-slate-700/50">
+                              💬 {bak.items?.smsCount || 0} پیامک
+                            </span>
+                            <span className="px-2 py-1 rounded-lg bg-slate-800/80 border border-slate-700/50">
+                              📞 {bak.items?.callsCount || 0} تماس
+                            </span>
+                            <span className="px-2 py-1 rounded-lg bg-slate-800/80 border border-slate-700/50">
+                              📦 {bak.items?.appsCount || 0} برنامه
+                            </span>
+                            {bak.items?.mediaFilesCount ? (
+                              <span className="px-2 py-1 rounded-lg bg-slate-800/80 border border-slate-700/50">
+                                🖼️ {bak.items.mediaFilesCount} عکس
+                              </span>
+                            ) : null}
+                          </div>
+
+                          {/* Full File Path & Explorer Quick Link */}
+                          <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-950/80 border border-slate-800/80 text-[11px] font-mono text-slate-400">
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1 truncate text-left" dir="ltr">
+                              <Folder className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                              <span className="truncate text-slate-300 select-all font-mono text-[11px]" title={fullItemPath}>
+                                {fullItemPath}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                onClick={(e) => handleCopyPath(fullItemPath, e)}
+                                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-all"
+                                title="کپی مسیر فایل در کلیپ‌بورد"
+                              >
+                                <Clipboard className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={(e) => handleOpenFileInExplorer(bak.id, e)}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-sans font-bold transition-all active:scale-95"
+                                title="باز کردن پوشه این نسخه خاص در ویندوز اکسپلورر"
+                              >
+                                <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
+                                <span>مشاهده در پوشه</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center justify-between pt-2 border-t border-slate-800/60">
+                            <span className="text-[10px] text-slate-500 font-mono truncate max-w-[200px]" title={bak.id}>
+                              {bak.id}
+                            </span>
+
+                            <div className="flex items-center gap-2">
+                              {/* Custom Restore Trigger */}
+                              <button
+                                onClick={() => {
+                                  setCustomRestoreModal(bak);
+                                  setRestoreOptions({
+                                    contacts: (bak.items?.contactsCount || 0) > 0,
+                                    sms: (bak.items?.smsCount || 0) > 0,
+                                    calls: (bak.items?.callsCount || 0) > 0
+                                  });
+                                }}
+                                disabled={!device || isRestoring === bak.id}
+                                className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 text-xs font-bold transition-all active:scale-95 disabled:opacity-50"
+                                title="انتخاب دستی بخش‌های مورد نظر جهت بازیابی"
+                              >
+                                <Sliders className="w-3.5 h-3.5" />
+                                <span>بازیابی سفارشی</span>
+                              </button>
+
+                              {/* Full 1-Click Restore */}
+                              <button
+                                onClick={() => handleRestoreBackup(bak.id)}
+                                disabled={isRestoring === bak.id || !device}
+                                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md transition-all active:scale-95 disabled:opacity-50"
+                              >
+                                <RotateCcw className={`w-3.5 h-3.5 ${isRestoring === bak.id ? 'animate-spin' : ''}`} />
+                                <span>بازیابی کامل</span>
+                              </button>
+
+                              {/* Delete */}
+                              <button
+                                onClick={() => handleDeleteBackup(bak.id)}
+                                className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all"
+                                title="حذف بک‌آپ"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
             </div>
           </div>

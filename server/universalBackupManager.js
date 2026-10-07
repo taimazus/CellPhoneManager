@@ -23,6 +23,22 @@ export class UniversalBackupManager {
     return this.backupDir;
   }
 
+  setBackupDir(newPath) {
+    if (!newPath || typeof newPath !== 'string') {
+      return { success: false, error: 'مسیر پوشه نامعتبر است.' };
+    }
+    try {
+      const resolved = path.resolve(newPath.trim());
+      if (!fs.existsSync(resolved)) {
+        fs.mkdirSync(resolved, { recursive: true });
+      }
+      this.backupDir = resolved;
+      return { success: true, message: 'محل ذخیره‌سازی نسخه‌های پشتیبان با موفقیت تغییر یافت.', backupDir: this.backupDir };
+    } catch (err) {
+      return { success: false, error: `عدم امکان تنظیم مسیر: ${err.message}` };
+    }
+  }
+
   // 1. List all local PC backups
   async listBackups() {
     try {
@@ -51,11 +67,12 @@ export class UniversalBackupManager {
       // Sort newest first
       return {
         success: true,
+        backupDir: this.backupDir,
         backups: backups.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       };
     } catch (e) {
       console.error('[UniversalBackupManager] listBackups error:', e);
-      return { success: false, error: e.message, backups: [] };
+      return { success: false, error: e.message, backupDir: this.backupDir, backups: [] };
     }
   }
 
@@ -346,15 +363,41 @@ export class UniversalBackupManager {
   }
 
   // 5. Open Backup Folder in Windows Explorer
-  async openBackupFolder() {
+  async openBackupFolder(customPath) {
+    const targetDir = customPath ? path.resolve(customPath) : this.backupDir;
     this.ensureBackupDir();
+    if (!fs.existsSync(targetDir)) {
+      try {
+        fs.mkdirSync(targetDir, { recursive: true });
+      } catch (err) {
+        return { success: false, error: `مسیر وجود ندارد: ${err.message}` };
+      }
+    }
     return new Promise((resolve) => {
-      exec(`explorer.exe "${this.backupDir}"`, (err) => {
+      exec(`explorer.exe "${targetDir}"`, (err) => {
         if (err) {
           console.error('[UniversalBackupManager] explorer error:', err);
           resolve({ success: false, error: err.message });
         } else {
-          resolve({ success: true, message: 'پوشه بک‌آپ‌ها در ویندوز باز شد.' });
+          resolve({ success: true, message: 'پوشه بک‌آپ‌ها در ویندوز باز شد.', path: targetDir });
+        }
+      });
+    });
+  }
+
+  // Open specific backup sub-folder in Windows Explorer
+  async openBackupItemFolder(backupId) {
+    const backupPath = this.validateAndResolveBackupPath(backupId);
+    if (!backupPath || !fs.existsSync(backupPath)) {
+      return { success: false, error: 'پوشه نسخه پشتیبان یافت نشد.' };
+    }
+    return new Promise((resolve) => {
+      exec(`explorer.exe "${backupPath}"`, (err) => {
+        if (err) {
+          console.error('[UniversalBackupManager] explorer error:', err);
+          resolve({ success: false, error: err.message });
+        } else {
+          resolve({ success: true, message: 'پوشه نسخه پشتیبان در ویندوز باز شد.', path: backupPath });
         }
       });
     });

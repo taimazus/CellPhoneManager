@@ -2626,12 +2626,35 @@ app.delete('/api/backups/:backupId', async (req, res) => {
   }
 });
 
-app.post('/api/backups/open-folder', async (req, res) => {
+app.post('/api/backups/directory', (req, res) => {
+  const { directory } = req.body;
   try {
-    const result = await universalBackupManager.openBackupFolder();
+    const result = universalBackupManager.setBackupDir(directory);
+    res.json(result);
+  } catch (err) {
+    console.error('API /api/backups/directory error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/backups/open-folder', async (req, res) => {
+  const { customPath } = req.body || {};
+  try {
+    const result = await universalBackupManager.openBackupFolder(customPath);
     res.json(result);
   } catch (err) {
     console.error('API /api/backups/open-folder error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/backups/:backupId/open-folder', async (req, res) => {
+  const { backupId } = req.params;
+  try {
+    const result = await universalBackupManager.openBackupItemFolder(backupId);
+    res.json(result);
+  } catch (err) {
+    console.error(`API /api/backups/${backupId}/open-folder error:`, err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

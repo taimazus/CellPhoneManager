@@ -2,10 +2,22 @@ import { describe, it, expect } from 'vitest';
 import { universalBackupManager } from '../server/universalBackupManager.js';
 
 describe('UniversalBackupManager Test Suite', () => {
-  it('should list backups correctly', async () => {
+  it('should list backups correctly and expose backupDir', async () => {
     const listRes = await universalBackupManager.listBackups();
     expect(listRes).toHaveProperty('success', true);
+    expect(listRes).toHaveProperty('backupDir');
+    expect(typeof listRes.backupDir).toBe('string');
     expect(Array.isArray(listRes.backups)).toBe(true);
+  });
+
+  it('should get and set custom backup directory safely', () => {
+    const originalDir = universalBackupManager.getBackupDir();
+    const setRes = universalBackupManager.setBackupDir(originalDir);
+    expect(setRes.success).toBe(true);
+    expect(setRes.backupDir).toBe(originalDir);
+
+    const invalidRes = universalBackupManager.setBackupDir('');
+    expect(invalidRes.success).toBe(false);
   });
 
   it('should create full mock backup and verify manifest', async () => {
