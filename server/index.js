@@ -1631,7 +1631,8 @@ app.post('/api/devices/migration/start', async (req, res) => {
 // -------------------------------------------------------------
 app.get('/api/devices/:id/ocr/extract', async (req, res) => {
   const { id } = req.params;
-  const result = await ocrManager.extractScreenText(id);
+  const { mode = 'hybrid' } = req.query;
+  const result = await ocrManager.extractScreenText(id, mode);
   res.json(result);
 });
 
