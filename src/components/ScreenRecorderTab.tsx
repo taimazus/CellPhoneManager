@@ -273,6 +273,7 @@ export const ScreenRecorderTab: React.FC<ScreenRecorderTabProps> = ({ device }) 
             {/* Video Player */}
             <div className="bg-black flex items-center justify-center p-2 relative flex-1 min-h-[360px]">
               <video
+                key={selectedVideo.name}
                 controls
                 autoPlay
                 className="w-full max-h-[60vh] rounded-xl shadow-lg"

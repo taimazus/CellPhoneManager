@@ -859,7 +859,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
               {/* PDF PREVIEW */}
               {getFileCategory(previewFile.name) === 'pdf' && (
                 <div className="w-full h-[65vh] rounded-2xl overflow-hidden border border-slate-800">
-                  <iframe src={previewFile.url} className="w-full h-full" title="PDF Preview" />
+                  <iframe key={previewFile.url} src={previewFile.url} className="w-full h-full" title="PDF Preview" />
                 </div>
               )}
 

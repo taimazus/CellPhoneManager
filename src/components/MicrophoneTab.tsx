@@ -287,6 +287,7 @@ export const MicrophoneTab: React.FC<MicrophoneTabProps> = ({ device }) => {
               </div>
 
               <audio
+                key={selectedAudio.name}
                 controls
                 autoPlay
                 className="w-full mt-2"
