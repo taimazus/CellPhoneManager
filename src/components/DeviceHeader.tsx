@@ -37,7 +37,7 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
 }) => {
   return (
     <header className="h-20 bg-[#0c142b]/90 border-b border-cyan-500/20 px-6 flex items-center justify-between glass-panel sticky top-0 z-30">
-      {/* Device Selector Dropdown */}
+      {/* Device Selector Dropdown & Connection Status */}
       <div className="flex items-center gap-3">
         <div className="relative group">
           <div className="flex items-center gap-3 bg-slate-900/90 hover:bg-slate-850 px-4 py-2.5 rounded-xl border border-slate-700/80 hover:border-cyan-500/50 cursor-pointer transition-all shadow-inner">
@@ -53,7 +53,7 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
                 <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-cyan-400 transition-colors" />
               </div>
               <div className="text-xs text-slate-400 font-mono flex items-center gap-2">
-                <span>{selectedDevice?.osVersion || 'USB/Wi-Fi'}</span>
+                <span>{selectedDevice?.osVersion || 'Android'}</span>
                 <span>•</span>
                 <span className="text-cyan-400">{selectedDevice?.serial || 'Disconnected'}</span>
               </div>
@@ -68,14 +68,38 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
                 if (dev) onSelectDevice(dev);
               }}
             >
-              {devices.map((d) => (
-                <option key={d.id} value={d.id} className="bg-slate-900 text-white">
-                  {d.type.toUpperCase()}: {d.name} ({d.serial})
-                </option>
-              ))}
+              {devices.map((d) => {
+                const isWifiDev = d.id.includes(':') || d.id.includes('.');
+                return (
+                  <option key={d.id} value={d.id} className="bg-slate-900 text-white">
+                    {d.type.toUpperCase()}: {d.name} ({isWifiDev ? 'Wi-Fi' : 'USB'}) - {d.serial}
+                  </option>
+                );
+              })}
             </select>
           </div>
         </div>
+
+        {/* Active Connection Type Badge */}
+        {selectedDevice && (
+          <div className={`hidden md:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border ${
+            selectedDevice.id.includes(':') || selectedDevice.id.includes('.')
+              ? 'bg-blue-500/10 text-blue-300 border-blue-500/30'
+              : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+          }`}>
+            {selectedDevice.id.includes(':') || selectedDevice.id.includes('.') ? (
+              <>
+                <Wifi className="w-3.5 h-3.5 text-blue-400" />
+                <span>اتصال بی‌سیم (Wi-Fi)</span>
+              </>
+            ) : (
+              <>
+                <Usb className="w-3.5 h-3.5 text-emerald-400" />
+                <span>اتصال کابل (USB)</span>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Refresh Devices Button */}
         <button
@@ -91,10 +115,10 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
         <button
           onClick={onOpenWirelessModal}
           className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500/10 to-blue-600/20 hover:from-cyan-500/20 hover:to-blue-600/30 text-cyan-300 border border-cyan-500/40 text-xs font-bold transition-all shadow-sm group"
-          title="اتصال بی‌سیم از طریق Wi-Fi بدون کابل"
+          title="اتصال دستگاه جدید از طریق شبکه بی‌سیم Wi-Fi"
         >
           <Wifi className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" />
-          <span>اتصال بی‌سیم (Wi-Fi)</span>
+          <span>+ اتصال Wi-Fi جدید</span>
         </button>
       </div>
 

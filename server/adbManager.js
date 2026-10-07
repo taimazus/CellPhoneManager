@@ -901,17 +901,19 @@ export class AdbManager {
   }
 
   async launchCamera(serial, facing = 'back') {
-    const extra = facing === 'front' 
-      ? '--ei android.intent.extras.CAMERA_FACING 1 --ei android.intent.extra.USE_FRONT_CAMERA true' 
-      : '--ei android.intent.extras.CAMERA_FACING 0';
+    const isFront = facing === 'front';
+    const extra = isFront 
+      ? '--ei android.intent.extras.CAMERA_FACING 1 --ez android.intent.extra.USE_FRONT_CAMERA true' 
+      : '--ei android.intent.extras.CAMERA_FACING 0 --ez android.intent.extra.USE_FRONT_CAMERA false';
     try {
-      const res = await this.runAdb(`shell am start -a android.media.action.STILL_IMAGE_CAMERA ${extra}`, serial);
+      // Use -S to force stop existing camera instance and reopen with new lens facing
+      const res = await this.runAdb(`shell am start -S -a android.media.action.STILL_IMAGE_CAMERA ${extra}`, serial);
       if (!res.success) {
-        return await this.runAdb(`shell am start -a android.media.action.IMAGE_CAPTURE ${extra}`, serial);
+        return await this.runAdb(`shell am start -S -a android.media.action.IMAGE_CAPTURE ${extra}`, serial);
       }
       return res;
     } catch {
-      return await this.runAdb(`shell am start -a android.media.action.IMAGE_CAPTURE ${extra}`, serial);
+      return await this.runAdb(`shell am start -S -a android.media.action.IMAGE_CAPTURE ${extra}`, serial);
     }
   }
 

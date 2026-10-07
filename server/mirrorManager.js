@@ -62,6 +62,9 @@ export class MirrorManager {
   }
 
   async startCameraWebcam(serial, options = {}) {
+    // Clean up any existing stream process for this device first
+    this.stopScrcpy(serial);
+
     const scrcpyPath = await toolManager.getScrcpyPath();
     const args = [];
 
@@ -69,17 +72,17 @@ export class MirrorManager {
       args.push('-s', serial);
     }
 
-    // Direct camera source mode
+    // Direct camera source mode (requires --no-audio on Android 12+)
     args.push('--video-source=camera');
+    args.push('--no-audio');
     
-    if (options.facing === 'front') {
-      args.push('--camera-facing=front');
-    } else {
-      args.push('--camera-facing=back');
-    }
+    const isFront = options.facing === 'front';
+    args.push(`--camera-facing=${isFront ? 'front' : 'back'}`);
 
     if (options.cameraSize) {
       args.push(`--camera-size=${options.cameraSize}`); // e.g. 1920x1080
+    } else {
+      args.push('--camera-size=1920x1080');
     }
 
     if (options.cameraFps) {
@@ -96,6 +99,9 @@ export class MirrorManager {
       args.push('--always-on-top');
     }
 
+    const winTitle = isFront ? 'وب‌کم سلفی سهند (Sahand Selfie Webcam)' : 'وب‌کم اصلی سهند (Sahand Back HD Webcam)';
+    args.push(`--window-title=${winTitle}`);
+
     if (options.recordPath) {
       args.push('--record', options.recordPath);
     }
@@ -111,7 +117,7 @@ export class MirrorManager {
 
       return {
         success: true,
-        message: `وب‌کم دوربین ${options.facing === 'front' ? 'سلفی (جلو)' : 'اصلی (پشت)'} با کیفیت بالا فعال شد`,
+        message: `وب‌کم اختصاصی ${isFront ? 'سلفی (جلو)' : 'اصلی (پشت)'} با کیفیت 1080p با موفقیت در ویندوز باز شد`,
         pid: proc.pid
       };
     } catch (err) {

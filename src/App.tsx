@@ -50,9 +50,17 @@ export function App() {
       const res = await fetch('/api/devices');
       const data = await res.json();
       if (data.devices && Array.isArray(data.devices)) {
-        setDevices(data.devices);
-        if (!selectedDevice || !data.devices.some((d: Device) => d.id === selectedDevice.id)) {
-          setSelectedDevice(data.devices[0] || null);
+        // Sort devices so that high-speed USB devices come first before Wi-Fi / mock devices
+        const sorted = [...data.devices].sort((a: Device, b: Device) => {
+          const aWifi = a.id.includes(':') || a.id.includes('.');
+          const bWifi = b.id.includes(':') || b.id.includes('.');
+          if (aWifi && !bWifi) return 1;
+          if (!aWifi && bWifi) return -1;
+          return 0;
+        });
+        setDevices(sorted);
+        if (!selectedDevice || !sorted.some((d: Device) => d.id === selectedDevice.id)) {
+          setSelectedDevice(sorted[0] || null);
         }
       }
     } catch (err) {

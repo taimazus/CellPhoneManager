@@ -130,21 +130,31 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
   };
 
   // Launch Stock Camera App on Device Screen
-  const handleLaunchCameraApp = async () => {
+  const handleLaunchCameraApp = async (targetFacing = facing) => {
     if (!device) return;
     try {
       const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/camera/launch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ facing })
+        body: JSON.stringify({ facing: targetFacing })
       });
       if (data.success) {
-        showToast(data.message || 'برنامه دوربین روی گوشی باز شد', 'success');
+        showToast(data.message || `برنامه دوربین (${targetFacing === 'front' ? 'سلفی' : 'اصلی'}) باز شد`, 'success');
       } else {
         showToast(`خطا: ${data.error || 'خطای ناشناخته'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
+    }
+  };
+
+  const handleSwitchCameraFacing = async () => {
+    const nextFacing = facing === 'back' ? 'front' : 'back';
+    setFacing(nextFacing);
+    if (isWebcamActive) {
+      await handleStartWebcam(nextFacing);
+    } else {
+      await handleLaunchCameraApp(nextFacing);
     }
   };
 
@@ -155,13 +165,22 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
     }
   }, [device?.id]);
 
-  // Toggle in-browser live viewfinder
+  // In-browser live viewfinder polling
   useEffect(() => {
     if (!device || !isLiveStreaming) return;
-    const interval = setInterval(() => {
+    let isMounted = true;
+
+    const refreshFrame = () => {
+      if (!isMounted || !isLiveStreaming) return;
       setStreamUrl(`/api/devices/${encodeURIComponent(device.id)}/screencap.png?t=${Date.now()}`);
-    }, 250); // 4 FPS in-browser preview
-    return () => clearInterval(interval);
+    };
+
+    refreshFrame();
+    const interval = setInterval(refreshFrame, 400); // 2.5 FPS lightweight preview
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [device?.id, isLiveStreaming]);
 
   return (
@@ -218,7 +237,7 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
               {/* Quick Switch Buttons */}
               <div className="flex items-center gap-2">
                 <button
-                  onClick={handleLaunchCameraApp}
+                  onClick={() => handleLaunchCameraApp(facing)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs font-semibold transition-all"
                   title="باز کردن مستقیم برنامه دوربین روی صفحه گوشی"
                 >
@@ -227,11 +246,7 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
                 </button>
 
                 <button
-                  onClick={() => {
-                    const newFacing = facing === 'back' ? 'front' : 'back';
-                    setFacing(newFacing);
-                    if (isWebcamActive) handleStartWebcam(newFacing);
-                  }}
+                  onClick={handleSwitchCameraFacing}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs font-semibold transition-all"
                   title="سوئیچ بین دوربین جلو و پشت"
                 >
