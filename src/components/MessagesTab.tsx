@@ -1092,29 +1092,30 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                   </button>
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="text"
-                    placeholder="*100# یا *555#..."
-                    value={ussdCode}
-                    onChange={(e) => setUssdCode(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleRunUssd()}
-                    className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-500"
-                  />
+                <div className="flex items-center gap-1.5" dir="ltr">
                   <button
                     onClick={() => handleRunUssd()}
                     disabled={ussdLoading}
-                    className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-slate-950 text-xs font-bold transition-all border border-cyan-500/30 disabled:opacity-50"
+                    className="px-3.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-slate-950 text-xs font-bold transition-all border border-cyan-500/30 disabled:opacity-50 flex items-center gap-1"
                   >
-                    {ussdLoading ? 'در حال دریافت...' : 'ارسال USSD'}
+                    <span>ارسال USSD</span>
                   </button>
+                  <input
+                    type="text"
+                    placeholder="*100# or *555#..."
+                    value={ussdCode}
+                    onChange={(e) => setUssdCode(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleRunUssd()}
+                    dir="ltr"
+                    className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-500 text-left placeholder:text-right"
+                  />
                 </div>
 
                 {/* Preset USSD Chips */}
-                <div className="flex flex-wrap gap-1.5 pt-1">
+                <div className="flex flex-wrap gap-1.5 pt-1" dir="rtl">
                   {[
-                    { label: 'شارژ ایرانسل', code: '*140*11#' },
                     { label: 'اینترنت همراه اول', code: '*100#' },
+                    { label: 'شارژ ایرانسل', code: '*140*11#' },
                     { label: 'منوی ایرانسل', code: '*555#' },
                     { label: 'آپ (۷۳۳)', code: '*733#' },
                     { label: 'هفت هشتاد', code: '*788#' },
@@ -1123,10 +1124,10 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                     <button
                       key={chip.code}
                       onClick={() => handleRunUssd(chip.code)}
-                      className="px-2 py-1 rounded-lg bg-slate-900/90 hover:bg-cyan-500/10 text-[11px] font-mono text-slate-300 hover:text-cyan-300 border border-slate-800 transition-all flex items-center gap-1"
+                      className="px-2.5 py-1 rounded-xl bg-slate-900/90 hover:bg-cyan-500/10 text-[11px] text-slate-300 hover:text-cyan-300 border border-slate-800 transition-all flex items-center gap-1.5"
                     >
-                      <span className="text-cyan-400">{chip.code}</span>
-                      <span className="text-slate-500">({chip.label})</span>
+                      <span className="text-cyan-400 font-mono font-bold" dir="ltr">{chip.code}</span>
+                      <span className="text-slate-400 font-sans">({chip.label})</span>
                     </button>
                   ))}
                 </div>
