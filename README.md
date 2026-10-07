@@ -1,95 +1,94 @@
-# 👑 CellPhoneManager v3.4.4 Royal Edition — Universal Smartphone Management Suite
+# 👑 CellPhoneManager v3.4.4 — Royal Edition
 
-[![Sahand Electronic Solutions](https://img.shields.io/badge/Developed%20By-Sahand%20Electronic%20Solutions%20(irres.ir)-d4af37?style=for-the-badge&logo=android)](https://irres.ir)
+[![Sahand Electronic Solutions Co.](https://img.shields.io/badge/Developed%20By-Sahand%20Electronic%20Solutions%20Co.%20(irres.ir)-d4af37?style=for-the-badge&logo=android)](https://irres.ir)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-taimazus%2FCellPhoneManager-181717?style=for-the-badge&logo=github)](https://github.com/taimazus/CellPhoneManager)
-[![Release Version](https://img.shields.io/badge/Version-v3.4.4%20Royal%20Edition-eab308?style=for-the-badge)](https://github.com/taimazus/CellPhoneManager)
+[![Version](https://img.shields.io/badge/Version-v3.4.4%20Royal%20Edition-eab308?style=for-the-badge)](https://github.com/taimazus/CellPhoneManager)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011%20(x64)-blue?style=for-the-badge&logo=windows)](https://irres.ir)
-[![Cross Platform](https://img.shields.io/badge/Support-Android%20%26%20Apple%20iOS-purple?style=for-the-badge&logo=apple)](https://irres.ir)
 
 <div align="center">
-  <img src="banner.jpg" alt="CellPhoneManager Royal Edition Promotional Banner" width="100%" style="border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.6);" />
-  <p><em>Exclusively engineered and developed by <strong>Sahand Electronic Solutions Co.</strong> (<a href="https://irres.ir">https://irres.ir</a>)</em></p>
-  <p><strong><a href="README.fa.md">🇮🇷 برای مشاهده مستندات کامل به زبان فارسی اینجا کلیک کنید</a></strong></p>
+  <img src="banner.jpg" alt="CellPhoneManager Royal Edition Banner" width="100%" style="border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.6);" />
+  <p><em>Exclusively engineered and maintained by <strong>Sahand Electronic Solutions Co.</strong> (<a href="https://irres.ir">https://irres.ir</a>)</em></p>
+  <p><strong><a href="README.fa.md">🇮🇷 برای مشاهده مستندات فارسی اینجا کلیک کنید</a></strong></p>
 </div>
 
 ---
 
-## 📌 Overview
+## 📌 Executive Overview
 
-**CellPhoneManager v3.4.4 Royal Edition** is an enterprise-grade, high-performance smartphone bridge and device management suite designed for Windows 10 & 11 with an Imperial Charcoal & Royal 24k Gold aesthetic. It connects to Android (Xiaomi / HyperOS / MIUI, Samsung One UI, Huawei EMUI, Oppo ColorOS, Google Pixel) and Apple iOS devices over high-speed USB or Wireless ADB, providing rich diagnostics, hardware testing, audio streaming, screen recording, system cleaning, security auditing, multi-player PC gamepad simulation, and full data management.
+**CellPhoneManager v3.4.4 Royal Edition** is an enterprise-grade, ultra-responsive Windows desktop management, diagnostics, rooting, flashing, media studio, and remote control suite featuring a bespoke 24K Royal Gold and Obsidian UI theme.
+
+### 🌟 Key Capabilities
+
+* **📁 Advanced File Explorer & Media Studio:**
+  * **Recursive Drag & Drop:** Seamlessly drop multiple files or entire folder trees from Windows explorer with recursive subfolder hierarchy preserved on mobile storage.
+  * **Publish & Upload Suite:** Dedicated actions for multi-file upload and entire folder tree upload with real-time percentage progress bars.
+  * **Accurate 8-Way Sorting:** Exact byte-level sorting (`size_desc`, `size_asc`), Persian/English alphabetical (`name_asc`, `name_desc`), timestamp (`date_desc`, `date_asc`), and file extension grouping (`type_asc`, `type_desc`).
+  * **Prominent Size Badging:** High-contrast emerald badge size indicators across all 5 view layouts (**Compact**, **Standard Grid**, **Large Showcase**, **Horizontal Tiles**, and **Detailed List**).
+  * **Intelligent Selection:** Shift-click range selection, Select All, Invert Selection, and dynamic Floating Action Bar.
+  * **Batch ZIP Download:** Pack and stream all selected files and directories into a single `.zip` archive on demand.
+  * **Live Media Studio Preview:** Live video player with interactive controls, in-app music player, image viewer with rotation/zoom, code/text inspector, and embedded PDF viewer.
+* **🎮 Wireless PC Gamepad Engine:** Zero-latency (< 2ms) mobile-to-PC controller with direct C# hardware ScanCode injection (PS/2 scan codes), independent of Windows active IME/keyboard layout (Persian/English), supporting 2 concurrent players (Player 1 & Player 2), haptic vibration, and tactile sound feedback.
+* **🛡️ 5-State Capability Evaluation Matrix (`capabilityManager`):** Real-time prerequisite validation (`READY`, `NEEDS_CONFIG`, `NEEDS_TOOL`, `UNSUPPORTED_OS`, `INDETERMINATE`) with actionable guidance.
+* **📦 100% Offline Air-Gapped Ready (`bin/wheels/`):** Bundled native toolkits (ADB, Fastboot, Scrcpy) and offline Python wheels.
+* **🔐 Military-Grade AES-256 Backups (`universalBackupManager`):** Encrypted backup containers for contacts, SMS, call logs, photos, and apps with pre-restore inspection.
+* **⚡ Multi-Device Task Queue (`taskQueueManager`):** Concurrent batch execution across multiple connected smartphones.
+* **📈 Real-Time Telemetry (`telemetryManager`):** Time-series battery health, thermal statistics, voltage tracking, and alerts.
+* **🎛️ Configuration Profiles (`profileManager`):** Switch between presets (*Gaming Pro*, *Eco Power*, *Dev Studio*) with diff inspections.
+* **🔊 Low-Latency PC Speaker Mode (`pcSpeakerManager`):** Real-time Windows audio loopback stream to smartphone speakers.
 
 ---
 
-## 🌟 Strategic Core Capabilities
+## 🖥️ PATH Integration & Desktop Shortcut Setup
 
-* **🎮 Ultra-Low Latency Wireless PC Gamepad Engine (`pcGamepadManager`):** Transforms any smartphone into a high-precision PC gamepad with native Windows Hardware ScanCode injection (`winInputBridge.ps1`) bypassing keyboard layout dependencies (Persian/English), simultaneous **Player 1 & Player 2** multi-device support, 8-way diagonal sliding D-pad, virtual analog thumbstick, multi-intensity haptic vibration, and mechanical click sound synthesis.
-* **🛡️ Device Capability Detection Engine (`capabilityManager`):** Real-time 5-state prerequisite evaluation (`READY`, `NEEDS_CONFIG`, `NEEDS_TOOL_OR_PERMISSION`, `UNSUPPORTED`, `INDETERMINATE`) with per-device caching and actionable step-by-step guidance.
-* **📦 100% Offline Air-Gapped Deployment (`bin/wheels/`):** Bundled native Android tools (ADB, Fastboot, Scrcpy) and offline Python wheel fallbacks with zero mandatory internet dependency.
-* **🔐 AES-256 Encrypted Backup & Universal Migration:** Military-grade encryption for local backups (Contacts, SMS, Calls, Photos, Apps) with pre-restore inspection and path-traversal prevention.
-* **⚡ Multi-Device Task Queue (`taskQueueManager`):** Concurrent batch execution engine (e.g. multi-device APK installations, diagnostics, backups) with pause, resume, and per-device reporting.
-* **📈 Historical Telemetry & Health Monitoring (`telemetryManager`):** Time-series logging of battery temperature, voltage, health cycle count, and storage metrics with automated overheating alerts.
-* **🎛️ Configuration Profiles & Diff Rollback (`profileManager`):** Instant application of tuned device profiles (*Gaming Pro*, *Eco Power Saver*, *Dev Studio*) with JSON snapshot comparisons and 1-click restore.
-* **🔒 Safe Firmware Flashing Guard (`firmwareGuardManager`):** SHA-256 integrity verification, target partition checks, and payload validation prior to fastboot operations.
-* **🤖 Smart Connection Automations (`automationManager`):** Event-driven trigger engine running automated health checks, notifications, or backup tasks upon USB connection.
-* **🔊 PC-to-Phone Speaker Mode:** Ultra-low latency system audio streaming from Windows to your connected smartphone over USB (`adb reverse`) or local Wi-Fi with an interactive visualizer.
-* **👑 Harmonized Royal Gold Aesthetics:** Fully accessible WCAG AA compliant dark charcoal & 24k gold UI across all tabs, modals, and interactive guides.
+To launch the suite by double-clicking the desktop icon or running **`cpm`** from any terminal:
+
+### Automatic Installer (Recommended)
+Run the automated shortcut & environment setup:
+```bash
+npm run setup:shortcut
+```
+Or double-click **`setupDesktopShortcut.bat`**.
+
+This automatically:
+1. **Adds CellPhoneManager to User PATH:** Allows typing `cpm` in CMD, PowerShell, or the Windows Run dialog (`Win + R`).
+2. **Creates a Desktop Shortcut:** Places **Cell Phone Manager** with custom icon on `%USERPROFILE%\Desktop`.
+3. **Adds Start Menu Shortcut:** Integrates the application into the Windows Start Menu.
 
 ---
 
-## 🚀 Installation & Quick Start
+## 🚀 Quick Launch Guide
 
-### 1. Clone Repository
+### 1. Global Terminal Command
 ```bash
-git clone https://github.com/taimazus/CellPhoneManager.git
-cd CellPhoneManager
+cpm             # Starts the suite & launches browser
+cpm --restart   # Clean restart on port 3001 / 5173
+cpm --stop      # Gracefully shuts down all background workers
 ```
 
-### 2. Install Dependencies (First Run Only)
-```bash
-npm install
-```
-
-### 3. Start Application
-Double-click **`cpmStart.bat`** or execute in command prompt:
+### 2. Standard Launch
 ```bat
 .\cpmStart.bat
 ```
-This automated launcher boots the Express backend on `http://127.0.0.1:3001`, launches the React Vite frontend on `http://127.0.0.1:5173`, and opens the dashboard in your default browser.
-
-### 4. Restart Services
-To cleanly restart background processes and reload configs:
-```bat
-.\cpmRestart.bat
-```
-
-### 5. Safe Shutdown
-To terminate all active processes and release network ports:
-```bat
-.\cpmStop.bat
-```
 
 ---
 
-## 🎮 Smartphone Gamepad Usage Guide
+## 🎮 Mobile Gamepad Instructions
 
-1. Ensure your PC and smartphone are connected to the same local Wi-Fi network (or connected via USB cable).
-2. Navigate to the **"🎮 Gamepad (Remote Controller)"** tab in the PC dashboard, or open `http://<PC_IP>:3001/gamepad.html` directly in your phone browser.
-3. Tap **"⛶ Fullscreen"** on the phone to lock landscape orientation.
-4. Launch your game (such as **FIFA 18**, **Need for Speed**, or **PES**) and **click the game window once with the mouse** to ensure Windows active input focus.
-5. For 2-player mode, connect a second phone to the same URL and select **"🎮 Player 2"**.
+1. Connect PC and phone to the same local Wi-Fi or USB tether.
+2. In the dashboard, open the **«🎮 Remote Controller»** tab or open `http://<PC-IP>:3001/gamepad.html` on your mobile browser.
+3. Tap **«⛶ Fullscreen»** to lock landscape orientation.
+4. Launch your game (e.g. **FIFA 18**, **Need for Speed**, **PES**) and **click once on the game window with your mouse** to focus input.
+5. For 2-player multiplayer, open the same URL on a second phone and select **«🎮 Player 2»**.
 
 ---
 
-## 🧪 Testing & Verification
+## 🧪 Verification & Test Suite
 
-CellPhoneManager includes a comprehensive unit and integration test suite (26 test files / 86 tests passing 100%):
+All 26 test suites and 87 unit/integration tests pass with 100% success rate:
 
 ```bash
-# Run all tests
 npm test -- --run
-
-# Build production bundle
 npm run build
 ```
 
@@ -97,13 +96,6 @@ npm run build
 
 ## 🏢 Sahand Electronic Solutions Co. (شرکت راهکار الکترونیک سهند)
 
-* **Company Website:** [https://irres.ir](https://irres.ir)
-* **GitHub Repository:** [https://github.com/taimazus/CellPhoneManager](https://github.com/taimazus/CellPhoneManager)
-* **📘 Complete Modules & User Guide (English):** [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md)
-* **📘 راهنمای جامع تمامی بخش‌ها و زبانه‌ها (فارسی):** [`docs/USER_GUIDE.fa.md`](docs/USER_GUIDE.fa.md)
-* **📦 Offline Deployment Guide (English):** [`docs/OFFLINE_DEPLOYMENT.md`](docs/OFFLINE_DEPLOYMENT.md)
-* **📦 راهنمای استقرار آفلاین (فارسی):** [`docs/OFFLINE_DEPLOYMENT.fa.md`](docs/OFFLINE_DEPLOYMENT.fa.md)
-* **🏗️ Architecture Specifications (English):** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-* **🏗️ مشخصات معماری سامانه (فارسی):** [`docs/ARCHITECTURE.fa.md`](docs/ARCHITECTURE.fa.md)
-* **📜 Changelog:** [`CHANGELOG.md`](CHANGELOG.md)
-* **📄 License:** MIT Open Source License
+* **Official Portal:** [https://irres.ir](https://irres.ir)
+* **Technical Maintenance:** Engineering Division, Sahand Electronic Solutions Co.
+* **GitHub Repository:** [taimazus/CellPhoneManager](https://github.com/taimazus/CellPhoneManager)

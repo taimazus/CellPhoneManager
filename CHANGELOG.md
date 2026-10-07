@@ -6,9 +6,21 @@ Developed and maintained exclusively by **Sahand Electronic Solutions Co. (شر�
 
 ---
 
-## [3.4.4] — 2026-10-07 (Royal Edition Enterprise & PC Wireless Gamepad Suite)
+## [3.4.4] — 2026-10-07 (Advanced File Explorer & Media Studio, Drag-Drop, Batch Download, and PATH Integration)
 
 ### 🌟 Added & Enhanced
+- **📁 Advanced File Explorer & Media Studio Suite (`src/components/FilesTab.tsx` & `server/fileManager.js`):**
+  - **Recursive Directory & Multi-File Drag & Drop:** HTML5 `webkitGetAsEntry` / `FileSystemDirectoryReader` recursive traversal preserving complete nested folder trees when dropped from Windows Explorer to phone storage.
+  - **Publish & Upload Buttons:** Dedicated direct actions for multi-file upload and full directory upload (`webkitdirectory`) with real-time percentage progress bars and item counters.
+  - **Comprehensive 8-Way Sorting System:** Exact byte-level sorting (`size_desc`, `size_asc`), Persian/English alphabetical (`name_asc`, `name_desc`), date modified (`date_desc`, `date_asc`), and file extension grouping (`type_asc`, `type_desc`).
+  - **Prominent Emerald File Size Indicators:** Distinct badges across all 5 view layouts (**Compact**, **Standard Grid**, **Large Showcase Cards**, **Horizontal Tiles**, and **Detailed List**).
+  - **Advanced Selection System:** Shift-click range selection, Select All, Deselect All, and Invert Selection.
+  - **Batch ZIP Download (`/api/devices/:id/files/batch-download`):** High-speed server-side packaging of selected files and directories into a single `.zip` archive on demand.
+  - **Live Media Studio Preview Modal:** In-app video player with responsive controls, music player, photo viewer with 90° rotation and multi-step zoom, code/text syntax viewer, and embedded PDF document viewer.
+- **🖥️ Automated PATH Registration & Desktop Shortcut Creator (`setupDesktopShortcut.bat` & `server/setupShortcut.js` & `cpm.bat`):**
+  - Automatic addition of project path to Windows User `PATH` and `CPM_HOME`.
+  - Global `cpm` terminal command execution from CMD, PowerShell, and the Windows Run dialog (`Win + R`).
+  - Creation of high-resolution **Cell Phone Manager** desktop and Start Menu shortcuts with custom `.ico` icon branding.
 - **🎮 Native Windows Hardware ScanCode Gamepad Engine (`winInputBridge.ps1` & `pcGamepadManager.js`):**
   - Upgraded Windows input simulation from virtual keys to low-level hardware ScanCodes (`keybd_event` with dual Virtual-Key + PS/2 Set 1 Hardware ScanCodes).
   - 100% Windows input locale independence: all gamepad keys work seamlessly in DirectX games (such as FIFA 18, Racing, FPS) regardless of active Windows keyboard language (Persian / English).
@@ -24,7 +36,7 @@ Developed and maintained exclusively by **Sahand Electronic Solutions Co. (شر�
 - **📘 Interactive In-App Remote Controller Guide (`RemoteControllerTab.tsx`):**
   - Added rich Persian step-by-step game focus troubleshooting, QR code scanner launcher, and safe key formatters.
 - **🧪 Comprehensive Test Coverage:**
-  - Expanded test suite to **26 test suites / 86 tests** with 100% pass rate.
+  - Verified with **26 test suites / 87 tests** with 100% pass rate.
 
 ---
 
@@ -58,32 +70,3 @@ Developed and maintained exclusively by **Sahand Electronic Solutions Co. (شر�
   - Time-series monitoring of battery temperature, voltage, and storage with automated overheat alerts.
 - **Configuration Profiles & Diff Rollback (`profileManager`):**
   - Preset tuning profiles (*Gaming Pro*, *Eco Power*, *Dev Studio*) and snapshot comparisons.
-- **Safe Firmware Flashing Guard (`firmwareGuardManager`):**
-  - SHA-256 checksumming, ROM metadata inspection, and fastboot safety verification.
-- **Connection Automations (`automationManager`):**
-  - Event triggers on USB connection with execution history logs.
-
-### 🎨 Theme & UI Enhancements
-- Complete harmonization of `UserGuideModal` and `TabGuideCard` to the **Royal 24k Gold & Imperial Dark Charcoal** palette.
-- Dynamic React.lazy code splitting reducing the initial JS chunk size from 820 KB down to **314 KB**.
-
-### 🧪 Quality & Tests
-- 25 test suites with 80 unit & integration tests passing 100%.
-
----
-
-## [3.3.0] — 2026-10-07
-
-### 🌟 Added
-- Multi-device batch operations and initial capability resolution.
-- Apple iOS device bridge foundation via pymobiledevice3 diagnostics.
-- Advanced Audio FX and PC-to-Phone Speaker streaming.
-
----
-
-## [3.2.0] — 2026-10-07
-
-### 🌟 Added
-- Imperial Royal 24k Gold design system.
-- Full Persian localization and RTL layout.
-- Official Sahand Electronic Solutions Co. enterprise branding and metadata.

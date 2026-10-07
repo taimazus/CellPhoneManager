@@ -10,7 +10,7 @@ Developed exclusively for **Sahand Electronic Solutions Co. (شرکت راهکا
 sequenceDiagram
     autonumber
     actor User as User / Gamer / Technician
-    participant Phone as Mobile Gamepad (Browser / Touch)
+    participant Phone as Mobile Gamepad / File Explorer (Browser / Touch)
     participant UI as React 19 Frontend (Port 5173)
     participant Sec as Security & Audit Guard (Port 3001)
     participant Cap as Capability Engine (Evaluator)
@@ -18,6 +18,7 @@ sequenceDiagram
     participant GPad as PC Gamepad Engine (pcGamepadManager)
     participant Bridge as Native C# Input Bridge (winInputBridge.ps1)
     participant Win as Windows Host / DirectX Game (e.g. FIFA 18)
+    participant FileMgr as File & Media Studio (fileManager)
     participant Mgr as Domain Managers (Backup, ROM, Tools)
     participant Dev as Mobile Device (Android / iOS)
 
@@ -27,6 +28,12 @@ sequenceDiagram
         GPad->>Bridge: Pipe "KEY_DOWN:0x53,0x1F,0" (VK + Hardware ScanCode)
         Bridge->>Win: Native keybd_event (DirectX ScanCode Injection)
         Win-->>User: In-Game Action (Pass / Shoot / Move)
+    else File Management & Recursive Drag-Drop Upload
+        User->>UI: Drop Folders & Files / Batch Download ZIP
+        UI->>FileMgr: POST /api/devices/:id/files/upload (Multipart with relativePaths)
+        FileMgr->>Dev: Push files recursively via ADB (preserving subdirectories)
+        Dev-->>FileMgr: Transfer Acknowledgment
+        FileMgr-->>UI: 200 OK + Refreshed Tree
     else Management & Diagnostics
         User->>UI: Select Action / Connect Device
         UI->>Cap: Check Capability Matrix (5 Statuses)
@@ -45,8 +52,10 @@ sequenceDiagram
 
 | Module | Location | Primary Responsibilities |
 | :--- | :--- | :--- |
+| **`fileManager`** | `server/fileManager.js` | Recursive file and folder push/pull, exact byte extraction (`sizeBytes`), human formatting, deletion, batch ZIP archiving, preview streaming. |
 | **`pcGamepadManager`** | `server/pcGamepadManager.js` | Real-time multi-player gamepad mapping (Player 1 & 2), profiles (FIFA, Racing, Action, Retro), and WebSocket routing. |
 | **`winInputBridge`** | `server/winInputBridge.ps1` | Persistent native C# `keybd_event` Windows hardware ScanCode injection bypassing Windows keyboard layout (FA/EN). |
+| **`setupShortcut`** | `server/setupShortcut.js` | Automated Windows User PATH registration, `CPM_HOME` environment setup, and `.ico` desktop/start menu shortcut generation. |
 | **`capabilityManager`** | `server/capabilityManager.js` | 5-state prerequisite matrix, OS version & permission validation, Persian guidance. |
 | **`securityManager`** | `server/securityManager.js` | Session tokens, localhost binding enforcement, persistent audit logging. |
 | **`universalBackupManager`** | `server/universalBackupManager.js` | AES-256 encrypted backups, vCard/JSON/SMS extraction, path-traversal prevention. |
@@ -67,3 +76,4 @@ sequenceDiagram
 2. **Localhost Binding:** Express and WebSocket servers are bound strictly to `127.0.0.1` preventing unauthorized remote network access, with controlled LAN exposure only for mobile gamepad pairing.
 3. **Zero Shell Injections:** Native tool execution uses `execFileAsync` argument vectors without raw shell string concatenation.
 4. **Offline Invariant:** Core Android workflows operate with zero internet access; optional iOS tools utilize bundled wheels in `bin/wheels/`.
+5. **Path Traversal Protection:** All file operations validate remote and local paths against illegal character injections or escaping directory boundaries.

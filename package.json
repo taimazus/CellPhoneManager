@@ -16,6 +16,7 @@
     "dev": "concurrently -n \"SERVER,CLIENT\" -c \"blue,green\" \"npm run dev:server\" \"npm run dev:client\"",
     "build": "vite build",
     "start": "node server/index.js",
+    "setup:shortcut": "node server/setupShortcut.js",
     "test": "vitest run"
   },
   "dependencies": {
