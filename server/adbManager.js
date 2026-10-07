@@ -213,18 +213,36 @@ export class AdbManager {
         animScale: 1.0,
         refreshRate: 'auto',
         privateDns: 'off',
+        customRes: '1080x2400',
         showTouches: false,
         pointerLocation: false,
         showFps: false,
         darkMode: true,
         stayAwake: false,
         clockSeconds: false,
-        forceMsaa: false
+        forceMsaa: false,
+        demoMode: false
       };
     }
 
     try {
-      const [touchesRes, pointerRes, fpsRes, dnsModeRes, dnsSpecRes, animRes, wmDensityRes, stayAwakeRes, clockRes] = await Promise.all([
+      const [
+        touchesRes,
+        pointerRes,
+        fpsRes,
+        dnsModeRes,
+        dnsSpecRes,
+        animRes,
+        wmDensityRes,
+        wmSizeRes,
+        stayAwakeRes,
+        clockRes,
+        userHzRes,
+        peakHzRes,
+        uiModeRes,
+        demoRes,
+        msaaRes
+      ] = await Promise.all([
         this.runAdb('shell "settings get system show_touches 2>/dev/null || echo 0"', serial),
         this.runAdb('shell "settings get system pointer_location 2>/dev/null || echo 0"', serial),
         this.runAdb('shell "settings get system show_refresh_rate 2>/dev/null || echo 0"', serial),
@@ -232,8 +250,14 @@ export class AdbManager {
         this.runAdb('shell "settings get global private_dns_specifier 2>/dev/null || echo off"', serial),
         this.runAdb('shell "settings get global window_animation_scale 2>/dev/null || echo 1.0"', serial),
         this.runAdb('shell "wm density 2>/dev/null || echo 420"', serial),
+        this.runAdb('shell "wm size 2>/dev/null || echo 1080x2400"', serial),
         this.runAdb('shell "settings get global stay_on_while_plugged_in 2>/dev/null || echo 0"', serial),
-        this.runAdb('shell "settings get secure clock_seconds 2>/dev/null || echo 0"', serial)
+        this.runAdb('shell "settings get secure clock_seconds 2>/dev/null || echo 0"', serial),
+        this.runAdb('shell "settings get system user_refresh_rate 2>/dev/null || echo auto"', serial),
+        this.runAdb('shell "settings get global peak_refresh_rate 2>/dev/null || echo auto"', serial),
+        this.runAdb('shell "cmd uimode night 2>/dev/null || echo no"', serial),
+        this.runAdb('shell "settings get global sysui_demo_allowed 2>/dev/null || echo 0"', serial),
+        this.runAdb('shell "getprop debug.egl.force_msaa 2>/dev/null || echo 0"', serial)
       ]);
 
       const showTouches = (touchesRes.stdout || '').trim() === '1';
@@ -244,6 +268,9 @@ export class AdbManager {
       const animScale = parseFloat((animRes.stdout || '1.0').trim()) || 1.0;
       const stayAwake = (stayAwakeRes.stdout || '').trim() === '3';
       const clockSeconds = (clockRes.stdout || '').trim() === '1';
+      const darkMode = (uiModeRes.stdout || '').toLowerCase().includes('yes');
+      const demoMode = (demoRes.stdout || '').trim() === '1';
+      const forceMsaa = (msaaRes.stdout || '').trim() === '1';
 
       let dpi = 420;
       const densityMatch = (wmDensityRes.stdout || '').match(/Override density:\s*(\d+)/) || (wmDensityRes.stdout || '').match(/Physical density:\s*(\d+)/);
@@ -251,23 +278,40 @@ export class AdbManager {
         dpi = parseInt(densityMatch[1], 10);
       }
 
+      let customRes = '1080x2400';
+      const sizeMatch = (wmSizeRes.stdout || '').match(/Override size:\s*(\d+x\d+)/) || (wmSizeRes.stdout || '').match(/Physical size:\s*(\d+x\d+)/);
+      if (sizeMatch) {
+        customRes = sizeMatch[1];
+      }
+
+      let refreshRate = 'auto';
+      const userHz = (userHzRes.stdout || '').trim();
+      const peakHz = (peakHzRes.stdout || '').trim();
+      if (userHz === '60' || userHz === '90' || userHz === '120') {
+        refreshRate = userHz;
+      } else if (peakHz.startsWith('60') || peakHz.startsWith('90') || peakHz.startsWith('120')) {
+        refreshRate = parseInt(peakHz, 10).toString();
+      }
+
       let privateDns = 'off';
-      if (dnsMode === 'hostname' && dnsSpec && dnsSpec !== 'null') {
+      if (dnsMode === 'hostname' && dnsSpec && dnsSpec !== 'null' && dnsSpec !== 'off') {
         privateDns = dnsSpec;
       }
 
       return {
         dpi,
         animScale,
-        refreshRate: 'auto',
+        refreshRate,
+        customRes,
         privateDns,
         showTouches,
         pointerLocation,
         showFps,
-        darkMode: true,
+        darkMode,
         stayAwake,
         clockSeconds,
-        forceMsaa: false
+        forceMsaa,
+        demoMode
       };
     } catch (err) {
       return { dpi: 420, animScale: 1.0, privateDns: 'off', showTouches: false, pointerLocation: false, showFps: false };

@@ -78,12 +78,17 @@ export const TweaksTab: React.FC<TweaksTabProps> = ({ device }) => {
           const t = data.tweaks;
           if (t.dpi) setDpi(t.dpi);
           if (t.animScale !== undefined) setAnimScale(t.animScale);
+          if (t.refreshRate) setRefreshRate(t.refreshRate);
+          if (t.customRes) setCustomRes(t.customRes);
           if (t.privateDns) setSelectedDns(t.privateDns);
           if (t.showTouches !== undefined) setShowTouches(t.showTouches);
           if (t.pointerLocation !== undefined) setPointerLocation(t.pointerLocation);
           if (t.showFps !== undefined) setShowFps(t.showFps);
           if (t.stayAwake !== undefined) setStayAwake(t.stayAwake);
           if (t.clockSeconds !== undefined) setClockSeconds(t.clockSeconds);
+          if (t.darkMode !== undefined) setDarkMode(t.darkMode);
+          if (t.demoMode !== undefined) setDemoMode(t.demoMode);
+          if (t.forceMsaa !== undefined) setForceMsaa(t.forceMsaa);
         }
       } catch (e) {
         console.error('Error fetching current tweaks:', e);
