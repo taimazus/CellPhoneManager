@@ -717,11 +717,57 @@ export class AdbManager {
   }
 
   async replyToDialog(serial, text) {
+    if (serial && serial.startsWith('mock-')) {
+      return {
+        active: true,
+        title: 'پاسخ منوی انتخابی',
+        message: `گزینه ${text} با موفقیت ارسال شد.\nدرخواست شما در حال بررسی است.`,
+        hasInput: false,
+        buttons: ['تایید']
+      };
+    }
+
     try {
       if (text && text.trim()) {
+        const dumpRes = await this.runAdb('shell "uiautomator dump /data/local/tmp/cpm_dump.xml && cat /data/local/tmp/cpm_dump.xml"', serial);
+        if (dumpRes.success && dumpRes.stdout) {
+          const xml = dumpRes.stdout;
+          const editMatch = xml.match(/<node[^>]*class="android.widget.EditText"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/i);
+          if (editMatch) {
+            const x1 = parseInt(editMatch[1], 10);
+            const y1 = parseInt(editMatch[2], 10);
+            const x2 = parseInt(editMatch[3], 10);
+            const y2 = parseInt(editMatch[4], 10);
+            const cx = Math.floor((x1 + x2) / 2);
+            const cy = Math.floor((y1 + y2) / 2);
+            await this.runAdb(`shell input tap ${cx} ${cy}`, serial);
+            await new Promise(r => setTimeout(r, 200));
+          }
+        }
+
         await this.runAdb(`shell input text "${text.trim()}"`, serial);
         await new Promise(r => setTimeout(r, 200));
-        await this.runAdb('shell input keyevent 66', serial); // KEYCODE_ENTER
+
+        // Tap the Send/OK button if present
+        const dumpRes2 = await this.runAdb('shell "uiautomator dump /data/local/tmp/cpm_dump.xml && cat /data/local/tmp/cpm_dump.xml"', serial);
+        if (dumpRes2.success && dumpRes2.stdout) {
+          const xml2 = dumpRes2.stdout;
+          const sendBtnMatch = xml2.match(/<node[^>]*resource-id="[^"]*button1[^"]*"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/i)
+            || xml2.match(/<node[^>]*text="(?:ارسال|Send|تایید|OK)"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/i);
+          if (sendBtnMatch) {
+            const x1 = parseInt(sendBtnMatch[1], 10);
+            const y1 = parseInt(sendBtnMatch[2], 10);
+            const x2 = parseInt(sendBtnMatch[3], 10);
+            const y2 = parseInt(sendBtnMatch[4], 10);
+            const cx = Math.floor((x1 + x2) / 2);
+            const cy = Math.floor((y1 + y2) / 2);
+            await this.runAdb(`shell input tap ${cx} ${cy}`, serial);
+          } else {
+            await this.runAdb('shell input keyevent 66', serial); // KEYCODE_ENTER
+          }
+        } else {
+          await this.runAdb('shell input keyevent 66', serial);
+        }
       }
       await new Promise(r => setTimeout(r, 2500));
       return await this.getActiveDialog(serial);
@@ -731,9 +777,39 @@ export class AdbManager {
   }
 
   async dismissDialog(serial) {
+    if (serial && serial.startsWith('mock-')) {
+      return { success: true, message: 'پیام USSD با موفقیت بسته شد' };
+    }
+
     try {
+      // 1. Try to find dismiss/cancel/ok button coordinates in active dialog
+      const dumpRes = await this.runAdb('shell "uiautomator dump /data/local/tmp/cpm_dump.xml && cat /data/local/tmp/cpm_dump.xml"', serial);
+      if (dumpRes.success && dumpRes.stdout) {
+        const xml = dumpRes.stdout;
+        // Search for button nodes: button1 (OK/Cancel), button2, or buttons with text
+        const buttonRegex = /<node[^>]*class="android.widget.Button"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/gi;
+        const matches = [...xml.matchAll(buttonRegex)];
+
+        if (matches.length > 0) {
+          // Tap the button (e.g. OK or Cancel)
+          const target = matches[matches.length - 1];
+          const x1 = parseInt(target[1], 10);
+          const y1 = parseInt(target[2], 10);
+          const x2 = parseInt(target[3], 10);
+          const y2 = parseInt(target[4], 10);
+          const cx = Math.floor((x1 + x2) / 2);
+          const cy = Math.floor((y1 + y2) / 2);
+          await this.runAdb(`shell input tap ${cx} ${cy}`, serial);
+          await new Promise(r => setTimeout(r, 250));
+        }
+      }
+
+      // 2. Send KEYCODE_BACK, KEYCODE_ESCAPE, and KEYCODE_ENTER for complete dismissal
       await this.runAdb('shell input keyevent 4', serial); // KEYCODE_BACK
-      return { success: true, message: 'دیالوگ بسته شد' };
+      await this.runAdb('shell input keyevent 111', serial); // KEYCODE_ESCAPE
+      await this.runAdb('shell input keyevent 66', serial); // KEYCODE_ENTER
+
+      return { success: true, message: 'پیام USSD با موفقیت روی گوشی بسته شد' };
     } catch (e) {
       return { success: false, error: e.message };
     }
