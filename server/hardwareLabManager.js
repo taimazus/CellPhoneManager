@@ -120,12 +120,18 @@ export class HardwareLabManager {
     }
 
     try {
-      let action = 'android.media.action.STILL_IMAGE_CAMERA';
-      if (mode === 'video') action = 'android.media.action.VIDEO_CAMERA';
-      else if (mode === 'capture') action = 'android.media.action.IMAGE_CAPTURE';
+      let cmd = 'shell am start -a android.media.action.STILL_IMAGE_CAMERA';
+      if (mode === 'front' || mode === 'selfie') {
+        cmd = 'shell am start -a android.media.action.STILL_IMAGE_CAMERA --ei android.intent.extras.CAMERA_FACING 1 --ez android.intent.extra.USE_FRONT_CAMERA true --ei com.google.assistant.extra.CAMERA_OPEN_ONLY 1';
+      } else if (mode === 'video') {
+        cmd = 'shell am start -a android.media.action.VIDEO_CAMERA';
+      } else if (mode === 'capture') {
+        cmd = 'shell am start -a android.media.action.IMAGE_CAPTURE';
+      }
 
-      const res = await adbManager.runAdb(`shell am start -a ${action}`, serial);
-      return { success: true, message: `برنامه دوربین با موفقیت باز شد`, res };
+      const res = await adbManager.runAdb(cmd, serial);
+      const label = mode === 'front' || mode === 'selfie' ? 'دوربین جلو (سلفی)' : mode === 'video' ? 'دوربین فیلمبرداری' : 'دوربین اصلی';
+      return { success: true, message: `برنامه ${label} با موفقیت باز شد`, res };
     } catch (err) {
       return { success: false, error: err.message };
     }

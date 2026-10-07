@@ -56,6 +56,42 @@ describe('AiManager Device-Centric & Guardrailed Test Suite', () => {
     expect(res.actionExecuted?.type).toBe('CREATE_BACKUP');
   });
 
+  it('should execute LAUNCH_CAMERA with front facing camera on selfie query', async () => {
+    const res = await aiManager.askDeviceAssistant({
+      serial: 'mock-device-1',
+      query: 'دوربین جلو رو باز کن',
+      deviceDetails: mockDevice
+    });
+
+    expect(res.success).toBe(true);
+    expect(res.actionExecuted).toBeDefined();
+    expect(res.actionExecuted.type).toBe('LAUNCH_CAMERA');
+    expect(res.actionExecuted.title).toContain('دوربین جلو');
+    expect(res.answer).toContain('دوربین جلو (سلفی)');
+  });
+
+  it('should execute TOGGLE_TORCH on flashlight query', async () => {
+    const res = await aiManager.askDeviceAssistant({
+      serial: 'mock-device-1',
+      query: 'چراغ قوه رو روشن کن',
+      deviceDetails: mockDevice
+    });
+
+    expect(res.success).toBe(true);
+    expect(res.actionExecuted?.type).toBe('TOGGLE_TORCH');
+  });
+
+  it('should execute SCREEN_TEST on dead pixel query', async () => {
+    const res = await aiManager.askDeviceAssistant({
+      serial: 'mock-device-1',
+      query: 'تست پیکسل سوخته و رنگ قرمز روی صفحه گوشی',
+      deviceDetails: mockDevice
+    });
+
+    expect(res.success).toBe(true);
+    expect(res.actionExecuted?.type).toBe('SCREEN_TEST');
+  });
+
   it('should handle OUT-OF-SCOPE questions politely and state exact device responsibility', async () => {
     const res = await aiManager.askDeviceAssistant({
       serial: 'mock-device-1',
