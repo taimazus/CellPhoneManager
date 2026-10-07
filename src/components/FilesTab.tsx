@@ -807,11 +807,12 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
               {getFileCategory(previewFile.name) === 'video' && (
                 <div className="w-full flex flex-col items-center justify-center">
                   <video
+                    key={previewFile.url}
+                    src={previewFile.url}
                     controls
                     autoPlay
                     className="max-h-[60vh] max-w-full rounded-2xl border border-slate-800 shadow-2xl bg-black"
                   >
-                    <source src={previewFile.url} />
                     مرورگر شما از پخش مستقیم این ویدیو پشتیبانی نمی‌کند.
                   </video>
                 </div>
@@ -827,8 +828,14 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
                     <h4 className="text-base font-bold text-white mb-1 truncate max-w-xs">{previewFile.name}</h4>
                     <p className="text-xs text-slate-400">پخش زنده فایل صوتی از حافظه گوشی</p>
                   </div>
-                  <audio controls autoPlay className="w-full">
-                    <source src={previewFile.url} />
+                  <audio 
+                    key={previewFile.url}
+                    src={previewFile.url}
+                    controls 
+                    autoPlay 
+                    className="w-full"
+                  >
+                    مرورگر شما از پخش مستقیم این فایل صوتی پشتیبانی نمی‌کند.
                   </audio>
                 </div>
               )}
