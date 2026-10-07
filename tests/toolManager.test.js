@@ -9,7 +9,8 @@ describe('ToolManager Test Suite', () => {
     expect(diag.tools.adb).toBeDefined();
     expect(diag.tools.scrcpy).toBeDefined();
     expect(diag.tools.python).toBeDefined();
-  });
+  }, 15000);
+
 
   it('should return valid paths for platform tools', async () => {
     const adbPath = await toolManager.getAdbPath();

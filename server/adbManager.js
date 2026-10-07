@@ -560,8 +560,105 @@ export class AdbManager {
   }
 
   async launchApp(serial, packageName) {
-    return await this.runAdb(`shell monkey -p ${packageName} -c android.intent.category.LAUNCHER 1`, serial);
+    if (!packageName) return { success: false, error: 'شناسه بسته نامعتبر است' };
+
+    const packageAliases = {
+      'com.android.gallery3d': [
+        'com.miui.gallery',
+        'com.sec.android.gallery3d',
+        'com.google.android.apps.photos',
+        'com.google.android.apps.photosgo',
+        'com.google.ai.edge.gallery',
+        'com.coloros.gallery3d',
+        'com.huawei.photos',
+        'com.android.gallery3d',
+        'com.motorola.cn.gallery'
+      ],
+      'com.google.android.documentsui': [
+        'com.mi.android.globalFileexplorer',
+        'com.android.fileexplorer',
+        'com.sec.android.app.myfiles',
+        'com.google.android.apps.nbu.files',
+        'com.google.android.documentsui',
+        'com.coloros.filemanager',
+        'com.huawei.hidisk',
+        'com.motorola.filemanager'
+      ],
+      'com.android.camera': [
+        'com.android.camera',
+        'com.android.camera2',
+        'com.sec.android.app.camera',
+        'com.google.android.GoogleCamera',
+        'com.huawei.camera',
+        'org.codeaurora.snapcam'
+      ],
+      'com.android.chrome': [
+        'com.android.chrome',
+        'com.sec.android.app.sbrowser',
+        'com.mi.globalbrowser',
+        'org.mozilla.firefox',
+        'com.opera.browser',
+        'com.brave.browser',
+        'com.android.browser'
+      ],
+      'org.telegram.messenger': [
+        'org.telegram.messenger',
+        'org.telegram.messenger.web',
+        'org.thunderdog.challegram',
+        'org.telegram.plus'
+      ],
+      'com.whatsapp': [
+        'com.whatsapp',
+        'com.whatsapp.w4b'
+      ],
+      'com.google.android.youtube': [
+        'com.google.android.youtube',
+        'app.revanced.android.youtube',
+        'com.google.android.apps.youtube.mango'
+      ],
+      'com.android.settings': [
+        'com.android.settings'
+      ]
+    };
+
+    const candidates = packageAliases[packageName] || [packageName];
+
+    for (const pkg of candidates) {
+      const monkeyRes = await this.runAdb(`shell "monkey -p ${pkg} -c android.intent.category.LAUNCHER 1"`, serial);
+      if (monkeyRes.success && monkeyRes.stdout && monkeyRes.stdout.includes('Events injected: 1')) {
+        return { success: true, message: `برنامه با موفقیت در گوشی باز شد (${pkg})` };
+      }
+    }
+
+    // Fallback to Android intents if monkey matching didn't launch
+    if (packageName.includes('gallery') || packageName.includes('photos')) {
+      const intentRes = await this.runAdb(`shell "am start -a android.intent.action.VIEW -t image/*"`, serial);
+      if (intentRes.success && (!intentRes.stderr || !intentRes.stderr.includes('Error'))) {
+        return { success: true, message: 'گالری با موفقیت باز شد' };
+      }
+    }
+    if (packageName.includes('file') || packageName.includes('documents')) {
+      const intentRes = await this.runAdb(`shell "am start -a android.intent.action.VIEW -t */*"`, serial);
+      if (intentRes.success && (!intentRes.stderr || !intentRes.stderr.includes('Error'))) {
+        return { success: true, message: 'مدیریت فایل با موفقیت باز شد' };
+      }
+    }
+    if (packageName.includes('camera')) {
+      const intentRes = await this.runAdb(`shell "am start -a android.media.action.IMAGE_CAPTURE"`, serial);
+      if (intentRes.success && (!intentRes.stderr || !intentRes.stderr.includes('Error'))) {
+        return { success: true, message: 'دوربین با موفقیت باز شد' };
+      }
+    }
+    if (packageName.includes('settings')) {
+      const intentRes = await this.runAdb(`shell "am start -a android.settings.SETTINGS"`, serial);
+      if (intentRes.success && (!intentRes.stderr || !intentRes.stderr.includes('Error'))) {
+        return { success: true, message: 'تنظیمات با موفقیت باز شد' };
+      }
+    }
+
+    return { success: false, error: 'برنامه مورد نظر روی این گوشی یافت نشد یا در دسترس نیست.' };
   }
+
 
   async openUrl(serial, url) {
     return await this.runAdb(`shell am start -a android.intent.action.VIEW -d "${url}"`, serial);
