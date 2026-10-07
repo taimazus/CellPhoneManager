@@ -69,7 +69,7 @@ git clone https://github.com/taimazus/CellPhoneManager.git
 cd CellPhoneManager
 
 # 3. Run the smart auto-installer & launcher
-start.bat
+cpmStart.bat
 ```
 
 ---
@@ -78,9 +78,12 @@ start.bat
 1. Visit **[github.com/taimazus/CellPhoneManager](https://github.com/taimazus/CellPhoneManager)**.
 2. Click the green **Code** button and select **Download ZIP**.
 3. Extract the downloaded `.zip` file.
-4. Double-click **`start.bat`**.
+4. Double-click **`cpmStart.bat`**.
 
-> 💡 **Smart Launcher:** `start.bat` automatically verifies Node.js, installs dependencies, runs preflight diagnostics, and launches the app in your default browser at `http://localhost:5173`.
+> 💡 **Smart Launcher (`cpmStart.bat`):** 
+> - Automatically checks and installs Node.js if missing.
+> - Automatically downloads dependencies and runs preflight checks.
+> - **Global Path Support:** You can add CellPhoneManager to your system `PATH` by running `cpmStart.bat --add-path` or copying it to Windows directory. Afterward, typing `cpmstart` from ANY terminal prompt or Run dialog (`Win + R`) will instantly launch the app.
 
 ---
 

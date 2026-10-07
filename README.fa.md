@@ -73,7 +73,7 @@ git clone https://github.com/taimazus/CellPhoneManager.git
 cd CellPhoneManager
 
 # ۳. اجرای راه‌انداز خودکار
-start.bat
+cpmStart.bat
 ```
 
 ---
@@ -82,9 +82,12 @@ start.bat
 ۱. به صفحه گیت‌هاب پروژه به آدرس **[github.com/taimazus/CellPhoneManager](https://github.com/taimazus/CellPhoneManager)** بروید.  
 ۲. روی دکمه سبز رنگ **Code** کلیک کرده و گزینه **Download ZIP** را انتخاب کنید.  
 ۳. فایل فشرده دانلود شده را از حالت فشرده (Extract) خارج کنید.  
-۴. داخل پوشه، روی فایل **`start.bat`** دابل کلیک کنید.
+۴. داخل پوشه، روی فایل **`cpmStart.bat`** دابل کلیک کنید.
 
-> 💡 **نکته:** فایل `start.bat` کاملاً هوشمند است؛ اگر `Node.js` روی سیستم شما نباشد خودش نصب می‌کند، بسته‌ها را دانلود می‌کند و برنامه را در مرورگر اینترنت برایتان باز می‌کند.
+> 💡 **راه‌انداز هوشمند (`cpmStart.bat`):**
+> - بررسی و نصب خودکار موتور اجرایی `Node.js` در صورت عدم وجود.
+> - دانلود و نصب هوشمند بسته‌ها و اجرای تست سلامت ابزارها (ADB, Scrcpy, Fastboot, idevice).
+> - **قابلیت اجرا از همه‌جا (PATH):** با اجرای دستور `cpmStart.bat --add-path` در ترمینال یا کپی فایل به پوشه ویندوز، از این پس در هر محیطی (CMD، PowerShell، پنجره Run کلیدهای `Win + R`) فقط با نوشتن **`cpmstart`** برنامه در کسری از ثانیه اجرا می‌شود.
 
 ---
 
