@@ -21,17 +21,17 @@ export const TabGuideCard: React.FC<TabGuideCardProps> = ({
   const [expanded, setExpanded] = useState<boolean>(defaultExpanded);
 
   return (
-    <div className="rounded-2xl bg-gradient-to-r from-slate-900/90 to-cyan-950/20 border border-cyan-500/20 p-4 transition-all shadow-sm">
+    <div className="rounded-2xl bg-gradient-to-r from-[#13141f] via-[#171926] to-amber-950/20 border border-amber-500/25 p-4 transition-all shadow-md shadow-black/20">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="p-1.5 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shrink-0">
+          <div className="p-1.5 rounded-xl bg-amber-500/15 text-yellow-400 border border-amber-500/30 shrink-0 shadow-sm shadow-amber-500/10">
             <Lightbulb className="w-4 h-4" />
           </div>
           <div>
             <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
               <span>{title}</span>
             </h4>
-            <p className="text-[11px] text-slate-400 mt-0.5">
+            <p className="text-[11px] text-stone-400 mt-0.5">
               {description}
             </p>
           </div>
@@ -42,7 +42,7 @@ export const TabGuideCard: React.FC<TabGuideCardProps> = ({
             <button
               type="button"
               onClick={onOpenFullGuide}
-              className="text-[11px] text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1 px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 transition-all"
+              className="text-[11px] text-yellow-300 hover:text-yellow-200 font-bold flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 transition-all active:scale-95"
             >
               <span>راهنمای جامع</span>
               <ExternalLink className="w-3 h-3" />
@@ -52,7 +52,7 @@ export const TabGuideCard: React.FC<TabGuideCardProps> = ({
           <button
             type="button"
             onClick={() => setExpanded(!expanded)}
-            className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-all text-xs font-bold flex items-center gap-1"
+            className="p-1.5 rounded-lg bg-stone-800/80 hover:bg-stone-700/80 border border-stone-700/60 hover:border-amber-500/30 text-stone-300 hover:text-yellow-300 transition-all text-xs font-bold flex items-center gap-1"
           >
             <span>{expanded ? 'بستن راهنما' : 'مشاهده آموزش'}</span>
             {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -61,11 +61,14 @@ export const TabGuideCard: React.FC<TabGuideCardProps> = ({
       </div>
 
       {expanded && (
-        <div className="mt-3.5 pt-3 border-t border-slate-800/80 space-y-3 animate-fadeIn text-xs text-slate-300 leading-relaxed">
+        <div className="mt-3.5 pt-3 border-t border-amber-500/15 space-y-3 animate-fadeIn text-xs text-stone-300 leading-relaxed">
           {steps.length > 0 && (
             <div className="space-y-1.5">
-              <span className="font-bold text-cyan-300 block">📌 مراحل استفاده و نحوه کار:</span>
-              <ol className="list-decimal list-inside space-y-1 text-slate-300 pr-1">
+              <span className="font-bold text-yellow-300 block flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>مراحل استفاده و نحوه کار:</span>
+              </span>
+              <ol className="list-decimal list-inside space-y-1 text-stone-200 pr-1">
                 {steps.map((step, idx) => (
                   <li key={idx} className="leading-5">{step}</li>
                 ))}
@@ -75,8 +78,8 @@ export const TabGuideCard: React.FC<TabGuideCardProps> = ({
 
           {tips.length > 0 && (
             <div className="space-y-1.5">
-              <span className="font-bold text-amber-300 block">💡 نکات کلیدی و توصیه‌های ایمنی:</span>
-              <ul className="list-disc list-inside space-y-1 text-slate-400 pr-1">
+              <span className="font-bold text-amber-400 block">💡 نکات کلیدی و توصیه‌های ایمنی:</span>
+              <ul className="list-disc list-inside space-y-1 text-stone-400 pr-1">
                 {tips.map((tip, idx) => (
                   <li key={idx} className="leading-5">{tip}</li>
                 ))}
