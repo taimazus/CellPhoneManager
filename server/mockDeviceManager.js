@@ -206,7 +206,22 @@ export class MockDeviceManager {
   deleteContact(deviceId, id) {
     const dev = this.getDevice(deviceId);
     if (!dev || !dev.contacts) return false;
-    dev.contacts = dev.contacts.filter(c => c.id !== id);
+    dev.contacts = dev.contacts.filter(c => c.id !== id && c.rawContactId !== id);
+    return true;
+  }
+
+  deleteContactsBatch(deviceId, { contactIds = [], rawContactIds = [] } = {}) {
+    const dev = this.getDevice(deviceId);
+    if (!dev || !dev.contacts) return false;
+    const targetSet = new Set([...contactIds, ...rawContactIds]);
+    dev.contacts = dev.contacts.filter(c => !targetSet.has(c.id) && !targetSet.has(c.rawContactId));
+    return true;
+  }
+
+  clearContacts(deviceId) {
+    const dev = this.getDevice(deviceId);
+    if (!dev) return false;
+    dev.contacts = [];
     return true;
   }
 

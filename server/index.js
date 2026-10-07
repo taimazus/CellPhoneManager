@@ -1212,15 +1212,59 @@ app.post('/api/devices/:id/contacts/add', async (req, res) => {
   }
 });
 
+app.post('/api/devices/:id/contacts/edit', async (req, res) => {
+  const { id } = req.params;
+  const { contactId, rawContactId, name, phone, email, notes } = req.body;
+  try {
+    if (id.startsWith('mock-')) {
+      const updated = mockDeviceManager.updateContact(id, contactId, { name, phone, email, notes });
+      return res.json({ success: true, contact: updated, message: 'مخاطب با موفقیت ویرایش شد' });
+    }
+    const result = await adbManager.updateContact(id, { id: contactId, rawContactId, name, phone, email, notes });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/devices/:id/contacts/delete', async (req, res) => {
   const { id } = req.params;
-  const { contactId } = req.body;
+  const { contactId, rawContactId } = req.body;
   try {
     if (id.startsWith('mock-')) {
       mockDeviceManager.deleteContact(id, contactId);
       return res.json({ success: true, message: 'مخاطب با موفقیت حذف شد' });
     }
-    const result = await adbManager.deleteContact(id, contactId);
+    const result = await adbManager.deleteContact(id, contactId, rawContactId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/contacts/delete-batch', async (req, res) => {
+  const { id } = req.params;
+  const { contactIds = [], rawContactIds = [] } = req.body;
+  try {
+    if (id.startsWith('mock-')) {
+      mockDeviceManager.deleteContactsBatch(id, { contactIds, rawContactIds });
+      return res.json({ success: true, message: 'مخاطبین انتخابی با موفقیت حذف شدند' });
+    }
+    const result = await adbManager.deleteContactsBatch(id, { contactIds, rawContactIds });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/contacts/clear', async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (id.startsWith('mock-')) {
+      mockDeviceManager.clearContacts(id);
+      return res.json({ success: true, message: 'تمامی مخاطبین با موفقیت پاکسازی شدند' });
+    }
+    const result = await adbManager.clearAllContacts(id);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

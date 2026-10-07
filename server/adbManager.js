@@ -1019,49 +1019,174 @@ export class AdbManager {
 
   async getContacts(serial) {
     try {
-      const res = await this.runAdb('shell content query --uri content://com.android.contacts/data/phones --projection _id:display_name:data1', serial);
-      if (!res.success || !res.stdout || res.stdout.includes('No result found')) {
-        return [];
+      const res = await this.runAdb('shell content query --uri content://com.android.contacts/data/phones --projection _id:raw_contact_id:contact_id:display_name:data1:data4:account_name:account_type:company', serial);
+      let output = res.stdout || '';
+
+      if (!res.success || !output || output.includes('No result found')) {
+        const fallbackRes = await this.runAdb('shell content query --uri content://com.android.contacts/data/phones', serial);
+        if (fallbackRes.success && fallbackRes.stdout && !fallbackRes.stdout.includes('No result found')) {
+          output = fallbackRes.stdout;
+        } else {
+          return [];
+        }
       }
-      const rows = res.stdout.trim().split('\n');
-      const contacts = [];
-      const seen = new Set();
+
+      const rows = output.trim().split('\n');
+      const contactsMap = new Map();
+
+      const getSourceInfo = (accType = '', accName = '') => {
+        const type = String(accType).toLowerCase();
+        const name = String(accName).toLowerCase();
+        if (type.includes('google') || name.includes('@gmail') || name.includes('@google')) {
+          return { key: 'google', label: `گوگل (${accName || 'Google'})`, icon: 'google' };
+        }
+        if (type.includes('xiaomi') || name.includes('mi') || name.includes('xiaomi')) {
+          return { key: 'xiaomi', label: `شیائومی (${accName || 'Mi Cloud'})`, icon: 'xiaomi' };
+        }
+        if (type.includes('whatsapp.w4b')) {
+          return { key: 'whatsapp_business', label: 'واتساپ تجاری (Business)', icon: 'whatsapp' };
+        }
+        if (type.includes('whatsapp')) {
+          return { key: 'whatsapp', label: 'واتساپ (WhatsApp)', icon: 'whatsapp' };
+        }
+        if (type.includes('telegram')) {
+          return { key: 'telegram', label: 'تلگرام (Telegram)', icon: 'telegram' };
+        }
+        if (type.includes('eitaa')) {
+          return { key: 'eitaa', label: 'ایتا (Eitaa)', icon: 'eitaa' };
+        }
+        if (type.includes('sim') || name.includes('sim')) {
+          return { key: 'sim', label: `سیم‌کارت (${accName || 'SIM'})`, icon: 'sim' };
+        }
+        if (type.includes('local') || type.includes('phone') || name.includes('phone') || name.includes('device')) {
+          return { key: 'device', label: 'حافظه داخلی گوشی', icon: 'device' };
+        }
+        if (accName || accType) {
+          return { key: 'other', label: `${accName || accType}`, icon: 'account' };
+        }
+        return { key: 'device', label: 'حافظه دستگاه', icon: 'device' };
+      };
 
       for (const row of rows) {
         if (!row.startsWith('Row:')) continue;
+
         const idMatch = row.match(/_id=(\d+)/);
+        const rawContactMatch = row.match(/raw_contact_id=(\d+)/);
+        const contactIdMatch = row.match(/contact_id=(\d+)/);
         const nameMatch = row.match(/display_name=([^,]+)/);
-        const phoneMatch = row.match(/data1=([^,]+)/);
+        const data1Match = row.match(/data1=([^,]+)/);
+        const data4Match = row.match(/data4=([^,]+)/);
+        const accNameMatch = row.match(/account_name=([^,]+)/);
+        const accTypeMatch = row.match(/account_type=([^,]+)/);
+        const companyMatch = row.match(/company=([^,]+)/);
 
-        const phone = phoneMatch ? phoneMatch[1].replace(/\s+/g, '') : '';
-        if (!phone || seen.has(phone)) continue;
-        seen.add(phone);
+        const id = idMatch ? idMatch[1] : '';
+        const rawContactId = rawContactMatch ? rawContactMatch[1] : id;
+        const contactId = contactIdMatch ? contactIdMatch[1] : id;
+        const rawName = nameMatch && nameMatch[1] !== 'NULL' ? nameMatch[1].trim() : '';
+        const d1 = data1Match && data1Match[1] !== 'NULL' ? data1Match[1].trim() : '';
+        const d4 = data4Match && data4Match[1] !== 'NULL' ? data4Match[1].trim() : '';
+        const accName = accNameMatch && accNameMatch[1] !== 'NULL' ? accNameMatch[1].trim() : '';
+        const accType = accTypeMatch && accTypeMatch[1] !== 'NULL' ? accTypeMatch[1].trim() : '';
+        const company = companyMatch && companyMatch[1] !== 'NULL' ? companyMatch[1].trim() : '';
 
-        contacts.push({
-          id: idMatch ? idMatch[1] : String(Math.random()),
-          name: nameMatch && nameMatch[1] !== 'NULL' ? nameMatch[1].trim() : phone,
-          phone: phone,
-          email: '',
-          notes: ''
-        });
+        // Determine real phone number
+        let phone = '';
+        if (d1 && /\d/.test(d1)) {
+          phone = d1.replace(/\s+/g, '');
+        } else if (d4 && /\d/.test(d4)) {
+          phone = d4.replace(/\s+/g, '');
+        } else if (d1) {
+          phone = d1.replace(/\s+/g, '');
+        } else if (d4) {
+          phone = d4.replace(/\s+/g, '');
+        }
+
+        const name = rawName || phone || 'مخاطب بدون نام';
+        const sourceInfo = getSourceInfo(accType, accName);
+        const contactKey = `${rawContactId || id}_${phone}`;
+
+        if (!contactsMap.has(contactKey)) {
+          contactsMap.set(contactKey, {
+            id: id || rawContactId || String(Math.random()),
+            rawContactId: rawContactId || id,
+            contactId: contactId,
+            name: name,
+            phone: phone,
+            email: '',
+            notes: '',
+            company: company,
+            accountName: accName,
+            accountType: accType,
+            sourceKey: sourceInfo.key,
+            sourceLabel: sourceInfo.label,
+            sourceIcon: sourceInfo.icon
+          });
+        }
       }
 
-      return contacts;
+      return Array.from(contactsMap.values());
     } catch {
       return [];
     }
   }
 
   async addContact(serial, { name, phone, email = '', notes = '' }) {
-    // Launch insert contact activity or content insert
     return await this.runAdb(
       `shell am start -a android.intent.action.INSERT -t vnd.android.cursor.dir/contact -e name "${name}" -e phone "${phone}" -e email "${email}" -e notes "${notes}"`,
       serial
     );
   }
 
-  async deleteContact(serial, id) {
-    return await this.runAdb(`shell content delete --uri content://com.android.contacts/raw_contacts --where "_id=${id}"`, serial);
+  async updateContact(serial, { id, rawContactId, name, phone, email = '', notes = '' }) {
+    const targetId = rawContactId || id;
+    try {
+      if (name) {
+        await this.runAdb(`shell content update --uri content://com.android.contacts/data --bind data1:s:"${name}" --bind data2:s:"${name}" --where "raw_contact_id=${targetId} AND mimetype='vnd.android.cursor.item/name'"`, serial);
+      }
+      if (phone) {
+        const clean = phone.replace(/\s+/g, '');
+        await this.runAdb(`shell content update --uri content://com.android.contacts/data --bind data1:s:"${phone}" --bind data4:s:"${clean}" --where "raw_contact_id=${targetId} AND mimetype='vnd.android.cursor.item/phone_v2'"`, serial);
+      }
+      return { success: true, message: 'اطلاعات مخاطب با موفقیت به‌روزرسانی شد' };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  async deleteContact(serial, id, rawContactId = null) {
+    const targetId = rawContactId || id;
+    try {
+      await this.runAdb(`shell content delete --uri content://com.android.contacts/raw_contacts --where "_id=${targetId}"`, serial);
+      await this.runAdb(`shell content delete --uri content://com.android.contacts/data --where "raw_contact_id=${targetId}"`, serial);
+      return { success: true, message: 'مخاطب با موفقیت حذف گردید' };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  async deleteContactsBatch(serial, { contactIds = [], rawContactIds = [] } = {}) {
+    try {
+      const targets = [...new Set([...contactIds, ...rawContactIds])].filter(i => i && !isNaN(Number(i)));
+      if (targets.length > 0) {
+        const idList = targets.join(',');
+        await this.runAdb(`shell content delete --uri content://com.android.contacts/raw_contacts --where "_id IN (${idList})"`, serial);
+        await this.runAdb(`shell content delete --uri content://com.android.contacts/data --where "raw_contact_id IN (${idList})"`, serial);
+      }
+      return { success: true, message: `${targets.length} مخاطب با موفقیت حذف شدند` };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  async clearAllContacts(serial) {
+    try {
+      await this.runAdb('shell content delete --uri content://com.android.contacts/raw_contacts', serial);
+      await this.runAdb('shell content delete --uri content://com.android.contacts/data', serial);
+      return { success: true, message: 'تمامی مخاطبین با موفقیت پاکسازی شدند' };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
   }
 
   async getSms(serial) {
