@@ -35,7 +35,10 @@ import {
   Clipboard,
   CheckSquare,
   Square,
-  CornerDownLeft
+  CornerDownLeft,
+  Camera,
+  Mic,
+  Share2
 } from 'lucide-react';
 import { Device } from '../types';
 
@@ -609,26 +612,36 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
         </div>
 
         {/* Quick Shortcut Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1">
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 scrollbar-thin">
           {[
-            { name: 'دانلودها', path: '/sdcard/Download/' },
-            { name: 'دوربین و عکس', path: '/sdcard/DCIM/' },
-            { name: 'تصاویر', path: '/sdcard/Pictures/' },
-            { name: 'موزیک', path: '/sdcard/Music/' },
-            { name: 'اسناد', path: '/sdcard/Documents/' }
-          ].map(shortcut => (
-            <button
-              key={shortcut.path}
-              onClick={() => fetchFiles(shortcut.path)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
-                currentPath === shortcut.path 
-                  ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-bold shadow-md shadow-cyan-500/20' 
-                  : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
-              }`}
-            >
-              {shortcut.name}
-            </button>
-          ))}
+            { name: 'حافظه اصلی', path: '/sdcard/', icon: HardDrive },
+            { name: 'دانلودها', path: '/sdcard/Download/', icon: Download },
+            { name: 'فیلم و ویدیو', path: '/sdcard/Movies/', icon: Film },
+            { name: 'دوربین و عکس', path: '/sdcard/DCIM/Camera/', icon: Camera },
+            { name: 'تصاویر', path: '/sdcard/Pictures/', icon: Image },
+            { name: 'موزیک', path: '/sdcard/Music/', icon: Music },
+            { name: 'اسناد', path: '/sdcard/Documents/', icon: FileText },
+            { name: 'ضبط صدا', path: '/sdcard/Recordings/', icon: Mic },
+            { name: 'اسکرین‌شات', path: '/sdcard/Pictures/Screenshots/', icon: Scissors },
+            { name: 'بلوتوث', path: '/sdcard/Bluetooth/', icon: Share2 }
+          ].map(shortcut => {
+            const Icon = shortcut.icon;
+            const isActive = currentPath === shortcut.path;
+            return (
+              <button
+                key={shortcut.path}
+                onClick={() => fetchFiles(shortcut.path)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border flex items-center gap-1.5 ${
+                  isActive 
+                    ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-bold shadow-md shadow-cyan-500/20' 
+                    : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-cyan-500/40 hover:text-white'
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-slate-950' : 'text-cyan-400'}`} />
+                <span>{shortcut.name}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -1043,10 +1056,15 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
               <div className="flex flex-wrap gap-2 pt-1">
                 {[
                   '/sdcard/Download/',
+                  '/sdcard/Movies/',
                   '/sdcard/DCIM/Camera/',
                   '/sdcard/Pictures/',
+                  '/sdcard/Pictures/Screenshots/',
                   '/sdcard/Music/',
-                  '/sdcard/Documents/'
+                  '/sdcard/Recordings/',
+                  '/sdcard/Documents/',
+                  '/sdcard/Bluetooth/',
+                  '/sdcard/'
                 ].map(p => (
                   <button
                     key={p}
