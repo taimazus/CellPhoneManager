@@ -65,7 +65,18 @@ export class MirrorManager {
     // Clean up any existing stream process for this device first
     this.stopScrcpy(serial);
 
+    const adbPath = await toolManager.getAdbPath();
     const scrcpyPath = await toolManager.getScrcpyPath();
+
+    // Release any camera locks on the phone (close camera app if open)
+    if (serial && !serial.startsWith('mock-')) {
+      try {
+        await execAsync(`"${adbPath}" -s ${serial} shell "am force-stop com.android.camera; am force-stop com.google.android.GoogleCamera; input keyevent 3"`);
+      } catch (e) {
+        console.warn('Error releasing camera app lock:', e.message);
+      }
+    }
+
     const args = [];
 
     if (serial && !serial.startsWith('mock-')) {
@@ -99,7 +110,7 @@ export class MirrorManager {
       args.push('--always-on-top');
     }
 
-    const winTitle = isFront ? 'وب‌کم سلفی سهند (Sahand Selfie Webcam)' : 'وب‌کم اصلی سهند (Sahand Back HD Webcam)';
+    const winTitle = isFront ? 'Sahand HD Webcam (Selfie)' : 'Sahand HD Webcam (Back)';
     args.push(`--window-title=${winTitle}`);
 
     if (options.recordPath) {
