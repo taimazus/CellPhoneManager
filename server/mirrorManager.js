@@ -39,6 +39,9 @@ export class MirrorManager {
       args.push('--no-audio');
     }
 
+    // Direct Unicode text forwarding for Persian and multilingual typing
+    args.push('--prefer-text');
+
     try {
       const proc = spawn(scrcpyPath, args, {
         detached: true,
