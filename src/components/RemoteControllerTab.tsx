@@ -24,6 +24,7 @@ import {
 import { Device } from '../types';
 import { safeFetchJson } from '../utils/api';
 import { TabGuideCard } from './TabGuideCard';
+import QRCode from 'qrcode';
 
 interface RemoteControllerTabProps {
   device: Device | null;
@@ -42,6 +43,7 @@ export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device
   const [activeProfile, setActiveProfile] = useState<string>('racing');
   const [latestInputs, setLatestInputs] = useState<any>({});
   const [localIps, setLocalIps] = useState<{ name: string; ip: string }[]>([]);
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [isLaunching, setIsLaunching] = useState<boolean>(false);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
@@ -129,7 +131,21 @@ export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device
 
   const primaryIp = localIps.find(i => i.ip.startsWith('192.168.') || i.ip.startsWith('10.') || i.ip.startsWith('172.'))?.ip || '127.0.0.1';
   const phoneLanUrl = `http://${primaryIp}:3001/gamepad.html`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(phoneLanUrl)}&color=d4af37&bgcolor=121319`;
+
+  useEffect(() => {
+    if (phoneLanUrl) {
+      QRCode.toDataURL(phoneLanUrl, {
+        margin: 1,
+        width: 240,
+        color: {
+          dark: '#000000',
+          light: '#ffffff'
+        }
+      })
+        .then(url => setQrDataUrl(url))
+        .catch(err => console.error('QR Error:', err));
+    }
+  }, [phoneLanUrl]);
 
   return (
     <div className="space-y-6 animate-fadeIn font-sans text-right" dir="rtl">
@@ -198,12 +214,12 @@ export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device
                 <h3 className="text-base font-bold text-white">راه‌اندازی اتصال دسته لمسی روی گوشی</h3>
               </div>
               <p className="text-xs text-stone-300 leading-relaxed">
-                با زدن دکمه زیر، صفحه دسته بازی روی گوشی باز می‌شود. همچنین با اسکن QR کد با دوربین گوشی یا باز کردن آدرس زیر در مرورگر Chrome/Safari گوشی می‌توانید فوراً متصل شوید:
+                با زدن دکمه زیر، صفحه دسته بازی مستقیماً روی گوشی باز می‌شود. همچنین با اسکن بارکد QR یا وارد کردن لینک زیر در مرورگر گوشی می‌توانید بازی کنید:
               </p>
               
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <div className="p-2 px-3 rounded-xl bg-[#0a0a0f] border border-stone-800 font-mono text-amber-300 flex items-center gap-2">
-                  <span>{phoneLanUrl}</span>
+                <div className="p-2.5 px-3.5 rounded-xl bg-[#0a0a0f] border border-stone-800 font-mono text-amber-300 flex items-center gap-2">
+                  <span className="font-bold">{phoneLanUrl}</span>
                   <button
                     onClick={() => handleCopy(phoneLanUrl, 'lan_url')}
                     className="p-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white transition-colors"
@@ -217,23 +233,27 @@ export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device
                   href="/gamepad.html"
                   target="_blank"
                   rel="noreferrer"
-                  className="p-2 px-3 rounded-xl bg-[#1c1d2c] hover:bg-[#25273b] border border-amber-500/25 text-yellow-300 hover:text-yellow-200 font-bold flex items-center gap-1.5 transition-all"
+                  className="p-2.5 px-3.5 rounded-xl bg-[#1c1d2c] hover:bg-[#25273b] border border-amber-500/25 text-yellow-300 hover:text-yellow-200 font-bold flex items-center gap-1.5 transition-all"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  <span>تست روی کامپیوتر</span>
+                  <span>تست در مرورگر کامپیوتر</span>
                 </a>
               </div>
             </div>
 
-            {/* QR Code & Action Button */}
+            {/* Offline High-Contrast QR Code Card */}
             <div className="flex flex-col sm:flex-row items-center gap-4 flex-shrink-0">
-              <div className="p-2.5 rounded-2xl bg-[#0a0a0f] border border-amber-500/30 text-center space-y-1">
-                <img 
-                  src={qrCodeUrl} 
-                  alt="QR Code Gamepad" 
-                  className="w-24 h-24 sm:w-28 sm:sh-28 rounded-xl object-contain bg-[#121319]"
-                />
-                <span className="text-[10px] text-stone-400 font-bold block">اسکن با دوربین گوشی</span>
+              <div className="p-2 bg-white rounded-2xl border-2 border-amber-500/50 shadow-2xl text-center space-y-1">
+                {qrDataUrl ? (
+                  <img 
+                    src={qrDataUrl} 
+                    alt="QR Code Gamepad" 
+                    className="w-28 h-28 sm:w-32 sm:h-32 rounded-xl object-contain block"
+                  />
+                ) : (
+                  <div className="w-28 h-28 flex items-center justify-center text-black text-xs">در حال ساخت QR...</div>
+                )}
+                <span className="text-[10px] text-stone-800 font-black block tracking-tight">اسکن فوری با دوربین گوشی</span>
               </div>
 
               <button
@@ -242,7 +262,7 @@ export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device
                 className="px-6 py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black text-xs sm:text-sm shadow-lg shadow-amber-500/25 transition-all active:scale-95 flex items-center gap-2 shrink-0 disabled:opacity-50"
               >
                 <Gamepad2 className="w-5 h-5" />
-                <span>{isLaunching ? 'در حال ارسال...' : '🚀 راه‌اندازی دسته بازی روی گوشی'}</span>
+                <span>{isLaunching ? 'در حال باز کردن...' : '🚀 راه‌اندازی دسته روی گوشی'}</span>
               </button>
             </div>
           </div>

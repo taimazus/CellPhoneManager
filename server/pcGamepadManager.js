@@ -140,13 +140,13 @@ export class PcGamepadManager {
         // non-fatal
       }
 
-      // 3. Try to launch using browser packages in sequence
+      // 3. Try to launch using browser packages in sequence with LAN URL
       const browserIntents = [
-        ['shell', 'am', 'start', '-n', 'com.android.chrome/com.google.android.apps.chrome.Main', '-d', localhostUrl, '-f', '0x10000000'],
-        ['shell', 'am', 'start', '-n', 'com.mi.globalbrowser/com.android.browser.BrowserActivity', '-d', localhostUrl, '-f', '0x10000000'],
-        ['shell', 'am', 'start', '-n', 'com.sec.android.app.sbrowser/com.sec.android.app.sbrowser.SBrowserMainActivity', '-d', localhostUrl, '-f', '0x10000000'],
-        ['shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', localhostUrl, '-f', '0x10000000'],
-        ['shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', lanUrl, '-f', '0x10000000']
+        ['shell', 'am', 'start', '-n', 'com.android.chrome/com.google.android.apps.chrome.Main', '-d', lanUrl, '-f', '0x10000000'],
+        ['shell', 'am', 'start', '-n', 'com.mi.globalbrowser/com.android.browser.BrowserActivity', '-d', lanUrl, '-f', '0x10000000'],
+        ['shell', 'am', 'start', '-n', 'com.sec.android.app.sbrowser/com.sec.android.app.sbrowser.SBrowserMainActivity', '-d', lanUrl, '-f', '0x10000000'],
+        ['shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', lanUrl, '-f', '0x10000000'],
+        ['shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', localhostUrl, '-f', '0x10000000']
       ];
 
       let launched = false;
@@ -154,7 +154,7 @@ export class PcGamepadManager {
       for (const intentArgs of browserIntents) {
         try {
           const res = await adbManager.runAdb(intentArgs, serial);
-          if (res && !res.includes('Error:') && !res.includes('does not exist')) {
+          if (res && res.success && !res.stdout?.includes('Error:') && !res.stdout?.includes('does not exist')) {
             launched = true;
             break;
           }
