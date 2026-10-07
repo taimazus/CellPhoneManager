@@ -290,7 +290,25 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
 
             {/* Viewfinder Preview Box */}
             <div className="relative w-full aspect-video bg-black/90 rounded-2xl border border-slate-800 overflow-hidden flex items-center justify-center group shadow-2xl">
-              {isLiveStreaming && streamUrl ? (
+              {isWebcamActive ? (
+                <div className="flex flex-col items-center justify-center text-center p-6 space-y-3 animate-fadeIn">
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center text-emerald-400 animate-pulse shadow-lg shadow-emerald-500/20">
+                    <Video className="w-8 h-8" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-base font-bold text-white flex items-center justify-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                      <span>استریم و وب‌کم فوق‌روان ۶۰ FPS در ویندوز فعال است</span>
+                    </h4>
+                    <p className="text-xs text-slate-300 max-w-md leading-relaxed">
+                      پنجره اختصاصی <strong>Sahand HD Webcam</strong> با کیفیت <strong>{cameraSize}</strong> و نرخ فریم <strong>{cameraFps} FPS</strong> روی دسکتاپ ویندوز در حال پخش مستقیم است.
+                    </p>
+                    <p className="text-[11px] text-cyan-400 font-mono pt-1">
+                      (برای OBS Studio، پنجره بازشده در ویندوز را به عنوان Window Capture انتخاب کنید)
+                    </p>
+                  </div>
+                </div>
+              ) : isLiveStreaming && streamUrl ? (
                 <img
                   src={streamUrl}
                   alt="Live Camera Feed"

@@ -885,12 +885,16 @@ export class AdbManager {
 
   async setTorch(serial, enable) {
     try {
-      const res = await this.runAdb(`shell cmd flashlight set-torch ${enable ? 1 : 0}`, serial);
-      if (!res.success) {
-        // Fallback for older Android
-        await this.runAdb(`shell service call flashlight 1 i32 ${enable ? 1 : 0}`, serial);
-      }
-      return { success: true, message: enable ? 'فلش دوربین روشن شد' : 'فلش دوربین خاموش شد' };
+      // 1. MIUI / Xiaomi / HyperOS specific broadcast
+      await this.runAdb(`shell am broadcast -a miui.intent.action.TOGGLE_TORCH --ez state ${enable ? 'true' : 'false'}`, serial);
+      
+      // 2. Standard Android cmd flashlight (AOSP, Pixel, Samsung, Motorola)
+      await this.runAdb(`shell cmd flashlight set-torch ${enable ? 1 : 0}`, serial);
+      
+      // 3. Service call fallback
+      await this.runAdb(`shell service call flashlight 1 i32 ${enable ? 1 : 0}`, serial);
+
+      return { success: true, message: enable ? 'دستور روشن کردن فلاش ارسال شد' : 'دستور خاموش کردن فلاش ارسال شد' };
     } catch (e) {
       return { success: false, error: e.message };
     }
