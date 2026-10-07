@@ -24,7 +24,8 @@ export default {
         }
       },
       fontFamily: {
-        vazir: ['Vazirmatn', 'Segoe UI', 'system-ui', 'sans-serif'],
+        sans: ['Vazirmatn', 'Outfit', 'Segoe UI', 'Tahoma', 'system-ui', '-apple-system', 'sans-serif'],
+        vazir: ['Vazirmatn', 'Outfit', 'Segoe UI', 'Tahoma', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['Fira Code', 'Cascadia Code', 'Consolas', 'monospace']
       },
       animation: {

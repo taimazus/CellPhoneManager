@@ -1,11 +1,24 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  html, body, #root {
+    font-family: 'Vazirmatn', 'Outfit', 'Segoe UI', Tahoma, system-ui, -apple-system, sans-serif;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
   body {
     @apply bg-[#080d1a] text-slate-100 selection:bg-cyan-500 selection:text-black;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  input, button, select, textarea {
+    font-family: inherit;
   }
 
   /* Custom Glassmorphism Scrollbar */
