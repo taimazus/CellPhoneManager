@@ -28,7 +28,9 @@ import {
   FileCode,
   LayoutGrid,
   List,
-  ArrowUpDown
+  ArrowUpDown,
+  ChevronRight,
+  ChevronLeft
 } from 'lucide-react';
 import { Device } from '../types';
 
@@ -244,6 +246,51 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
       if (sortBy === 'date_asc') return (new Date(a.modified || 0).getTime()) - (new Date(b.modified || 0).getTime());
       return 0;
     });
+
+  // Previous & Next file navigation in preview modal
+  const previewableFiles = filteredItems.filter(i => !i.isDir);
+  const currentFileIndex = previewFile ? previewableFiles.findIndex(i => i.name === previewFile.name) : -1;
+  const hasPrev = currentFileIndex > 0;
+  const hasNext = currentFileIndex >= 0 && currentFileIndex < previewableFiles.length - 1;
+
+  const handlePrevFile = () => {
+    if (hasPrev) {
+      handleOpenPreview(previewableFiles[currentFileIndex - 1]);
+    }
+  };
+
+  const handleNextFile = () => {
+    if (hasNext) {
+      handleOpenPreview(previewableFiles[currentFileIndex + 1]);
+    }
+  };
+
+  // Keyboard navigation for preview modal (Left/Right arrow and Escape)
+  useEffect(() => {
+    if (!previewFile) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      if (e.key === 'Escape') {
+        setPreviewFile(null);
+      } else if (e.key === 'ArrowRight') {
+        if (hasPrev) {
+          e.preventDefault();
+          handlePrevFile();
+        }
+      } else if (e.key === 'ArrowLeft') {
+        if (hasNext) {
+          e.preventDefault();
+          handleNextFile();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [previewFile, currentFileIndex, previewableFiles, hasPrev, hasNext]);
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -606,13 +653,13 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-lg animate-fadeIn">
           <div className="relative w-full max-w-4xl bg-[#0c142b] border border-cyan-500/40 rounded-3xl overflow-hidden shadow-2xl shadow-cyan-950/90 flex flex-col max-h-[90vh]">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-[#080d1d] text-right">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400">
+            <div className="flex flex-wrap items-center justify-between p-4 border-b border-slate-800 bg-[#080d1d] gap-3 text-right">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 flex-shrink-0">
                   <Eye className="w-5 h-5" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white truncate max-w-md" title={previewFile.name}>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-white truncate max-w-xs sm:max-w-md" title={previewFile.name}>
                     {previewFile.name}
                   </h3>
                   <span className="text-[10px] text-slate-400 font-mono">
@@ -620,6 +667,33 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
                   </span>
                 </div>
               </div>
+
+              {/* Navigation Pill (Previous / Next / Counter) */}
+              {previewableFiles.length > 1 && (
+                <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 rounded-2xl p-1 shadow-inner">
+                  <button
+                    onClick={handlePrevFile}
+                    disabled={!hasPrev}
+                    className="px-2.5 py-1.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-cyan-400 disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center gap-1 text-xs"
+                    title="فایل قبلی (کلید جهت‌نمای راست)"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline font-medium text-[11px]">قبلی</span>
+                  </button>
+                  <span className="px-2.5 py-0.5 rounded-lg bg-slate-950 font-mono text-[11px] text-cyan-400 border border-slate-800/80 font-bold">
+                    {currentFileIndex + 1} / {previewableFiles.length}
+                  </span>
+                  <button
+                    onClick={handleNextFile}
+                    disabled={!hasNext}
+                    className="px-2.5 py-1.5 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-cyan-400 disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center gap-1 text-xs"
+                    title="فایل بعدی (کلید جهت‌نمای چپ)"
+                  >
+                    <span className="hidden sm:inline font-medium text-[11px]">بعدی</span>
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
 
               <div className="flex items-center gap-2">
                 <button
@@ -632,7 +706,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
                 <button
                   onClick={() => setPreviewFile(null)}
                   className="p-2 rounded-xl bg-slate-900 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-800 transition-all"
-                  title="بستن"
+                  title="بستن (Esc)"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -640,7 +714,28 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
             </div>
 
             {/* Modal Body */}
-            <div className="flex-1 overflow-auto p-6 flex flex-col items-center justify-center bg-[#050914] min-h-[350px]">
+            <div className="relative flex-1 overflow-auto p-6 flex flex-col items-center justify-center bg-[#050914] min-h-[350px]">
+              {/* Floating Large Previous / Next Side Buttons */}
+              {hasPrev && (
+                <button
+                  onClick={handlePrevFile}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-slate-950/80 hover:bg-cyan-500 text-slate-200 hover:text-slate-950 border border-slate-700/80 hover:border-cyan-400 backdrop-blur-md transition-all shadow-2xl hover:scale-110 active:scale-95 group"
+                  title="فایل قبلی (کلید جهت‌نمای راست)"
+                >
+                  <ChevronRight className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                </button>
+              )}
+
+              {hasNext && (
+                <button
+                  onClick={handleNextFile}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 z-30 p-3 rounded-full bg-slate-950/80 hover:bg-cyan-500 text-slate-200 hover:text-slate-950 border border-slate-700/80 hover:border-cyan-400 backdrop-blur-md transition-all shadow-2xl hover:scale-110 active:scale-95 group"
+                  title="فایل بعدی (کلید جهت‌نمای چپ)"
+                >
+                  <ChevronLeft className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                </button>
+              )}
+
               {/* IMAGE PREVIEW */}
               {getFileCategory(previewFile.name) === 'image' && (
                 <div className="flex flex-col items-center gap-4 w-full h-full justify-center">
@@ -656,7 +751,17 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
                     />
                   </div>
                   {/* Image Controls */}
-                  <div className="flex items-center gap-2 bg-slate-900/90 p-2 rounded-2xl border border-slate-800">
+                  <div className="flex flex-wrap items-center justify-center gap-2 bg-slate-900/90 p-2 rounded-2xl border border-slate-800">
+                    <button
+                      onClick={handlePrevFile}
+                      disabled={!hasPrev}
+                      className="p-2 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-cyan-400 disabled:opacity-30 disabled:pointer-events-none flex items-center gap-1 text-xs"
+                      title="تصویر قبلی"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                      <span className="hidden sm:inline">قبلی</span>
+                    </button>
+                    <div className="h-4 w-px bg-slate-800 mx-1" />
                     <button
                       onClick={() => setImageRotation(r => r + 90)}
                       className="p-2 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-cyan-400"
@@ -683,6 +788,16 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
                       className="px-3 py-1.5 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs"
                     >
                       اندازه اصلی
+                    </button>
+                    <div className="h-4 w-px bg-slate-800 mx-1" />
+                    <button
+                      onClick={handleNextFile}
+                      disabled={!hasNext}
+                      className="p-2 rounded-xl hover:bg-slate-800 text-slate-300 hover:text-cyan-400 disabled:opacity-30 disabled:pointer-events-none flex items-center gap-1 text-xs"
+                      title="تصویر بعدی"
+                    >
+                      <span className="hidden sm:inline">بعدی</span>
+                      <ChevronLeft className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
