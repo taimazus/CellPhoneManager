@@ -141,13 +141,17 @@ To guarantee 100% autonomous operation even without internet access or when remo
 ---
 
 ## 🎥 Using Phone Camera & Mic in Telegram, Zoom, OBS & Eitaa Web
-1. **Webcam Streaming:**
-   - In CellPhoneManager, click **"Start Camera Webcam Stream"**.
-   - In **OBS Studio**, add a **Window Capture** source, select the camera window, and click **Start Virtual Camera**.
-   - In Telegram, Zoom, or Eitaa Web browser settings, select **OBS Virtual Camera** as your video source.
-2. **Microphone Forwarding:**
-   - In CellPhoneManager, click **"Start Microphone Stream"**.
-   - Install the offline **VB-Cable** driver and set your audio input in Telegram / Discord / browser to **`CABLE Output (VB-Audio)`**.
+
+### 1. 1080p FHD 60FPS Webcam Streaming:
+- In CellPhoneManager, click **"Start Camera Webcam Stream"** to launch the ultra-smooth DirectX 11 window.
+- **Orientation & Rotation Controls:** Choose `0° (Landscape)`, `90° (Portrait)`, `180°`, or `270° (Portrait)` in settings or press **`Alt + ➡`** / **`Alt + ⬅`** on your keyboard to rotate in real time.
+- In **OBS Studio**, add a **Window Capture** source, select `Sahand HD Webcam`, and click **Start Virtual Camera**.
+- In Telegram, Zoom, or Discord settings, select **OBS Virtual Camera** as your video source.
+- *(Optional)* To un-mirror the local preview in Telegram, right-click the source in OBS and select **Transform > Flip Horizontal**.
+
+### 2. Microphone Forwarding:
+- In CellPhoneManager, go to **"Phone Microphone Studio"** and click **"Start Microphone Stream"**.
+- Set audio input in Telegram, Discord, or games to **`CABLE Output (VB-Audio Virtual Cable)`** for studio-quality crystal clear voice.
 
 ---
 
