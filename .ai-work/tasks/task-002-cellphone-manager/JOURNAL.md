@@ -80,3 +80,10 @@
 - **Actual checks:** `npm test` passed: 17 test files, 58 tests, exit 0. `npm run build` passed: 1,948 modules; main chunk 820.48 kB with Vite >500 kB warning. No exploit was executed against a running server or actual hardware.
 - **Limitations:** No dedicated API integration/security tests; real Windows registry behavior and physical devices not exercised; build check does not prove runtime feature correctness. Audit cannot prove absence of unreviewed defects.
 - **Next step:** User review of P0/P1 defects; remediation is outside this read-only audit authorization.
+
+## 2026-10-07 - Follow-up Check Against Current HEAD
+- User asked whether the items raised since the first chat had been completed. HEAD had advanced since the prior audit (cfdf415 and feature/remediation commits); earlier ledger is historical and now has a reconciliation addendum in STATE.md.
+- Spot-checked loopback bind/CORS, proxy validation, removal of tweak shell action, upload size cap, backup path validation, duplicate backup routes, restore messaging/staging, and new capability/offline features. Most prior code-level findings appear fixed or narrowed; optional authentication is not globally enforced, and config defaults auth off.
+- Current checks: `npm test` passed (25 files, 80 tests); `npm run build` passed (1,949 modules) with tab chunks split and no >500 kB warning.
+- Tests generated known test-only entries in audit/automation data and a snapshot; verified the entries corresponded to this run and restored/removed only those artifacts. Working tree was clean after cleanup before updating task notes.
+- This was a spot-check, not a new full enterprise audit or physical-device/offline installer verification. Next step if required: fresh audit and clean VM/hardware validation.

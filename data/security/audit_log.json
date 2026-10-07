@@ -1,5 +1,23 @@
 [
   {
+    "id": "sec_1791384513524_58bfw",
+    "timestamp": "2026-10-07T14:48:33.524Z",
+    "action": "TEST_ACTION",
+    "status": "SUCCESS",
+    "targetDevice": "mock-phone-1",
+    "details": "Audit logging unit test",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "sec_1791384513519_sqcpj",
+    "timestamp": "2026-10-07T14:48:33.519Z",
+    "action": "SESSION_CREATE",
+    "status": "SUCCESS",
+    "targetDevice": null,
+    "details": "نشست جدید امنیتی ایجاد شد",
+    "ip": "127.0.0.1"
+  },
+  {
     "id": "sec_1791384358351_91k2w",
     "timestamp": "2026-10-07T14:45:58.351Z",
     "action": "TEST_ACTION",
