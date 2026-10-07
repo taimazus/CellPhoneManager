@@ -35,6 +35,32 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
   onOpenWirelessModal,
   isRefreshing
 }) => {
+  const getOemBadge = () => {
+    if (!selectedDevice) return null;
+    if (selectedDevice.type === 'ios') {
+      return { label: 'Apple iOS', color: 'bg-slate-800/90 text-slate-100 border-slate-700' };
+    }
+    const all = `${selectedDevice.name} ${selectedDevice.model || ''} ${selectedDevice.manufacturer || ''}`.toLowerCase();
+    if (all.includes('xiaomi') || all.includes('redmi') || all.includes('poco') || all.includes('2201116')) {
+      return { label: '⚡ Xiaomi HyperOS / MIUI', color: 'bg-amber-500/10 text-amber-300 border-amber-500/30' };
+    }
+    if (all.includes('samsung') || all.includes('galaxy') || all.includes('sm-')) {
+      return { label: '🔷 Samsung One UI', color: 'bg-blue-500/10 text-blue-300 border-blue-500/30' };
+    }
+    if (all.includes('huawei') || all.includes('honor')) {
+      return { label: '🔶 Huawei EMUI', color: 'bg-red-500/10 text-red-300 border-red-500/30' };
+    }
+    if (all.includes('oppo') || all.includes('realme') || all.includes('oneplus')) {
+      return { label: '🔴 ColorOS / OxygenOS', color: 'bg-rose-500/10 text-rose-300 border-rose-500/30' };
+    }
+    if (all.includes('pixel') || all.includes('google')) {
+      return { label: '🟢 Google Pixel Android', color: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' };
+    }
+    return { label: '🤖 Android AOSP', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' };
+  };
+
+  const oemBadge = getOemBadge();
+
   return (
     <header className="h-20 bg-[#0c142b]/90 border-b border-cyan-500/20 px-6 flex items-center justify-between glass-panel sticky top-0 z-30">
       {/* Device Selector Dropdown & Connection Status */}
@@ -79,6 +105,13 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
             </select>
           </div>
         </div>
+
+        {/* OEM & Brand Badge */}
+        {oemBadge && (
+          <div className={`hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border ${oemBadge.color}`}>
+            <span>{oemBadge.label}</span>
+          </div>
+        )}
 
         {/* Active Connection Type Badge */}
         {selectedDevice && (

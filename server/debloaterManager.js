@@ -20,6 +20,22 @@ export class DebloaterManager {
       { packageName: 'com.sec.android.app.samsungapps', appName: 'Galaxy Store (فروشگاه گلکسی)', vendor: 'samsung', risk: 'safe', desc: 'مارکت اختصاصی برنامه‌های سامسونگ' },
       { packageName: 'com.samsung.android.spay', appName: 'Samsung Pay (پرداخت سامسونگ)', vendor: 'samsung', risk: 'safe', desc: 'سرویس پرداخت غیرفعال در ایران' },
       { packageName: 'com.samsung.android.game.gamehome', appName: 'Samsung Game Launcher', vendor: 'samsung', risk: 'safe', desc: 'لانچر بازی با بنرهای تبلیغاتی' },
+      { packageName: 'com.samsung.android.app.reminder', appName: 'Samsung Reminder', vendor: 'samsung', risk: 'safe', desc: 'یادآور سامسونگ' },
+      
+      // Huawei / Honor (EMUI / MagicOS)
+      { packageName: 'com.huawei.appmarket', appName: 'Huawei AppGallery', vendor: 'huawei', risk: 'safe', desc: 'فروشگاه پیش‌فرض هواوی' },
+      { packageName: 'com.huawei.browser', appName: 'Huawei Browser', vendor: 'huawei', risk: 'safe', desc: 'مرورگر پیش‌فرض هواوی' },
+      { packageName: 'com.huawei.hwid', appName: 'Huawei Mobile Services (HMS Core)', vendor: 'huawei', risk: 'safe', desc: 'سرویس‌های هواوی' },
+
+      // OnePlus / Oppo / Realme (ColorOS / OxygenOS)
+      { packageName: 'com.heytap.market', appName: 'App Market (Oppo/Realme)', vendor: 'oppo', risk: 'safe', desc: 'مارکت اپلیکیشن‌های اوپو و ریلمی' },
+      { packageName: 'com.heytap.browser', appName: 'HeyTap Browser', vendor: 'oppo', risk: 'safe', desc: 'مرورگر پیش‌فرض اوپو' },
+      { packageName: 'com.oplus.games', appName: 'Oppo Game Center', vendor: 'oppo', risk: 'safe', desc: 'مرکز بازی و تبلیغات اوپو' },
+
+      // Universal Bloatware & Social Preloads
+      { packageName: 'com.facebook.katana', appName: 'Facebook App Preload', vendor: 'universal', risk: 'safe', desc: 'نرم‌افزار پیش‌نصب فیسبوک' },
+      { packageName: 'com.facebook.system', appName: 'Facebook App Installer', vendor: 'universal', risk: 'safe', desc: 'سرویس پس‌زمینه نصب تبلیغاتی فیسبوک' },
+      { packageName: 'com.facebook.appmanager', appName: 'Facebook App Manager', vendor: 'universal', risk: 'safe', desc: 'مدیریت و آپدیت خودکار فیسبوک' },
       
       // Google Services
       { packageName: 'com.google.android.apps.tachyon', appName: 'Google Duo / Meet', vendor: 'google', risk: 'safe', desc: 'تماس تصویری پیش‌فرض گوگل' },

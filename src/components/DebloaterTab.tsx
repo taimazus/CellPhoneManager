@@ -23,7 +23,7 @@ interface DebloaterTabProps {
 interface BloatItem {
   packageName: string;
   appName: string;
-  vendor: 'xiaomi' | 'samsung' | 'google';
+  vendor: 'xiaomi' | 'samsung' | 'huawei' | 'oppo' | 'google' | 'universal';
   risk: string;
   desc: string;
   installed?: boolean;
@@ -33,13 +33,31 @@ interface BloatItem {
 export const DebloaterTab: React.FC<DebloaterTabProps> = ({ device }) => {
   const [items, setItems] = useState<BloatItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [vendorFilter, setVendorFilter] = useState<'all' | 'xiaomi' | 'samsung' | 'google'>('all');
+  const [vendorFilter, setVendorFilter] = useState<'all' | 'xiaomi' | 'samsung' | 'huawei' | 'oppo' | 'google' | 'universal'>('all');
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToast({ text, type });
     setTimeout(() => setToast(null), 3500);
   };
+
+  // Auto-detect phone manufacturer
+  const detectBrand = () => {
+    if (!device) return 'all';
+    const name = (device.name || '').toLowerCase();
+    const model = (device.model || '').toLowerCase();
+    const mfg = (device.manufacturer || '').toLowerCase();
+    const all = `${name} ${model} ${mfg}`;
+
+    if (all.includes('xiaomi') || all.includes('redmi') || all.includes('poco') || all.includes('2201116')) return 'xiaomi';
+    if (all.includes('samsung') || all.includes('galaxy') || all.includes('sm-')) return 'samsung';
+    if (all.includes('huawei') || all.includes('honor')) return 'huawei';
+    if (all.includes('oppo') || all.includes('realme') || all.includes('oneplus')) return 'oppo';
+    if (all.includes('pixel') || all.includes('google')) return 'google';
+    return 'all';
+  };
+
+  const detectedVendor = detectBrand();
 
   const fetchBloatware = async () => {
     if (!device) return;
@@ -57,6 +75,10 @@ export const DebloaterTab: React.FC<DebloaterTabProps> = ({ device }) => {
 
   useEffect(() => {
     fetchBloatware();
+    const brand = detectBrand();
+    if (brand !== 'all') {
+      setVendorFilter(brand as any);
+    }
   }, [device?.id]);
 
   const handleUninstall = async (packageName: string) => {
@@ -122,10 +144,17 @@ export const DebloaterTab: React.FC<DebloaterTabProps> = ({ device }) => {
       {/* Header */}
       <div className="rounded-3xl glass-panel p-6 border border-cyan-500/20 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="space-y-1">
-          <h2 className="text-xl font-black text-white flex items-center gap-2.5">
-            <Trash2 className="w-6 h-6 text-rose-400" />
-            <span>حذف و مسدودسازی برنامه‌های تبلیغاتی پیش‌فرض (System Debloater)</span>
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-black text-white flex items-center gap-2.5">
+              <Trash2 className="w-6 h-6 text-rose-400" />
+              <span>حذف و مسدودسازی برنامه‌های تبلیغاتی پیش‌فرض (System Debloater)</span>
+            </h2>
+            {detectedVendor !== 'all' && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                تشخیص هوشمند: {detectedVendor.toUpperCase()}
+              </span>
+            )}
+          </div>
           <p className="text-xs text-slate-400">
             حذف و غیرفعال‌سازی امن سرویس‌های تبلیغاتی، ردیاب‌ها و برنامه‌های اضافی بدون نیاز به روت و بدون آسیب به سیستم
           </p>
@@ -149,18 +178,21 @@ export const DebloaterTab: React.FC<DebloaterTabProps> = ({ device }) => {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 overflow-x-auto pb-1">
         <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-900 border border-slate-800 text-xs">
           {[
             { id: 'all', label: 'همه برنامه‌ها' },
             { id: 'xiaomi', label: 'شیائومی (MIUI / HyperOS)' },
             { id: 'samsung', label: 'سامسونگ (One UI)' },
+            { id: 'huawei', label: 'هواوی (EMUI)' },
+            { id: 'oppo', label: 'اوپو / وان‌پلاس / ریلمی' },
+            { id: 'universal', label: 'تبلیغات عمومی و فیسبوک' },
             { id: 'google', label: 'گوگل' }
           ].map(f => (
             <button
               key={f.id}
               onClick={() => setVendorFilter(f.id as any)}
-              className={`px-3.5 py-1.5 rounded-xl font-bold transition-all ${
+              className={`px-3.5 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all ${
                 vendorFilter === f.id ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
