@@ -56,6 +56,7 @@ sequenceDiagram
 | **`firmwareGuardManager`** | `server/firmwareGuardManager.js` | SHA-256 image verification and fastboot pre-flash safety assertions. |
 | **`automationManager`** | `server/automationManager.js` | Device connection event triggers and scheduled automation execution logs. |
 | **`toolManager`** | `server/toolManager.js` | Offline wheels fallback (`bin/wheels/`), tool diagnosis, transparent downloads. |
+| **`aiManager`** | `server/aiManager.js` | Intent parsing, guardrail enforcement, and direct device operation execution. |
 | **`pcSpeakerManager`** | `server/pcSpeakerManager.js` | Windows loopback audio capture and ultra-low latency WebAudio streaming. |
 
 ---

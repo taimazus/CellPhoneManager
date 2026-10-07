@@ -6,6 +6,12 @@ Developed and maintained exclusively by **Sahand Electronic Solutions Co. (شر�
 
 ---
 
+## [3.4.2] — 2026-10-07 (Royal Edition Enterprise)
+
+### 🌟 Fixed & Enhanced
+- **AI Operational Assistant:** Connected `/api/devices/:id/ai/ask` endpoint in `server/index.js` and upgraded `AiAssistantTab` to use `safeFetchJson` with zero-fail resilience.
+- **Global Zero-Trust Auth Gate:** Implemented `securityManager.getAuthMiddleware()` and automatic bearer token injection for frontend requests.
+
 ## [3.4.0] — 2026-10-07 (Royal Edition Enterprise)
 
 ### 🌟 Added
