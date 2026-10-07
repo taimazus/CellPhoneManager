@@ -7,73 +7,61 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 
-console.log('===============================================================================');
-console.log('  نرم‌افزار جامع مدیریت گوشی (Cell Phone Manager)');
-console.log('  شرکت راهکار الکترونیک سهند - https://irres.ir');
-console.log('  نصب شورتکات روی دسکتاپ و ثبت در PATH ویندوز');
-console.log('===============================================================================');
-console.log(`\n[1/3] مسیر پروژه: ${projectRoot}`);
+console.log('============================================================================');
+console.log('  Cell Phone Manager - Sahand Electronic Solutions (https://irres.ir)');
+console.log('  Desktop Shortcut & User PATH Setup');
+console.log('===========================================================================');
+console.log(`[1/3] Project Root: ${projectRoot}`);
 
-// 1. Add to User PATH
-console.log('\n[2/3] در حال بررسی و افزودن مسیر برنامه به متغیر PATH کاربر...');
+console.log('\n[2/3] Adding project directory to User PATH...');
 try {
-  const psAddPath = `
-    $proj = '${projectRoot.replace(/'/g, "''")}';
-    [Environment]::SetEnvironmentVariable('CPM_HOME', $proj, 'User');
-    $userPath = [Environment]::GetEnvironmentVariable('PATH', 'User');
-    if ($userPath -notlike ('*' + $proj + '*')) {
-      [Environment]::SetEnvironmentVariable('PATH', $userPath + ';' + $proj, 'User');
-      Write-Host '   + مسیر به PATH کاربر اضافه شد.' -ForegroundColor Green;
-    } else {
-      Write-Host '   + مسیر برنامه قبلاً در PATH ثبت شده است.' -ForegroundColor Cyan;
-    }
-  `;
-  execSync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${psAddPath.replace(/\n/g, ' ')}"`, { stdio: 'inherit' });
+  const projEsc = projectRoot.replace(/'/g, "''");
+  const psScript = `$cpmHome='${projEsc}'; [Environment]::SetEnvironmentVariable('CPM_HOME',$cpmHome,'User'); $upath=[Environment]::GetEnvironmentVariable('PATH','User'); if($upath -notlike ('*' + $cpmHome + '*')){ [Environment]::SetEnvironmentVariable('PATH',$upath+';'+$cpmHome,'User'); Write-Host '   + PATH registered successfully.' -ForegroundColor Green; } else { Write-Host '   + PATH already registered.' -ForegroundColor Cyan; }`;
+  execSync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${psScript}"`, { stdio: 'inherit' });
 } catch (err) {
-  console.error('   ! خطا در افزودن به PATH:', err.message);
+  console.error('   ! PATH setup warning:', err.message);
 }
 
-// 2. Create Desktop and Start Menu Shortcuts
-console.log('\n[3/3] در حال ایجاد میانبر (Shortcut) روی دسکتاپ با آیکون اختصاصی...');
+console.log('\n[3/3] Creating Desktop and Start Menu Shortcuts with custom icon...');
 try {
-  const icoPath = fs.existsSync(path.join(projectRoot, 'app-icon.ico')) 
-    ? path.join(projectRoot, 'app-icon.ico') 
+  const icoPath = fs.existsSync(path.join(projectRoot, 'app-icon.ico'))
+    ? path.join(projectRoot, 'app-icon.ico')
     : path.join(projectRoot, 'public', 'app-icon.ico');
+  const targetBat = path.join(projectRoot, 'cpmStart.bat');
 
-  const psShortcut = `
-    $WshShell = New-Object -ComObject WScript.Shell;
-    $proj = '${projectRoot.replace(/'/g, "''")}';
-    $targetBat = Join-Path $proj 'cpmStart.bat';
-    $ico = '${icoPath.replace(/'/g, "''")}';
+  const vbsLines = [
+    'Set oWS = WScript.CreateObject("WScript.Shell")',
+    'sDesk = oWS.SpecialFolders("Desktop")',
+    'sProg = oWS.SpecialFolders("Programs")',
+    'sTarget = ' + JSON.stringify(targetBat),
+    'sWork = ' + JSON.stringify(projectRoot),
+    'sIcon = ' + JSON.stringify(icoPath + ',0'),
+    'Set oLink = oWS.CreateShortcut(sDesk & "\\Cell Phone Manager.lnk")',
+    'oLink.TargetPath = sTarget',
+    'oLink.WorkingDirectory = sWork',
+    'oLink.Description = "Cell Phone Manager - Sahand Electronic Solutions"',
+    'oLink.IconLocation = sIcon',
+    'oLink.Save',
+    'Set oLinkP = oWS.CreateShortcut(sProg & "\\Cell Phone Manager.lnk")',
+    'oLinkP.TargetPath = sTarget',
+    'oLinkP.WorkingDirectory = sWork',
+    'oLinkP.Description = "Cell Phone Manager"',
+    'oLinkP.IconLocation = sIcon',
+    'oLinkP.Save'
+  ].join('\r\n');
 
-    # Desktop Shortcut
-    $desktopPath = [Environment]::GetFolderPath('Desktop');
-    $shortcutDesk = $WshShell.CreateShortcut((Join-Path $desktopPath 'Cell Phone Manager.lnk'));
-    $shortcutDesk.TargetPath = $targetBat;
-    $shortcutDesk.WorkingDirectory = $proj;
-    $shortcutDesk.Description = 'نرم‌افزار جامع مدیریت و عیب‌یابی گوشی - شرکت راهکار الکترونیک سهند';
-    if (Test-Path $ico) { $shortcutDesk.IconLocation = $ico + ', 0'; }
-    $shortcutDesk.Save();
-    Write-Host '   + میانبر دسکتاپ با موفقیت ساخته شد.' -ForegroundColor Green;
-
-    # Start Menu Shortcut
-    $programsPath = [Environment]::GetFolderPath('Programs');
-    $shortcutSM = $WshShell.CreateShortcut((Join-Path $programsPath 'Cell Phone Manager.lnk'));
-    $shortcutSM.TargetPath = $targetBat;
-    $shortcutSM.WorkingDirectory = $proj;
-    $shortcutSM.Description = 'نرم‌افزار جامع مدیریت گوشی';
-    if (Test-Path $ico) { $shortcutSM.IconLocation = $ico + ', 0'; }
-    $shortcutSM.Save();
-    Write-Host '   + میانبر منوی Start با موفقیت اضافه شد.' -ForegroundColor Green;
-  `;
-  execSync(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${psShortcut.replace(/\n/g, ' ')}"`, { stdio: 'inherit' });
+  const tempVbs = path.join(projectRoot, '_temp_sc.vbs');
+  fs.writeFileSync(tempVbs, vbsLines, 'utf8');
+  execSync(`cscript //nologo "${tempVbs}"`, { stdio: 'inherit' });
+  if (fs.existsSync(tempVbs)) fs.unlinkSync(tempVbs);
+  console.log('   + Desktop shortcut created at: %USERPROFILE%\\Desktop\\Cell Phone Manager.lnk');
+  console.log('   + Start Menu shortcut created in Programs.');
 } catch (err) {
-  console.error('   ! خطا در ساخت میانبر:', err.message);
+  console.error('   ! Shortcut creation error:', err.message);
 }
 
-console.log('\n===============================================================================');
-console.log('  عملیات با موفقیت به پایان رسید:');
-console.log('  ۱. میانبر "Cell Phone Manager" روی دسکتاپ شما قرار گرفت.');
-console.log('  ۲. با تایپ دستور cpm در هر ترمینال (CMD یا PowerShell) برنامه اجرا می‌شود.');
-console.log('  ۳. در منوی Start نیز Cell Phone Manager افزوده شد.');
-console.log('===============================================================================\n');
+console.log('\n=============================================================================');
+console.log('  Setup completed successfully!');
+console.log('  1. Desktop shortcut "Cell Phone Manager" is ready.');
+console.log('  2. You can type "cpm" in any terminal (CMD / PowerShell / Run) to launch.');
+console.log('=============================================================================\n');
