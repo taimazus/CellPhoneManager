@@ -34,7 +34,10 @@ import {
   Sparkles,
   Hash,
   Play,
-  ArrowUpDown
+  ArrowUpDown,
+  CheckSquare,
+  Square,
+  ListChecks
 } from 'lucide-react';
 import { Device } from '../types';
 import { safeFetchJson } from '../utils/api';
@@ -115,6 +118,8 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
   const [newSmsText, setNewSmsText] = useState<string>('');
   const [newSmsRecipient, setNewSmsRecipient] = useState<string>('');
   const [showNewSmsModal, setShowNewSmsModal] = useState<boolean>(false);
+  const [selectedSmsThreads, setSelectedSmsThreads] = useState<string[]>([]);
+  const [isSmsSelectMode, setIsSmsSelectMode] = useState<boolean>(false);
 
   // --- Sorting States ---
   const [callSort, setCallSort] = useState<'date_desc' | 'date_asc' | 'duration_desc' | 'name_asc'>('date_desc');
@@ -633,8 +638,10 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     }
   };
 
-  const handleDeleteSms = async (messageId: string) => {
+  const handleDeleteSms = async (messageId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (!device) return;
+    if (!confirm('آیا از حذف این پیامک اطمینان دارید؟')) return;
     try {
       const res = await fetch(`/api/devices/${device.id}/sms/delete`, {
         method: 'POST',
@@ -643,11 +650,125 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       });
       const data = await res.json();
       if (data.success) {
-        showToast('پیامک حذف شد', 'success');
-        setSmsList(smsList.filter(s => s.id !== messageId));
+        showToast('پیامک با موفقیت حذف شد', 'success');
+        const updated = smsList.filter(s => s.id !== messageId);
+        setSmsList(updated);
+        if (selectedThread) {
+          const remainingInThread = updated.filter(s => (s.threadId || s.number) === selectedThread);
+          if (remainingInThread.length === 0) {
+            const nextThread = updated[0] ? (updated[0].threadId || updated[0].number) : null;
+            setSelectedThread(nextThread);
+          }
+        }
+      } else {
+        showToast(`خطا در حذف پیامک: ${data.error || 'ناشناخته'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
+    }
+  };
+
+  const handleDeleteThread = async (threadKey: string, number?: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!device) return;
+    const displayName = number || threadKey;
+    if (!confirm(`آیا از حذف کل این گفتگو (${displayName}) اطمینان دارید؟`)) return;
+    try {
+      const res = await fetch(`/api/devices/${device.id}/sms/delete-thread`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ threadKey, number })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('گفتگو با موفقیت حذف شد', 'success');
+        const updated = smsList.filter(s => (s.threadId || s.number) !== threadKey && s.number !== number);
+        setSmsList(updated);
+        setSelectedSmsThreads(prev => prev.filter(k => k !== threadKey));
+        if (selectedThread === threadKey) {
+          const nextThread = updated[0] ? (updated[0].threadId || updated[0].number) : null;
+          setSelectedThread(nextThread);
+        }
+      } else {
+        showToast(`خطا در حذف گفتگو: ${data.error || 'ناشناخته'}`, 'error');
+      }
+    } catch (err: any) {
+      showToast(`خطا: ${err.message}`, 'error');
+    }
+  };
+
+  const handleDeleteSelectedThreads = async () => {
+    if (!device || selectedSmsThreads.length === 0) return;
+    if (!confirm(`آیا از حذف ${selectedSmsThreads.length} گفتگوی انتخاب‌شده اطمینان دارید؟`)) return;
+    try {
+      const numbersToDelete: string[] = [];
+      const threadKeysToDelete: string[] = [];
+      selectedSmsThreads.forEach(key => {
+        const msgs = smsThreads[key];
+        if (msgs && msgs[0]) {
+          if (msgs[0].threadId) threadKeysToDelete.push(msgs[0].threadId);
+          if (msgs[0].number) numbersToDelete.push(msgs[0].number);
+        } else {
+          threadKeysToDelete.push(key);
+        }
+      });
+
+      const res = await fetch(`/api/devices/${device.id}/sms/delete-batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ threadKeys: threadKeysToDelete, numbers: numbersToDelete })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`${selectedSmsThreads.length} گفتگو با موفقیت حذف شدند`, 'success');
+        const updated = smsList.filter(s => !selectedSmsThreads.includes(s.threadId || s.number));
+        setSmsList(updated);
+        if (selectedThread && selectedSmsThreads.includes(selectedThread)) {
+          const nextThread = updated[0] ? (updated[0].threadId || updated[0].number) : null;
+          setSelectedThread(nextThread);
+        }
+        setSelectedSmsThreads([]);
+        setIsSmsSelectMode(false);
+      } else {
+        showToast(`خطا در حذف گروهی: ${data.error || 'ناشناخته'}`, 'error');
+      }
+    } catch (err: any) {
+      showToast(`خطا: ${err.message}`, 'error');
+    }
+  };
+
+  const handleClearAllSms = async () => {
+    if (!device) return;
+    if (!confirm('⚠️ آیا از پاکسازی کامل کلیه پیامک‌های دستگاه مطمئن هستید؟ این عملیات غیرقابل بازگشت است.')) return;
+    try {
+      const res = await fetch(`/api/devices/${device.id}/sms/clear`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast('تمامی پیامک‌ها با موفقیت پاکسازی شدند', 'success');
+        setSmsList([]);
+        setSelectedThread(null);
+        setSelectedSmsThreads([]);
+        setIsSmsSelectMode(false);
+      } else {
+        showToast(`خطا: ${data.error || 'ناشناخته'}`, 'error');
+      }
+    } catch (err: any) {
+      showToast(`خطا: ${err.message}`, 'error');
+    }
+  };
+
+  const toggleSelectThread = (threadKey: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedSmsThreads(prev => 
+      prev.includes(threadKey) ? prev.filter(k => k !== threadKey) : [...prev, threadKey]
+    );
+  };
+
+  const handleSelectAllThreads = (allKeys: string[]) => {
+    if (selectedSmsThreads.length === allKeys.length) {
+      setSelectedSmsThreads([]);
+    } else {
+      setSelectedSmsThreads([...allKeys]);
     }
   };
 
@@ -742,6 +863,17 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     const threadKey = m.threadId || m.number;
     if (!smsThreads[threadKey]) smsThreads[threadKey] = [];
     smsThreads[threadKey].push(m);
+  });
+
+  const filteredThreadKeys = Object.keys(smsThreads).filter(threadKey => {
+    if (!smsSearch.trim()) return true;
+    const msgs = smsThreads[threadKey];
+    const q = smsSearch.toLowerCase();
+    return msgs.some(m => 
+      (m.sender && m.sender.toLowerCase().includes(q)) ||
+      (m.number && m.number.includes(q)) ||
+      (m.body && m.body.toLowerCase().includes(q))
+    );
   });
 
   const activeThreadMessages = selectedThread && smsThreads[selectedThread] ? smsThreads[selectedThread] : [];
@@ -1499,72 +1631,202 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       {/* 3. SMS & MESSAGES VIEW */}
       {/* ========================================================= */}
       {subTab === 'sms' && (
-        <div className="rounded-2xl glass-panel border border-slate-800 overflow-hidden grid grid-cols-1 lg:grid-cols-3 min-h-[560px]">
-          {/* Left Column: Threads List */}
-          <div className="border-l border-slate-800 p-4 space-y-3 bg-[#080d1a]/80">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-cyan-400" />
-                <span>گفتگوها (SMS Chats)</span>
-              </h3>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => {
-                    setNewSmsRecipient('');
-                    setShowNewSmsModal(true);
-                  }}
-                  className="p-1.5 rounded-lg bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400"
-                  title="پیام جدید"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={handleExportSms}
-                  className="p-1.5 rounded-lg bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
-                  title="پشتیبان JSON پیامک‌ها"
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Threads List */}
-            <div className="space-y-1 max-h-[480px] overflow-y-auto pr-1">
-              {Object.keys(smsThreads).length === 0 ? (
-                <div className="p-8 text-center text-slate-500 text-xs">
-                  هیچ پیامکی در صندوق پیام یافت نشد.
+        <div className="rounded-2xl glass-panel border border-slate-800 overflow-hidden grid grid-cols-1 lg:grid-cols-3 min-h-[580px]">
+          {/* Left Column: Threads List & Controls */}
+          <div className="border-l border-slate-800 p-4 space-y-3 bg-[#080d1a]/80 flex flex-col justify-between">
+            <div className="space-y-3">
+              {/* Header & Main Actions */}
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                    <MessageSquare className="w-4 h-4 text-cyan-400" />
+                    <span>گفتگوها (SMS)</span>
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full bg-slate-800 text-[11px] font-mono text-cyan-300">
+                    {filteredThreadKeys.length}
+                  </span>
                 </div>
-              ) : (
-                Object.keys(smsThreads).map((threadKey) => {
-                  const msgs = smsThreads[threadKey];
-                  const lastMsg = msgs[0];
-                  const isSelected = selectedThread === threadKey;
 
-                  return (
-                    <div
-                      key={threadKey}
-                      onClick={() => setSelectedThread(threadKey)}
-                      className={`p-3 rounded-xl cursor-pointer transition-all border text-right ${
-                        isSelected 
-                          ? 'bg-cyan-500/10 border-cyan-500/40 text-cyan-300' 
-                          : 'bg-slate-900/60 hover:bg-slate-800/60 border-slate-800/80 text-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-white text-xs truncate max-w-[130px]">
-                          {lastMsg.sender || lastMsg.number}
-                        </span>
-                        <span className="text-[10px] text-slate-500 font-mono">
-                          {lastMsg.timestamp}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-400 truncate max-w-full font-sans">
-                        {lastMsg.body}
-                      </p>
-                    </div>
-                  );
-                })
+                <div className="flex items-center gap-1">
+                  {/* New SMS */}
+                  <button
+                    onClick={() => {
+                      setNewSmsRecipient('');
+                      setShowNewSmsModal(true);
+                    }}
+                    className="p-1.5 rounded-lg bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400 transition-all"
+                    title="ارسال پیامک جدید"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+
+                  {/* Toggle Multi-Select Mode */}
+                  <button
+                    onClick={() => {
+                      setIsSmsSelectMode(!isSmsSelectMode);
+                      if (isSmsSelectMode) setSelectedSmsThreads([]);
+                    }}
+                    className={`p-1.5 rounded-lg transition-all border ${
+                      isSmsSelectMode 
+                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' 
+                        : 'bg-slate-900 text-slate-400 hover:text-slate-200 border-slate-800'
+                    }`}
+                    title={isSmsSelectMode ? 'خروج از حالت انتخاب' : 'حالت انتخاب چندتایی'}
+                  >
+                    <ListChecks className="w-4 h-4" />
+                  </button>
+
+                  {/* Export Backup JSON */}
+                  <button
+                    onClick={handleExportSms}
+                    className="p-1.5 rounded-lg bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800 transition-all"
+                    title="پشتیبان JSON پیامک‌ها"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+
+                  {/* Clear All SMS */}
+                  <button
+                    onClick={handleClearAllSms}
+                    className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all"
+                    title="پاکسازی کامل تمام پیامک‌ها (Clear All SMS)"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* SMS Search Bar */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute right-3 top-2.5 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="جستجو در نام، شماره یا متن پیام..."
+                  value={smsSearch}
+                  onChange={(e) => setSmsSearch(e.target.value)}
+                  className="w-full bg-slate-900/90 border border-slate-800/80 rounded-xl pr-9 pl-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50"
+                />
+                {smsSearch && (
+                  <button
+                    onClick={() => setSmsSearch('')}
+                    className="absolute left-2.5 top-2 text-slate-500 hover:text-slate-300"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Multi-Selection Action Toolbar */}
+              {(isSmsSelectMode || selectedSmsThreads.length > 0) && (
+                <div className="bg-cyan-950/40 border border-cyan-500/30 rounded-xl p-2 flex items-center justify-between animate-fadeIn text-xs">
+                  <button
+                    onClick={() => handleSelectAllThreads(filteredThreadKeys)}
+                    className="flex items-center gap-1.5 text-cyan-300 font-semibold hover:text-cyan-200"
+                  >
+                    {selectedSmsThreads.length === filteredThreadKeys.length && filteredThreadKeys.length > 0 ? (
+                      <CheckSquare className="w-4 h-4 text-cyan-400" />
+                    ) : (
+                      <Square className="w-4 h-4 text-slate-400" />
+                    )}
+                    <span>{selectedSmsThreads.length === filteredThreadKeys.length ? 'لغو انتخاب همه' : 'انتخاب همه'}</span>
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-slate-400">
+                      {selectedSmsThreads.length} مورد انتخاب شد
+                    </span>
+                    {selectedSmsThreads.length > 0 && (
+                      <button
+                        onClick={handleDeleteSelectedThreads}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-[11px] transition-all shadow-md shadow-rose-600/20"
+                        title="حذف گفتگوهای انتخاب شده"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>حذف انتخابی</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
               )}
+
+              {/* Threads Scroll List */}
+              <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
+                {filteredThreadKeys.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500 text-xs">
+                    {smsSearch ? 'موردی مطابق با جستجوی شما یافت نشد.' : 'هیچ پیامکی در صندوق پیام یافت نشد.'}
+                  </div>
+                ) : (
+                  filteredThreadKeys.map((threadKey) => {
+                    const msgs = smsThreads[threadKey];
+                    const lastMsg = msgs[0];
+                    const isSelected = selectedThread === threadKey;
+                    const isItemChecked = selectedSmsThreads.includes(threadKey);
+
+                    return (
+                      <div
+                        key={threadKey}
+                        onClick={() => {
+                          if (isSmsSelectMode) {
+                            toggleSelectThread(threadKey);
+                          } else {
+                            setSelectedThread(threadKey);
+                          }
+                        }}
+                        className={`group relative p-3 rounded-xl cursor-pointer transition-all border text-right flex items-start justify-between gap-2 ${
+                          isSelected 
+                            ? 'bg-cyan-500/10 border-cyan-500/40 text-cyan-300' 
+                            : 'bg-slate-900/60 hover:bg-slate-800/60 border-slate-800/80 text-slate-300'
+                        } ${isItemChecked ? 'ring-1 ring-cyan-500/60 bg-cyan-950/30' : ''}`}
+                      >
+                        {/* Checkbox (in selection mode or always toggleable) */}
+                        {isSmsSelectMode && (
+                          <div 
+                            onClick={(e) => toggleSelectThread(threadKey, e)}
+                            className="pt-0.5 text-cyan-400"
+                          >
+                            {isItemChecked ? (
+                              <CheckSquare className="w-4 h-4 text-cyan-400" />
+                            ) : (
+                              <Square className="w-4 h-4 text-slate-500 hover:text-slate-300" />
+                            )}
+                          </div>
+                        )}
+
+                        {/* Thread Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-bold text-white text-xs truncate max-w-[120px]">
+                              {lastMsg.sender || lastMsg.number}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              {lastMsg.timestamp}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 truncate max-w-full font-sans">
+                            {lastMsg.body}
+                          </p>
+                        </div>
+
+                        {/* Message Count & Quick Delete Thread Button */}
+                        <div className="flex items-center gap-1.5 self-center">
+                          {msgs.length > 1 && (
+                            <span className="px-1.5 py-0.5 rounded-full bg-slate-800 text-[10px] font-mono text-slate-400">
+                              {msgs.length}
+                            </span>
+                          )}
+                          <button
+                            onClick={(e) => handleDeleteThread(threadKey, lastMsg.number, e)}
+                            className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+                            title="حذف کل این گفتگو"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
 
@@ -1575,18 +1837,37 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                 {/* Active Chat Header */}
                 <div className="flex items-center justify-between pb-3 border-b border-slate-800/80 text-right">
                   <div>
-                    <h4 className="font-bold text-white text-sm">
-                      {activeThreadMessages[0]?.sender || activeThreadRecipient}
-                    </h4>
-                    <p className="text-[11px] text-slate-400 font-mono">{activeThreadRecipient}</p>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-white text-sm">
+                        {activeThreadMessages[0]?.sender || activeThreadRecipient}
+                      </h4>
+                      <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 text-[10px] font-mono text-cyan-400 border border-cyan-500/20">
+                        {activeThreadMessages.length} پیام
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 font-mono mt-0.5">{activeThreadRecipient}</p>
                   </div>
-                  <button
-                    onClick={() => handleMakeCall(activeThreadRecipient)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold"
-                  >
-                    <Phone className="w-3.5 h-3.5" />
-                    <span>تماس فوری</span>
-                  </button>
+
+                  <div className="flex items-center gap-2">
+                    {/* Instant Call */}
+                    <button
+                      onClick={() => handleMakeCall(activeThreadRecipient)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>تماس فوری</span>
+                    </button>
+
+                    {/* Delete Active Thread */}
+                    <button
+                      onClick={() => handleDeleteThread(selectedThread, activeThreadRecipient)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold transition-all"
+                      title="حذف کامل این گفتگو"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>حذف گفتگو</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Messages Bubbles Scroll */}
@@ -1596,12 +1877,21 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                     return (
                       <div
                         key={msg.id}
-                        className={`flex flex-col max-w-[75%] rounded-2xl p-3.5 text-xs select-text leading-relaxed ${
+                        className={`group relative flex flex-col max-w-[75%] rounded-2xl p-3.5 text-xs select-text leading-relaxed transition-all ${
                           isMe 
                             ? 'mr-auto bg-cyan-600 text-slate-950 rounded-br-none shadow-md shadow-cyan-950/40 font-medium' 
                             : 'ml-auto bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none'
                         }`}
                       >
+                        {/* Single Message Delete Button (Hover) */}
+                        <button
+                          onClick={(e) => handleDeleteSms(msg.id, e)}
+                          className={`absolute top-2 ${isMe ? 'left-2 text-slate-900/60 hover:text-rose-900' : 'left-2 text-slate-500 hover:text-rose-400'} opacity-0 group-hover:opacity-100 transition-all p-1 rounded-md hover:bg-black/10`}
+                          title="حذف این پیامک تکی"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+
                         <p className="whitespace-pre-wrap">{msg.body}</p>
                         <div className={`flex items-center gap-1 mt-1 text-[10px] ${isMe ? 'text-slate-950/70' : 'text-slate-500'} font-mono justify-end`}>
                           <span>{msg.timestamp}</span>

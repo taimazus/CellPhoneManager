@@ -1118,7 +1118,49 @@ export class AdbManager {
   }
 
   async deleteSms(serial, id) {
+    if (Array.isArray(id)) {
+      const idList = id.map(i => `'${i}'`).join(',');
+      return await this.runAdb(`shell content delete --uri content://sms --where "_id IN (${idList})"`, serial);
+    }
     return await this.runAdb(`shell content delete --uri content://sms --where "_id=${id}"`, serial);
+  }
+
+  async deleteSmsThread(serial, threadKey, number) {
+    try {
+      if (threadKey && !isNaN(Number(threadKey))) {
+        const res = await this.runAdb(`shell content delete --uri content://sms --where "thread_id=${threadKey}"`, serial);
+        if (res.success) return res;
+      }
+      if (number) {
+        const cleanNum = number.replace(/'/g, '');
+        return await this.runAdb(`shell content delete --uri content://sms --where "address='${cleanNum}'"`, serial);
+      }
+      return { success: false, error: 'شناسه گفتگو یا شماره نامعتبر است' };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  async deleteSmsBatch(serial, { messageIds = [], threadKeys = [], numbers = [] } = {}) {
+    try {
+      if (messageIds && messageIds.length > 0) {
+        const idList = messageIds.map(i => `'${i}'`).join(',');
+        await this.runAdb(`shell content delete --uri content://sms --where "_id IN (${idList})"`, serial);
+      }
+      if (threadKeys && threadKeys.length > 0) {
+        const validThreads = threadKeys.filter(t => !isNaN(Number(t)));
+        if (validThreads.length > 0) {
+          await this.runAdb(`shell content delete --uri content://sms --where "thread_id IN (${validThreads.join(',')})"`, serial);
+        }
+      }
+      if (numbers && numbers.length > 0) {
+        const numList = numbers.map(n => `'${n.replace(/'/g, '')}'`).join(',');
+        await this.runAdb(`shell content delete --uri content://sms --where "address IN (${numList})"`, serial);
+      }
+      return { success: true, message: 'پیام‌های انتخابی با موفقیت حذف شدند' };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
   }
 
   async clearAllSms(serial) {

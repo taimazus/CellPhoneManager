@@ -1262,13 +1262,44 @@ app.post('/api/devices/:id/sms/send', async (req, res) => {
 
 app.post('/api/devices/:id/sms/delete', async (req, res) => {
   const { id } = req.params;
-  const { messageId } = req.body;
+  const { messageId, messageIds } = req.body;
+  const targetId = messageIds || messageId;
   try {
     if (id.startsWith('mock-')) {
-      mockDeviceManager.deleteSms(id, messageId);
+      mockDeviceManager.deleteSms(id, targetId);
       return res.json({ success: true, message: 'پیامک با موفقیت حذف گردید' });
     }
-    const result = await adbManager.deleteSms(id, messageId);
+    const result = await adbManager.deleteSms(id, targetId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/sms/delete-thread', async (req, res) => {
+  const { id } = req.params;
+  const { threadKey, number } = req.body;
+  try {
+    if (id.startsWith('mock-')) {
+      mockDeviceManager.deleteSmsThread(id, threadKey, number);
+      return res.json({ success: true, message: 'گفتگوی انتخابی با موفقیت حذف شد' });
+    }
+    const result = await adbManager.deleteSmsThread(id, threadKey, number);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/sms/delete-batch', async (req, res) => {
+  const { id } = req.params;
+  const { messageIds = [], threadKeys = [], numbers = [] } = req.body;
+  try {
+    if (id.startsWith('mock-')) {
+      mockDeviceManager.deleteSmsBatch(id, { messageIds, threadKeys, numbers });
+      return res.json({ success: true, message: 'پیام‌ها و گفتگوهای انتخابی با موفقیت حذف شدند' });
+    }
+    const result = await adbManager.deleteSmsBatch(id, { messageIds, threadKeys, numbers });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

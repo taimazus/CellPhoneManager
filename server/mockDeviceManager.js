@@ -323,7 +323,34 @@ export class MockDeviceManager {
   deleteSms(deviceId, id) {
     const dev = this.getDevice(deviceId);
     if (!dev || !dev.smsMessages) return false;
-    dev.smsMessages = dev.smsMessages.filter(s => s.id !== id);
+    if (Array.isArray(id)) {
+      dev.smsMessages = dev.smsMessages.filter(s => !id.includes(s.id));
+    } else {
+      dev.smsMessages = dev.smsMessages.filter(s => s.id !== id);
+    }
+    return true;
+  }
+
+  deleteSmsThread(deviceId, threadKey, number) {
+    const dev = this.getDevice(deviceId);
+    if (!dev || !dev.smsMessages) return false;
+    dev.smsMessages = dev.smsMessages.filter(s => {
+      if (s.threadId && s.threadId === threadKey) return false;
+      if (number && s.number === number) return false;
+      return true;
+    });
+    return true;
+  }
+
+  deleteSmsBatch(deviceId, { messageIds = [], threadKeys = [], numbers = [] } = {}) {
+    const dev = this.getDevice(deviceId);
+    if (!dev || !dev.smsMessages) return false;
+    dev.smsMessages = dev.smsMessages.filter(s => {
+      if (messageIds.includes(s.id)) return false;
+      if (threadKeys.includes(s.threadId)) return false;
+      if (numbers.includes(s.number)) return false;
+      return true;
+    });
     return true;
   }
 
