@@ -82,20 +82,52 @@ export class HardwareLabManager {
     }
 
     try {
-      // Ensure media volume is up
-      await adbManager.runAdb('shell "cmd media_session volume --stream 3 --set 15 2>/dev/null || cmd audio set-stream-volume 3 15 2>/dev/null || true"', serial);
+      // 1. Wake screen
+      try {
+        await adbManager.runAdb('shell input keyevent 224', serial);
+        await adbManager.runAdb('shell wm dismiss-keyguard', serial);
+      } catch {
+        // non-fatal
+      }
 
-      // Reverse port so device reaches local server
-      await adbManager.runAdb('reverse tcp:5173 tcp:5173 2>/dev/null || true', serial);
-      await adbManager.runAdb('reverse tcp:3001 tcp:3001 2>/dev/null || true', serial);
+      // 2. Ensure media volume is up
+      try {
+        await adbManager.runAdb('shell cmd media_session volume --stream 3 --set 15', serial);
+      } catch {
+        // fallback
+      }
 
-      // Launch Web Audio Tone player on phone
-      await adbManager.runAdb(
-        `shell am start -a android.intent.action.VIEW -d "http://127.0.0.1:3001/audio-tone.html?freq=${freq}&duration=${duration}"`,
-        serial
-      );
+      // 3. Reverse port so device reaches local server
+      try {
+        await adbManager.runAdb('reverse tcp:3001 tcp:3001', serial);
+      } catch {
+        // non-fatal
+      }
 
-      return { success: true, message: `فرکانس ${freq === 9999 ? 'سوییپ فرکانسی' : `${freq}Hz`} با موفقیت روی بلندگوی گوشی پخش شد.` };
+      const targetUrl = `http://localhost:3001/audio-tone.html?freq=${freq}&duration=${duration}`;
+
+      // 4. Try browser packages in sequence
+      const browserIntents = [
+        `shell am start -n com.android.chrome/com.google.android.apps.chrome.Main -d "${targetUrl}" -f 0x10000000`,
+        `shell am start -n com.mi.globalbrowser/com.android.browser.BrowserActivity -d "${targetUrl}" -f 0x10000000`,
+        `shell am start -a android.intent.action.VIEW -d "${targetUrl}" -f 0x10000000`
+      ];
+
+      for (const intent of browserIntents) {
+        try {
+          const res = await adbManager.runAdb(intent, serial);
+          if (res && res.success && !res.stdout?.includes('Error:')) {
+            break;
+          }
+        } catch {
+          // next
+        }
+      }
+
+      return { 
+        success: true, 
+        message: `فرکانس ${freq === 9999 ? 'سوییپ فرکانسی' : `${freq}Hz`} با موفقیت روی بلندگوی گوشی اجرا شد.` 
+      };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -160,16 +192,46 @@ export class HardwareLabManager {
     }
 
     try {
-      // Reverse port so device reaches local server
-      await adbManager.runAdb('reverse tcp:5173 tcp:5173 2>/dev/null || true', serial);
-      await adbManager.runAdb('reverse tcp:3001 tcp:3001 2>/dev/null || true', serial);
+      // 1. Wake screen
+      try {
+        await adbManager.runAdb('shell input keyevent 224', serial);
+        await adbManager.runAdb('shell wm dismiss-keyguard', serial);
+      } catch {
+        // non-fatal
+      }
 
-      // Launch screen test page on phone
-      await adbManager.runAdb(
-        `shell am start -a android.intent.action.VIEW -d "http://127.0.0.1:3001/screen-test.html?color=${encodeURIComponent(color)}"`,
-        serial
-      );
-      return { success: true, message: 'آزمون تمام‌صفحه رنگ‌ها و پیکسل سوخته روی صفحه گوشی باز شد.' };
+      // 2. Reverse port so device reaches local server
+      try {
+        await adbManager.runAdb('reverse tcp:3001 tcp:3001', serial);
+      } catch {
+        // non-fatal
+      }
+
+      const cleanColor = typeof color === 'string' ? color : 'rgb';
+      const targetUrl = `http://localhost:3001/screen-test.html?color=${encodeURIComponent(cleanColor)}`;
+
+      // 3. Try browser packages in sequence
+      const browserIntents = [
+        `shell am start -n com.android.chrome/com.google.android.apps.chrome.Main -d "${targetUrl}" -f 0x10000000`,
+        `shell am start -n com.mi.globalbrowser/com.android.browser.BrowserActivity -d "${targetUrl}" -f 0x10000000`,
+        `shell am start -a android.intent.action.VIEW -d "${targetUrl}" -f 0x10000000`
+      ];
+
+      for (const intent of browserIntents) {
+        try {
+          const res = await adbManager.runAdb(intent, serial);
+          if (res && res.success && !res.stdout?.includes('Error:')) {
+            break;
+          }
+        } catch {
+          // next
+        }
+      }
+
+      return { 
+        success: true, 
+        message: 'آزمون تمام‌صفحه رنگ‌ها و پیکسل سوخته روی صفحه گوشی باز شد.' 
+      };
     } catch (err) {
       return { success: false, error: err.message };
     }

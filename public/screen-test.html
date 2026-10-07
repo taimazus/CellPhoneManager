@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>تست صفحه نمایش و پیکسل سوخته گوشی | CellPhoneManager</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    body, html {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #ff0000;
+      font-family: system-ui, -apple-system, sans-serif;
+      transition: background-color 0.2s ease;
+    }
+    .hud {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 16, 24, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      border-radius: 9999px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      z-index: 100;
+      transition: opacity 0.3s ease;
+    }
+    .hud.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .color-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.4);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .color-btn:active {
+      transform: scale(0.85);
+    }
+    .btn-exit {
+      background: #ef4444;
+      color: #fff;
+      font-size: 11px;
+      font-weight: bold;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      border: none;
+      cursor: pointer;
+    }
+    .title-badge {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.75);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      padding: 6px 16px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: bold;
+      z-index: 100;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body id="screenBody" onclick="handleTap(event)">
+  <div class="title-badge" id="titleBadge">لمس صفحه: تغییر رنگ | ۲ بار لمس سریع: خروج</div>
+
+  <div class="hud" id="hudBar">
+    <div class="color-btn" style="background: #ff0000;" onclick="setColor('#ff0000', event)"></div>
+    <div class="color-btn" style="background: #00ff00;" onclick="setColor('#00ff00', event)"></div>
+    <div class="color-btn" style="background: #0000ff;" onclick="setColor('#0000ff', event)"></div>
+    <div class="color-btn" style="background: #ffffff;" onclick="setColor('#ffffff', event)"></div>
+    <div class="color-btn" style="background: #000000;" onclick="setColor('#000000', event)"></div>
+    <div class="color-btn" style="background: #ffff00;" onclick="setColor('#ffff00', event)"></div>
+    <button class="btn-exit" onclick="window.close();">بستن</button>
+  </div>
+
+  <script>
+    const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffffff', '#000000', '#ffff00', '#00ffff', '#ff00ff'];
+    let colorIndex = 0;
+    const body = document.getElementById('screenBody');
+    const hud = document.getElementById('hudBar');
+    const titleBadge = document.getElementById('titleBadge');
+
+    // Read URL color param
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialColor = urlParams.get('color');
+    if (initialColor && initialColor !== 'rgb') {
+      body.style.backgroundColor = initialColor;
+    } else {
+      body.style.backgroundColor = colors[0];
+    }
+
+    let lastTap = 0;
+    function handleTap(e) {
+      if (e.target.closest('#hudBar')) return;
+
+      const now = Date.now();
+      if (now - lastTap < 300) {
+        // Double tap - close window
+        window.close();
+        return;
+      }
+      lastTap = now;
+
+      // Cycle next color
+      colorIndex = (colorIndex + 1) % colors.length;
+      body.style.backgroundColor = colors[colorIndex];
+
+      // Temporarily toggle HUD
+      hud.classList.toggle('hidden');
+      setTimeout(() => {
+        titleBadge.style.opacity = '0';
+      }, 3000);
+    }
+
+    function setColor(hex, e) {
+      if (e) e.stopPropagation();
+      body.style.backgroundColor = hex;
+    }
+
+    // Attempt Fullscreen
+    document.addEventListener('click', () => {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    }, { once: true });
+  </script>
+</body>
+</html>

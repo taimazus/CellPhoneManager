@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>تست بلندگو و دیافراگم صوتی گوشی | CellPhoneManager</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    body {
+      background-color: #0c0d12;
+      color: #f5f5f5;
+      font-family: system-ui, -apple-system, sans-serif;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 20px;
+    }
+    .card {
+      background: #14151f;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      border-radius: 28px;
+      padding: 32px 24px;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(245, 158, 11, 0.15);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+    .icon-ring {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: rgba(245, 158, 11, 0.15);
+      border: 2px solid #f59e0b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+      50% { transform: scale(1.06); box-shadow: 0 0 25px 8px rgba(245, 158, 11, 0.25); }
+    }
+    h1 {
+      font-size: 20px;
+      font-weight: 900;
+      color: #fbbf24;
+    }
+    .freq-badge {
+      padding: 6px 18px;
+      border-radius: 9999px;
+      background: rgba(245, 158, 11, 0.2);
+      border: 1px solid #f59e0b;
+      color: #fef08a;
+      font-size: 16px;
+      font-weight: 900;
+      font-family: monospace;
+    }
+    .desc {
+      font-size: 12px;
+      color: #a8a29e;
+      line-height: 1.6;
+    }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 16px;
+      border: none;
+      font-size: 15px;
+      font-weight: 900;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.1s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #f59e0b, #eab308);
+      color: #0c0d12;
+      box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
+    }
+    .btn-primary:active {
+      transform: scale(0.97);
+    }
+    .btn-secondary {
+      background: #232533;
+      color: #d6d3d1;
+      border: 1px solid rgba(255,255,255,0.1);
+      margin-top: -10px;
+    }
+    .bars-container {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 6px;
+      height: 48px;
+      width: 100%;
+    }
+    .bar {
+      width: 8px;
+      background: #f59e0b;
+      border-radius: 4px;
+      height: 8px;
+      transition: height 0.1s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon-ring">🔊</div>
+    <h1>تست فرکانس بلندگوی گوشی</h1>
+    <div class="freq-badge" id="freqLabel">در حال بارگذاری...</div>
+    <div class="bars-container" id="bars">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    </div>
+    <p class="desc" id="descText">
+      تولید فرکانس سینوسی خالص برای سنجش وضوح، رفع گرفتگی آب و گردوغبار و سلامت دیافراگم بلندگوی گوشی.
+    </p>
+    <button class="btn btn-primary" id="playBtn" onclick="toggleTone()">▶️ شروع پخش فرکانس</button>
+    <button class="btn btn-secondary" onclick="window.close();">بستن صفحه</button>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const freq = parseInt(urlParams.get('freq')) || 440;
+    const duration = parseFloat(urlParams.get('duration')) || 3.5;
+    const isSweep = freq === 9999;
+
+    const freqLabel = document.getElementById('freqLabel');
+    const playBtn = document.getElementById('playBtn');
+    const descText = document.getElementById('descText');
+    const bars = document.querySelectorAll('.bar');
+
+    freqLabel.textContent = isSweep ? 'سوییپ فرکانسی (100Hz ➔ 8000Hz)' : `${freq} Hz (فرکانس خالص)`;
+
+    let audioCtx = null;
+    let osc = null;
+    let gain = null;
+    let isPlaying = false;
+    let animInterval = null;
+
+    function startVisualizer() {
+      animInterval = setInterval(() => {
+        bars.forEach(b => {
+          const h = Math.floor(Math.random() * 40) + 8;
+          b.style.height = h + 'px';
+        });
+      }, 100);
+    }
+
+    function stopVisualizer() {
+      clearInterval(animInterval);
+      bars.forEach(b => b.style.height = '8px');
+    }
+
+    function startTone() {
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        osc = audioCtx.createOscillator();
+        gain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        if (isSweep) {
+          osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(8000, audioCtx.currentTime + duration);
+        } else {
+          osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        }
+
+        gain.gain.setValueAtTime(0.7, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        isPlaying = true;
+        playBtn.textContent = '⏹️ توقف صدا';
+        startVisualizer();
+
+        osc.onended = () => {
+          stopTone();
+        };
+
+        setTimeout(() => {
+          if (isPlaying) stopTone();
+        }, duration * 1000);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function stopTone() {
+      if (osc) {
+        try { osc.stop(); } catch(e){}
+        osc = null;
+      }
+      if (audioCtx) {
+        try { audioCtx.close(); } catch(e){}
+        audioCtx = null;
+      }
+      isPlaying = false;
+      playBtn.textContent = '▶️ پخش مجدد فرکانس';
+      stopVisualizer();
+    }
+
+    function toggleTone() {
+      if (isPlaying) {
+        stopTone();
+      } else {
+        startTone();
+      }
+    }
+
+    // Auto-start on user interaction or load
+    window.addEventListener('DOMContentLoaded', () => {
+      startTone();
+    });
+    document.body.addEventListener('click', () => {
+      if (!isPlaying) startTone();
+    }, { once: true });
+  </script>
+</body>
+</html>
