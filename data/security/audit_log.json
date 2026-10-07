@@ -1,5 +1,50 @@
 [
   {
+    "id": "sec_1791386407404_vpnx4",
+    "timestamp": "2026-10-07T15:20:07.404Z",
+    "action": "TEST_ACTION",
+    "status": "SUCCESS",
+    "targetDevice": "mock-phone-1",
+    "details": "Audit logging unit test",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "sec_1791386407392_adguv",
+    "timestamp": "2026-10-07T15:20:07.392Z",
+    "action": "LOGIN_FAILURE",
+    "status": "FAILED",
+    "targetDevice": null,
+    "details": "تلاش ناموفق برای ورود با کلید API نامعتبر",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "sec_1791386407370_q1gw6",
+    "timestamp": "2026-10-07T15:20:07.370Z",
+    "action": "LOGIN_SUCCESS",
+    "status": "SUCCESS",
+    "targetDevice": null,
+    "details": "ورود موفق مدیر سیستم",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "sec_1791386407363_51kmh",
+    "timestamp": "2026-10-07T15:20:07.363Z",
+    "action": "SESSION_CREATE",
+    "status": "SUCCESS",
+    "targetDevice": null,
+    "details": "نشست جدید امنیتی ایجاد شد",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "sec_1791386407354_v69uh",
+    "timestamp": "2026-10-07T15:20:07.354Z",
+    "action": "SESSION_CREATE",
+    "status": "SUCCESS",
+    "targetDevice": null,
+    "details": "نشست جدید امنیتی ایجاد شد",
+    "ip": "127.0.0.1"
+  },
+  {
     "id": "sec_1791386212905_s0ihg",
     "timestamp": "2026-10-07T15:16:52.905Z",
     "action": "TEST_ACTION",

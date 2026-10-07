@@ -16,10 +16,26 @@ export class HardwareLabManager {
       else if (pattern === 'long') durationMs = 1800;
 
       const runVibeCmd = async (ms) => {
-        return await adbManager.runAdb(
-          `shell "cmd vibrator_manager synced -f oneshot -a ${ms} 255 2>/dev/null || cmd vibrator_manager synced oneshot ${ms} 2>/dev/null || cmd vibrator vibrate ${ms} 2>/dev/null || true"`,
-          serial
-        );
+        // Run commands without Windows shell redirection/pipe interference
+        const commands = [
+          `shell cmd vibrator_manager synced -f oneshot -a ${ms} 255`,
+          `shell cmd vibrator_manager synced oneshot ${ms}`,
+          `shell cmd vibrator vibrate -f ${ms} -d default`,
+          `shell cmd vibrator vibrate ${ms}`,
+          `shell service call vibrator 1 i32 ${ms}`
+        ];
+
+        for (const c of commands) {
+          try {
+            const res = await adbManager.runAdb(c, serial);
+            if (res && res.success && res.stdout && !res.stdout.toLowerCase().includes('error') && !res.stdout.toLowerCase().includes('unknown')) {
+              return res;
+            }
+          } catch {
+            // try next
+          }
+        }
+        return { success: true };
       };
 
       if (pattern === 'double') {

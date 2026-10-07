@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { Device } from '../types';
 import { TabGuideCard } from './TabGuideCard';
+import { safeFetchJson } from '../utils/api';
 
 interface HardwareLabTabProps {
   device: Device | null;
@@ -85,10 +86,10 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
     setLoading(true);
     try {
       const [netRes, sensRes, battRes, btRes] = await Promise.all([
-        fetch(`/api/devices/${device.id}/hardware/network`).then(r => r.json()).catch(() => null),
-        fetch(`/api/devices/${device.id}/hardware/sensors`).then(r => r.json()).catch(() => null),
-        fetch(`/api/devices/${device.id}/hardware/battery`).then(r => r.json()).catch(() => null),
-        fetch(`/api/devices/${device.id}/hardware/bluetooth`).then(r => r.json()).catch(() => null)
+        safeFetchJson(`/api/devices/${device.id}/hardware/network`),
+        safeFetchJson<{ sensors?: SensorItem[] }>(`/api/devices/${device.id}/hardware/sensors`),
+        safeFetchJson<BatteryData & { success: boolean }>(`/api/devices/${device.id}/hardware/battery`),
+        safeFetchJson<BluetoothData & { success: boolean }>(`/api/devices/${device.id}/hardware/bluetooth`)
       ]);
 
       if (netRes) setNetworkInfo(netRes);
@@ -111,16 +112,15 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
     if (!device) return;
     setVibrating(true);
     try {
-      const res = await fetch(`/api/devices/${device.id}/hardware/vibrate`, {
+      const data = await safeFetchJson<{ success: boolean; message?: string; error?: string }>(`/api/devices/${device.id}/hardware/vibrate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pattern })
       });
-      const data = await res.json();
-      if (data.success) {
+      if (data && data.success) {
         showToast(data.message || 'فرمان لرزش با موفقیت اجرا شد', 'success');
       } else {
-        showToast(`خطا در ویبره: ${data.error}`, 'error');
+        showToast(`خطا در ویبره: ${data?.error || 'نامشخص'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
@@ -133,16 +133,15 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
   const testButton = async (buttonKey: string, label: string) => {
     if (!device) return;
     try {
-      const res = await fetch(`/api/devices/${device.id}/hardware/button`, {
+      const data = await safeFetchJson<{ success: boolean; error?: string }>(`/api/devices/${device.id}/hardware/button`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ buttonKey })
       });
-      const data = await res.json();
-      if (data.success) {
+      if (data && data.success) {
         showToast(`کلید «${label}» با موفقیت فشرده شد.`, 'success');
       } else {
-        showToast(`خطا: ${data.error}`, 'error');
+        showToast(`خطا: ${data?.error || 'نامشخص'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
@@ -153,16 +152,15 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
   const testCamera = async (mode: 'still' | 'video' | 'capture', label: string) => {
     if (!device) return;
     try {
-      const res = await fetch(`/api/devices/${device.id}/hardware/camera`, {
+      const data = await safeFetchJson<{ success: boolean; error?: string }>(`/api/devices/${device.id}/hardware/camera`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode })
       });
-      const data = await res.json();
-      if (data.success) {
+      if (data && data.success) {
         showToast(`تست ${label} روی گوشی باز شد.`, 'success');
       } else {
-        showToast(`خطا: ${data.error}`, 'error');
+        showToast(`خطا: ${data?.error || 'نامشخص'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
@@ -173,16 +171,15 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
   const launchPhoneScreenTest = async (color: string = 'rgb') => {
     if (!device) return;
     try {
-      const res = await fetch(`/api/devices/${device.id}/hardware/screen-test`, {
+      const data = await safeFetchJson<{ success: boolean; error?: string }>(`/api/devices/${device.id}/hardware/screen-test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ color })
       });
-      const data = await res.json();
-      if (data.success) {
+      if (data && data.success) {
         showToast(`آزمون تمام‌صفحه رنگ‌ها ${color !== 'rgb' ? `(${color}) ` : ''}روی صفحه گوشی باز شد.`, 'success');
       } else {
-        showToast(`خطا: ${data.error}`, 'error');
+        showToast(`خطا: ${data?.error || 'نامشخص'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
@@ -208,7 +205,7 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
 
       // Play on Phone Speaker via Hardware Lab Backend
       if (device) {
-        fetch(`/api/devices/${device.id}/hardware/audio-tone`, {
+        safeFetchJson(`/api/devices/${device.id}/hardware/audio-tone`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ freq, duration: 2 })
@@ -242,7 +239,7 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
 
       // Play on Phone Speaker via Hardware Lab Backend
       if (device) {
-        fetch(`/api/devices/${device.id}/hardware/audio-tone`, {
+        safeFetchJson(`/api/devices/${device.id}/hardware/audio-tone`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ freq: 9999, duration: 3.5 })
@@ -452,6 +449,20 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
               </div>
               <span className="p-2 rounded-xl bg-pink-500/10 text-pink-400">تست</span>
             </button>
+          </div>
+
+          {/* Vibration Troubleshooting Notice */}
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-stone-300 space-y-2">
+            <div className="flex items-center gap-2 text-yellow-300 font-bold">
+              <HelpCircle className="w-4 h-4 text-yellow-400 flex-shrink-0" />
+              <span>چک‌لیست عدم لرزش گوشی با وجود سالم بودن موتور ویبره:</span>
+            </div>
+            <ul className="list-disc list-inside space-y-1 text-[11px] text-stone-300 pr-1 leading-relaxed">
+              <li><strong>حالت سایلنت (Silent) یا مزاحم نشوید (Do Not Disturb):</strong> در برخی مدل‌ها اگر گوشی روی بی‌صدا باشد، اندروید تمامی پالس‌های ویبره را متوقف می‌کند.</li>
+              <li><strong>حالت ذخیره نیرو و باتری (Battery Saver):</strong> هنگام روشن بودن ذخیره باتری، سیستم‌عامل موتورهای هپتیک را جهت صرفه‌جویی در مصرف برق غیرفعال می‌کند.</li>
+              <li><strong>تنظیمات لرزش لمسی گوشی (Haptic Feedback):</strong> در مسیر <strong>Settings &gt; Sound &amp; Vibration</strong> گزینه <strong>Haptic feedback / Vibrate on tap</strong> را بررسی و فعال نمایید.</li>
+              <li><strong>مجوزهای شیائومی (MIUI / HyperOS):</strong> در منوی Developer options گزینه <strong>USB debugging (Security settings)</strong> باید روشن باشد.</li>
+            </ul>
           </div>
         </div>
       )}
