@@ -1,4 +1,4 @@
-# 🏗️ CellPhoneManager v3.4.3 — Architectural Specifications
+# 🏗️ CellPhoneManager v3.4.4 — Architectural Specifications
 
 Developed exclusively for **Sahand Electronic Solutions Co. (شرکت راهکار الکترونیک سهند)** — [https://irres.ir](https://irres.ir).
 

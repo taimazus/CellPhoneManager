@@ -1,8 +1,8 @@
-# 👑 CellPhoneManager v3.4.3 Royal Edition — Universal Smartphone Management Suite
+# 👑 CellPhoneManager v3.4.4 Royal Edition — Universal Smartphone Management Suite
 
 [![Sahand Electronic Solutions](https://img.shields.io/badge/Developed%20By-Sahand%20Electronic%20Solutions%20(irres.ir)-d4af37?style=for-the-badge&logo=android)](https://irres.ir)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-taimazus%2FCellPhoneManager-181717?style=for-the-badge&logo=github)](https://github.com/taimazus/CellPhoneManager)
-[![Release Version](https://img.shields.io/badge/Version-v3.4.3%20Royal%20Edition-eab308?style=for-the-badge)](https://github.com/taimazus/CellPhoneManager)
+[![Release Version](https://img.shields.io/badge/Version-v3.4.4%20Royal%20Edition-eab308?style=for-the-badge)](https://github.com/taimazus/CellPhoneManager)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011%20(x64)-blue?style=for-the-badge&logo=windows)](https://irres.ir)
 [![Cross Platform](https://img.shields.io/badge/Support-Android%20%26%20Apple%20iOS-purple?style=for-the-badge&logo=apple)](https://irres.ir)
@@ -17,7 +17,7 @@
 
 ## 📌 Overview
 
-**CellPhoneManager v3.4.3 Royal Edition** is an enterprise-grade, high-performance smartphone bridge and device management suite designed for Windows 10 & 11 with an Imperial Charcoal & Royal 24k Gold aesthetic. It connects to Android (Xiaomi / HyperOS / MIUI, Samsung One UI, Huawei EMUI, Oppo ColorOS, Google Pixel) and Apple iOS devices over high-speed USB or Wireless ADB, providing rich diagnostics, hardware testing, audio streaming, screen recording, system cleaning, security auditing, multi-player PC gamepad simulation, and full data management.
+**CellPhoneManager v3.4.4 Royal Edition** is an enterprise-grade, high-performance smartphone bridge and device management suite designed for Windows 10 & 11 with an Imperial Charcoal & Royal 24k Gold aesthetic. It connects to Android (Xiaomi / HyperOS / MIUI, Samsung One UI, Huawei EMUI, Oppo ColorOS, Google Pixel) and Apple iOS devices over high-speed USB or Wireless ADB, providing rich diagnostics, hardware testing, audio streaming, screen recording, system cleaning, security auditing, multi-player PC gamepad simulation, and full data management.
 
 ---
 

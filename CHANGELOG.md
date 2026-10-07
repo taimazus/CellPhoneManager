@@ -6,7 +6,7 @@ Developed and maintained exclusively by **Sahand Electronic Solutions Co. (شر�
 
 ---
 
-## [3.4.3] — 2026-10-07 (Royal Edition Enterprise & PC Wireless Gamepad Suite)
+## [3.4.4] — 2026-10-07 (Royal Edition Enterprise & PC Wireless Gamepad Suite)
 
 ### 🌟 Added & Enhanced
 - **🎮 Native Windows Hardware ScanCode Gamepad Engine (`winInputBridge.ps1` & `pcGamepadManager.js`):**

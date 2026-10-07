@@ -1,10 +1,10 @@
 <div lang="fa" dir="rtl" align="right">
 
-# 👑 نرم‌افزار مدیریت جامع و سلطنتی گوشی‌های هوشمند — CellPhoneManager v3.4.3 Royal Edition
+# 👑 نرم‌افزار مدیریت جامع و سلطنتی گوشی‌های هوشمند — CellPhoneManager v3.4.4 Royal Edition
 
 [![راهکار الکترونیک سهند](https://img.shields.io/badge/طراحی%20و%20توسعه%20توسط-شرکت%20راهکار%20الکترونیک%20سهند%20(irres.ir)-d4af37?style=for-the-badge&logo=android)](https://irres.ir)
 [![گیت‌هاب](https://img.shields.io/badge/مخزن%20گیت‌هاب-taimazus%2FCellPhoneManager-181717?style=for-the-badge&logo=github)](https://github.com/taimazus/CellPhoneManager)
-[![نسخه](https://img.shields.io/badge/نسخه-v3.4.3%20Royal%20Edition-eab308?style=for-the-badge)](https://github.com/taimazus/CellPhoneManager)
+[![نسخه](https://img.shields.io/badge/نسخه-v3.4.4%20Royal%20Edition-eab308?style=for-the-badge)](https://github.com/taimazus/CellPhoneManager)
 [![لایسنس](https://img.shields.io/badge/مجوز-MIT-blue?style=for-the-badge)](LICENSE)
 [![ویندوز](https://img.shields.io/badge/پلتفرم-ویندوز%20۱۰%20%D9%88%20۱۱%20(x64)-blue?style=for-the-badge&logo=windows)](https://irres.ir)
 [![اندروید و آیفون](https://img.shields.io/badge/پشتیبانی-اندروید%20%D9%88%20iOS-purple?style=for-the-badge&logo=apple)](https://irres.ir)
@@ -19,7 +19,7 @@
 
 ## 📌 معرفی نرم‌افزار
 
-**CellPhoneManager v3.4.3 Royal Edition** یک نرم‌افزار سازمانی، مدرن، پرسرعت و همه‌منظوره با طراحی لوکس سلطنتی طلایی ۲۴ عیار و زغالی آبسیدین برای رایانه‌های ویندوزی است که گوشی شما (اندروید با هر برندی یا آیفون) را به کامپیوتر متصل کرده و امکاناتی پیشرفته و تخصصی را فراهم می‌سازد:
+**CellPhoneManager v3.4.4 Royal Edition** یک نرم‌افزار سازمانی، مدرن، پرسرعت و همه‌منظوره با طراحی لوکس سلطنتی طلایی ۲۴ عیار و زغالی آبسیدین برای رایانه‌های ویندوزی است که گوشی شما (اندروید با هر برندی یا آیفون) را به کامپیوتر متصل کرده و امکاناتی پیشرفته و تخصصی را فراهم می‌سازد:
 
 * **🎮 دسته بازی وایرلس سلطنتی ویندوز (PC Gamepad Engine):** تبدیل هر گوشی به دسته بازی حرفه‌ای بدون تاخیر (Latency < 2ms) با تزریق مستقیم کدهای اسکن سخت‌افزاری (Hardware ScanCode) بدون وابستگی به زبان کیبورد ویندوز (فارسی/انگلیسی)، پشتیبانی همزمان از **۲ بازیکن (Player 1 & Player 2)**، کنترل ۸ جهته مورب، جوی‌استیک آنالوگ لمسی، ویبره هوشمند هپتیک چندسطحی و شبیه‌ساز صدای کلیک مکانیکی.
 * **🛡️ موتور تشخیص و ارزیابی ۵ وضعیتی قابلیت‌ها (`capabilityManager`):** بررسی لحظه‌ای پیش‌نیازها (`آماده`، `نیازمند تنظیم`، `نیازمند ابزار`، `پشتیبانی‌نشده`، `نامشخص موقت`) به همراه راهنمای تعاملی گام‌به‌گام برای رفع موانع اتصال.
