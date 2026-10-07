@@ -5,18 +5,32 @@ import { adbManager } from './adbManager.js';
 
 const execAsync = util.promisify(exec);
 
+function formatFileSize(bytes) {
+  if (typeof bytes !== 'number' || isNaN(bytes) || bytes <= 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const val = parseFloat((bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 1));
+  return `${val} ${sizes[i]}`;
+}
+
 export class FileManager {
   async listDirectory(serial, targetPath = '/sdcard/') {
     if (!serial || serial.startsWith('mock-')) {
       return [
-        { name: 'DCIM', isDir: true, size: '4.2 GB', permissions: 'drwxrwx---', modified: '2026-10-01 14:20' },
-        { name: 'Download', isDir: true, size: '1.8 GB', permissions: 'drwxrwx---', modified: '2026-10-06 09:12' },
-        { name: 'Documents', isDir: true, size: '240 MB', permissions: 'drwxrwx---', modified: '2026-09-28 18:45' },
-        { name: 'Pictures', isDir: true, size: '890 MB', permissions: 'drwxrwx---', modified: '2026-10-05 11:30' },
-        { name: 'Music', isDir: true, size: '3.1 GB', permissions: 'drwxrwx---', modified: '2026-09-15 20:00' },
-        { name: 'Movies', isDir: true, size: '6.5 GB', permissions: 'drwxrwx---', modified: '2026-08-20 16:10' },
-        { name: 'Android', isDir: true, size: '12.4 GB', permissions: 'drwxrwx---', modified: '2026-10-07 08:00' },
-        { name: 'sample_document.pdf', isDir: false, size: '2.4 MB', permissions: '-rw-rw----', modified: '2026-10-04 15:33' }
+        { name: 'DCIM', isDir: true, size: 'پوشه', sizeBytes: 0, permissions: 'drwxrwx---', modified: '2026-10-01 14:20' },
+        { name: 'Download', isDir: true, size: 'پوشه', sizeBytes: 0, permissions: 'drwxrwx---', modified: '2026-10-06 09:12' },
+        { name: 'Documents', isDir: true, size: 'پوشه', sizeBytes: 0, permissions: 'drwxrwx---', modified: '2026-09-28 18:45' },
+        { name: 'Pictures', isDir: true, size: 'پوشه', sizeBytes: 0, permissions: 'drwxrwx---', modified: '2026-10-05 11:30' },
+        { name: 'Music', isDir: true, size: 'پوشه', sizeBytes: 0, permissions: 'drwxrwx---', modified: '2026-09-15 20:00' },
+        { name: 'Movies', isDir: true, size: 'پوشه', sizeBytes: 0, permissions: 'drwxrwx---', modified: '2026-08-20 16:10' },
+        { name: 'Android', isDir: true, size: 'پوشه', sizeBytes: 0, permissions: 'drwxrwx---', modified: '2026-10-07 08:00' },
+        { name: 'sample_document.pdf', isDir: false, size: '2.4 MB', sizeBytes: 2516582, permissions: '-rw-rw----', modified: '2026-10-04 15:33' },
+        { name: 'presentation.pptx', isDir: false, size: '14.8 MB', sizeBytes: 15518924, permissions: '-rw-rw----', modified: '2026-10-05 12:10' },
+        { name: 'video_clip.mp4', isDir: false, size: '52.3 MB', sizeBytes: 54840320, permissions: '-rw-rw----', modified: '2026-10-06 18:40' },
+        { name: 'photo_highres.jpg', isDir: false, size: '4.7 MB', sizeBytes: 4928307, permissions: '-rw-rw----', modified: '2026-10-07 10:30' },
+        { name: 'audio_recording.mp3', isDir: false, size: '8.2 MB', sizeBytes: 8598323, permissions: '-rw-rw----', modified: '2026-10-07 11:15' },
+        { name: 'quick_notes.txt', isDir: false, size: '14.2 KB', sizeBytes: 14540, permissions: '-rw-rw----', modified: '2026-10-07 12:00' }
       ];
     }
 
@@ -38,8 +52,9 @@ export class FileManager {
         if (parts.length < 8) continue;
 
         const permissions = parts[0];
-        const isDir = permissions.startsWith('d');
-        const size = isDir ? 'Folder' : `${Math.round((parseInt(parts[4], 10) || 0) / 1024)} KB`;
+        const isDir = permissions.startsWith('d') || permissions.startsWith('l');
+        const rawBytes = parseInt(parts[4], 10) || 0;
+        const size = isDir ? 'پوشه' : formatFileSize(rawBytes);
         const date = `${parts[5]} ${parts[6]}`;
         const name = parts.slice(7).join(' ');
 
@@ -49,6 +64,7 @@ export class FileManager {
           name,
           isDir,
           size,
+          sizeBytes: isDir ? 0 : rawBytes,
           permissions,
           modified: date
         });

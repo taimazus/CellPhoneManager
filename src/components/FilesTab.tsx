@@ -43,7 +43,8 @@ import {
   Maximize2,
   ChevronsRight,
   ChevronsLeft,
-  Layers
+  Layers,
+  ArrowUpDown
 } from 'lucide-react';
 import { Device } from '../types';
 
@@ -51,6 +52,7 @@ interface FileItem {
   name: string;
   isDir: boolean;
   size: string;
+  sizeBytes?: number;
   permissions: string;
   modified: string;
 }
@@ -64,7 +66,16 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
   const [items, setItems] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'size_desc' | 'size_asc' | 'date_desc' | 'date_asc'>('name_asc');
+  const [sortBy, setSortBy] = useState<
+    | 'name_asc' 
+    | 'name_desc' 
+    | 'size_desc' 
+    | 'size_asc' 
+    | 'date_desc' 
+    | 'date_asc'
+    | 'type_asc'
+    | 'type_desc'
+  >('name_asc');
   const [viewMode, setViewMode] = useState<'list' | 'grid' | 'compact' | 'large' | 'tiles'>('grid');
   const [gridZoom, setGridZoom] = useState<'sm' | 'md' | 'lg' | 'xl'>('md');
   const [pageSize, setPageSize] = useState<number | 'all'>(48);
@@ -455,6 +466,27 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
     return false;
   };
 
+  const getSizeBytes = (item: FileItem): number => {
+    if (typeof item.sizeBytes === 'number' && !isNaN(item.sizeBytes) && item.sizeBytes > 0) {
+      return item.sizeBytes;
+    }
+    if (!item.size || item.isDir || item.size === 'پوشه' || item.size === 'Folder') return 0;
+    const match = item.size.match(/^([\d.]+)\s*([A-Za-z]+)?$/);
+    if (!match) return parseFloat(item.size) || 0;
+    const num = parseFloat(match[1]);
+    const unit = (match[2] || '').toUpperCase();
+    if (unit.startsWith('T')) return num * 1024 * 1024 * 1024 * 1024;
+    if (unit.startsWith('G')) return num * 1024 * 1024 * 1024;
+    if (unit.startsWith('M')) return num * 1024 * 1024;
+    if (unit.startsWith('K')) return num * 1024;
+    return num;
+  };
+
+  const getFileExtension = (name: string): string => {
+    if (!name.includes('.')) return '';
+    return name.split('.').pop()?.toLowerCase() || '';
+  };
+
   const filteredItems = items
     .filter(i => {
       // Type Filter
@@ -473,10 +505,22 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
 
       if (sortBy === 'name_asc') return a.name.localeCompare(b.name, 'fa');
       if (sortBy === 'name_desc') return b.name.localeCompare(a.name, 'fa');
-      if (sortBy === 'size_desc') return (parseFloat(b.size) || 0) - (parseFloat(a.size) || 0);
-      if (sortBy === 'size_asc') return (parseFloat(a.size) || 0) - (parseFloat(b.size) || 0);
+      if (sortBy === 'size_desc') return getSizeBytes(b) - getSizeBytes(a);
+      if (sortBy === 'size_asc') return getSizeBytes(a) - getSizeBytes(b);
       if (sortBy === 'date_desc') return (new Date(b.modified || 0).getTime()) - (new Date(a.modified || 0).getTime());
       if (sortBy === 'date_asc') return (new Date(a.modified || 0).getTime()) - (new Date(b.modified || 0).getTime());
+      if (sortBy === 'type_asc') {
+        const extA = getFileExtension(a.name);
+        const extB = getFileExtension(b.name);
+        const comp = extA.localeCompare(extB);
+        return comp !== 0 ? comp : a.name.localeCompare(b.name, 'fa');
+      }
+      if (sortBy === 'type_desc') {
+        const extA = getFileExtension(a.name);
+        const extB = getFileExtension(b.name);
+        const comp = extB.localeCompare(extA);
+        return comp !== 0 ? comp : a.name.localeCompare(b.name, 'fa');
+      }
       return 0;
     });
 
@@ -792,18 +836,24 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
           )}
 
           {/* Sort Dropdown */}
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-            className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300 font-semibold focus:outline-none focus:border-cyan-500"
-          >
-            <option value="name_asc">نام (الف - ی)</option>
-            <option value="name_desc">نام (ی - الف)</option>
-            <option value="size_desc">حجم (بیشترین)</option>
-            <option value="size_asc">حجم (کمترین)</option>
-            <option value="date_desc">تاریخ (جدیدترین)</option>
-            <option value="date_asc">تاریخ (قدیمی‌ترین)</option>
-          </select>
+          <div className="flex items-center gap-1.5 bg-slate-900 px-2 py-1 rounded-xl border border-slate-800">
+            <ArrowUpDown className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-transparent border-none text-xs text-slate-200 font-bold focus:outline-none cursor-pointer py-1"
+              title="مرتب‌سازی فایل‌ها و پوشه‌ها"
+            >
+              <option value="name_asc" className="bg-slate-900 text-white">🔤 نام (الف - ی)</option>
+              <option value="name_desc" className="bg-slate-900 text-white">🔤 نام (ی - الف)</option>
+              <option value="size_desc" className="bg-slate-900 text-emerald-400">⚖️ حجم (بزرگ‌ترین اول)</option>
+              <option value="size_asc" className="bg-slate-900 text-emerald-400">⚖️ حجم (کوچک‌ترین اول)</option>
+              <option value="date_desc" className="bg-slate-900 text-amber-400">📅 تاریخ (جدیدترین)</option>
+              <option value="date_asc" className="bg-slate-900 text-amber-400">📅 تاریخ (قدیمی‌ترین)</option>
+              <option value="type_asc" className="bg-slate-900 text-purple-400">🏷️ نوع و پسوند (A - Z)</option>
+              <option value="type_desc" className="bg-slate-900 text-purple-400">🏷️ نوع و پسوند (Z - A)</option>
+            </select>
+          </div>
 
           {/* Zoom Controller */}
           <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
@@ -948,9 +998,14 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
                       )}
                     </div>
 
-                    <span className="font-medium text-[11px] text-slate-200 group-hover:text-white truncate block w-full" title={item.name}>
-                      {item.name}
-                    </span>
+                    <div className="w-full truncate space-y-0.5">
+                      <span className="font-medium text-[11px] text-slate-200 group-hover:text-white truncate block w-full" title={item.name}>
+                        {item.name}
+                      </span>
+                      <span className="text-[10px] text-emerald-400 font-mono font-bold block truncate max-w-full">
+                        {item.isDir ? 'پوشه' : item.size}
+                      </span>
+                    </div>
                   </div>
                 );
               })}
@@ -1016,13 +1071,20 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
                       )}
                     </div>
 
-                    <div className="w-full truncate">
+                    <div className="w-full truncate space-y-1">
                       <span className="font-semibold text-xs text-slate-200 group-hover:text-white truncate block" title={item.name}>
                         {item.name}
                       </span>
-                      <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
-                        {item.isDir ? 'پوشه' : item.size}
-                      </span>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <span className="text-[10px] text-emerald-400 font-mono font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20">
+                          {item.isDir ? 'پوشه' : item.size}
+                        </span>
+                        {item.modified && (
+                          <span className="text-[10px] text-slate-500 font-mono hidden sm:inline truncate max-w-[80px]">
+                            {item.modified.split(' ')[0]}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-1 pt-1 opacity-80 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
@@ -1133,9 +1195,11 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
                         <h4 className="font-bold text-xs text-slate-100 group-hover:text-cyan-300 truncate" title={item.name}>
                           {item.name}
                         </h4>
-                        <div className="flex items-center justify-between mt-1 text-[11px] text-slate-400 font-mono">
-                          <span>{item.isDir ? 'پوشه' : item.size}</span>
-                          <span>{item.modified || ''}</span>
+                        <div className="flex items-center justify-between mt-1.5 text-[11px] font-mono">
+                          <span className="text-emerald-400 font-bold px-2 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                            {item.isDir ? 'پوشه' : item.size}
+                          </span>
+                          <span className="text-slate-400">{item.modified || ''}</span>
                         </div>
                       </div>
 
@@ -1244,9 +1308,12 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
                         <span className="font-semibold text-xs text-slate-200 group-hover:text-cyan-300 truncate block">
                           {item.name}
                         </span>
-                        <span className="text-[10px] text-slate-500 font-mono">
-                          {item.isDir ? 'پوشه' : item.size} • {item.modified || ''}
-                        </span>
+                        <div className="flex items-center gap-2 mt-0.5 text-[10px] font-mono">
+                          <span className="text-emerald-400 font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                            {item.isDir ? 'پوشه' : item.size}
+                          </span>
+                          <span className="text-slate-400 truncate">{item.modified || ''}</span>
+                        </div>
                       </div>
                     </div>
 
@@ -1343,9 +1410,12 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
                           <span className="font-semibold text-slate-200 group-hover:text-cyan-300 truncate block">
                             {item.name}
                           </span>
-                          <span className="text-[10px] text-slate-500 font-mono">
-                            {item.modified} • {item.isDir ? 'پوشه' : item.size}
-                          </span>
+                          <div className="flex items-center gap-2 mt-0.5 text-[10px] font-mono">
+                            <span className="text-emerald-400 font-bold px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                              {item.isDir ? 'پوشه' : item.size}
+                            </span>
+                            <span className="text-slate-400">{item.modified || ''}</span>
+                          </div>
                         </div>
                       </div>
 
