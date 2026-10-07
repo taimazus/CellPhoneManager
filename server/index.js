@@ -979,15 +979,40 @@ app.get('/api/devices/:id/files/preview', async (req, res) => {
 
     await fileManager.pullFile(id, remotePath, localDest);
     if (fs.existsSync(localDest)) {
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Cache-Control', 'public, max-age=3600');
-      const fileStream = fs.createReadStream(localDest);
-      fileStream.pipe(res);
-      fileStream.on('end', () => {
-        setTimeout(() => {
-          if (fs.existsSync(localDest)) fs.unlinkSync(localDest);
-        }, 5000);
-      });
+      const stat = fs.statSync(localDest);
+      const fileSize = stat.size;
+      const range = req.headers.range;
+
+      if (range) {
+        const parts = range.replace(/bytes=/, '').split('-');
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunksize = (end - start) + 1;
+        const fileStream = fs.createReadStream(localDest, { start, end });
+        const head = {
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunksize,
+          'Content-Type': contentType,
+        };
+        res.writeHead(206, head);
+        fileStream.pipe(res);
+      } else {
+        res.writeHead(200, {
+          'Content-Length': fileSize,
+          'Content-Type': contentType,
+          'Accept-Ranges': 'bytes',
+          'Cache-Control': 'public, max-age=3600'
+        });
+        fs.createReadStream(localDest).pipe(res);
+      }
+
+      // Schedule cleanup
+      setTimeout(() => {
+        if (fs.existsSync(localDest)) {
+          try { fs.unlinkSync(localDest); } catch (_) {}
+        }
+      }, 120000); // 2 minutes retention
     } else {
       res.status(404).json({ error: 'فایل یافت نشد' });
     }

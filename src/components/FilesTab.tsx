@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Folder, 
   File, 
@@ -956,9 +957,16 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
       )}
 
       {/* RENAME MODAL */}
-      {renameItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-          <div className="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4">
+      {renameItem && createPortal(
+        <div 
+          onClick={() => setRenameItem(null)}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
+          dir="rtl"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4"
+          >
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <Edit2 className="w-5 h-5 text-amber-400" />
@@ -996,13 +1004,21 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* MOVE TO FOLDER MODAL */}
-      {moveItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-          <div className="bg-slate-900 border border-purple-500/40 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+      {moveItem && createPortal(
+        <div 
+          onClick={() => setMoveItem(null)}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
+          dir="rtl"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border border-purple-500/40 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4"
+          >
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <Move className="w-5 h-5 text-purple-400" />
@@ -1060,13 +1076,21 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* CREATE NEW FOLDER MODAL */}
-      {showNewFolderModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-          <div className="bg-slate-900 border border-cyan-500/40 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4">
+      {showNewFolderModal && createPortal(
+        <div 
+          onClick={() => setShowNewFolderModal(false)}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
+          dir="rtl"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-slate-900 border border-cyan-500/40 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4"
+          >
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <FolderPlus className="w-5 h-5 text-amber-400" />
@@ -1106,17 +1130,34 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* MEDIA PREVIEW MODAL */}
-      {previewFile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-lg animate-fadeIn">
-          <div className="relative w-full max-w-4xl bg-[#0c142b] border border-cyan-500/40 rounded-3xl overflow-hidden shadow-2xl shadow-cyan-950/90 flex flex-col max-h-[90vh]">
+      {previewFile && createPortal(
+        <div 
+          onClick={() => setPreviewFile(null)}
+          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/90 backdrop-blur-xl animate-fadeIn"
+          dir="rtl"
+        >
+          {/* Floating High-Visibility Quick Close Button */}
+          <button
+            onClick={() => setPreviewFile(null)}
+            className="fixed top-4 left-4 z-[110] p-3 rounded-full bg-slate-900/90 hover:bg-rose-600 text-slate-300 hover:text-white border border-slate-700 shadow-2xl transition-all hover:scale-110 active:scale-95 group"
+            title="بستن پنجره (Esc یا کلیک روی پس‌زمینه)"
+          >
+            <X className="w-6 h-6 group-hover:rotate-90 transition-transform duration-200" />
+          </button>
+
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-5xl bg-[#0c142b] border border-cyan-500/50 rounded-3xl overflow-hidden shadow-2xl shadow-cyan-950 flex flex-col max-h-[92vh] z-[105]"
+          >
             {/* Modal Header */}
-            <div className="flex flex-wrap items-center justify-between p-4 border-b border-slate-800 bg-[#080d1d] gap-3 text-right">
+            <div className="flex flex-wrap items-center justify-between p-4 border-b border-slate-800 bg-[#080d1d] gap-3 text-right flex-shrink-0">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 flex-shrink-0">
+                <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 flex-shrink-0">
                   <Eye className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
@@ -1159,14 +1200,15 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleDownload(previewFile.name)}
-                  className="p-2 rounded-xl bg-slate-900 hover:bg-cyan-500/20 text-slate-300 hover:text-cyan-400 border border-slate-800 transition-all"
+                  className="p-2.5 rounded-xl bg-slate-900 hover:bg-cyan-500/20 text-slate-300 hover:text-cyan-400 border border-slate-800 transition-all flex items-center gap-1.5 text-xs font-semibold"
                   title="دانلود فایل"
                 >
                   <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">دانلود</span>
                 </button>
                 <button
                   onClick={() => setPreviewFile(null)}
-                  className="p-2 rounded-xl bg-slate-900 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-800 transition-all"
+                  className="p-2.5 rounded-xl bg-slate-900 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-800 transition-all"
                   title="بستن (Esc)"
                 >
                   <X className="w-5 h-5" />
@@ -1175,7 +1217,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
             </div>
 
             {/* Modal Body */}
-            <div className="relative flex-1 overflow-auto p-6 flex flex-col items-center justify-center bg-[#050914] min-h-[360px]">
+            <div className="relative flex-1 overflow-auto p-6 flex flex-col items-center justify-center bg-[#050914] min-h-[380px]">
               {/* Floating Media Loading Indicator Overlay */}
               {isMediaLoading && getFileCategory(previewFile.name) !== 'text' && getFileCategory(previewFile.name) !== 'other' && (
                 <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#050914]/90 backdrop-blur-md rounded-2xl p-6 text-center space-y-4 pointer-events-none animate-fadeIn transition-all">
@@ -1197,7 +1239,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
               {hasPrev && (
                 <button
                   onClick={handlePrevFile}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-slate-950/80 hover:bg-cyan-500 text-slate-200 hover:text-slate-950 border border-slate-700/80 hover:border-cyan-400 backdrop-blur-md transition-all shadow-2xl hover:scale-110 active:scale-95 group"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 z-20 p-3.5 rounded-full bg-slate-950/85 hover:bg-cyan-500 text-slate-200 hover:text-slate-950 border border-slate-700/80 hover:border-cyan-400 backdrop-blur-md transition-all shadow-2xl hover:scale-110 active:scale-95 group"
                   title="فایل قبلی (کلید جهت‌نمای راست)"
                 >
                   <ChevronRight className="w-6 h-6 group-hover:scale-110 transition-transform" />
@@ -1207,7 +1249,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
               {hasNext && (
                 <button
                   onClick={handleNextFile}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-slate-950/80 hover:bg-cyan-500 text-slate-200 hover:text-slate-950 border border-slate-700/80 hover:border-cyan-400 backdrop-blur-md transition-all shadow-2xl hover:scale-110 active:scale-95 group"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 z-20 p-3.5 rounded-full bg-slate-950/85 hover:bg-cyan-500 text-slate-200 hover:text-slate-950 border border-slate-700/80 hover:border-cyan-400 backdrop-blur-md transition-all shadow-2xl hover:scale-110 active:scale-95 group"
                   title="فایل بعدی (کلید جهت‌نمای چپ)"
                 >
                   <ChevronLeft className="w-6 h-6 group-hover:scale-110 transition-transform" />
@@ -1286,12 +1328,13 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
 
               {/* VIDEO PREVIEW */}
               {getFileCategory(previewFile.name) === 'video' && (
-                <div className="w-full flex flex-col items-center justify-center">
+                <div className="w-full flex flex-col items-center justify-center space-y-4">
                   <video
                     key={previewFile.url}
                     src={previewFile.url}
                     controls
                     autoPlay
+                    playsInline
                     onLoadedData={() => setIsMediaLoading(false)}
                     onCanPlay={() => setIsMediaLoading(false)}
                     onWaiting={() => setIsMediaLoading(true)}
@@ -1301,6 +1344,16 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
                   >
                     مرورگر شما از پخش مستقیم این ویدیو پشتیبانی نمی‌کند.
                   </video>
+                  <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-slate-400 bg-slate-900/60 p-2.5 rounded-2xl border border-slate-800">
+                    <span>در صورت عدم پخش یا ناسازگاری کدک، می‌توانید فایل را مستقیماً دانلود نمایید:</span>
+                    <button
+                      onClick={() => handleDownload(previewFile.name)}
+                      className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 border border-cyan-500/30 font-semibold flex items-center gap-1.5"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>دانلود ویدیو</span>
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -1379,7 +1432,8 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
