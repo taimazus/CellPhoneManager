@@ -149,5 +149,13 @@
   - `cpmStart.bat` with auto Node.js installation, dependency installation, preflight tests, and `--add-path` global system PATH support
   - `cpmStop.bat` & `server/stop.js` with instant PID termination and port 3001/5173 recovery
   - `cpmRestart.bat` for seamless service recycling
+- [x] Comprehensive Offline Hardware & Virtual Drivers Package (`bin/drivers/`):
+  - `google_usb_driver.zip` with automated Windows Driver Store registration via `pnputil` for Universal Android (Xiaomi, Samsung, Pixel, Huawei, OnePlus)
+  - `vbcable.zip` (Pack 45) for offline microphone forwarding with `install_vbcable.bat`
+  - `vigembus_setup.exe` for offline Xbox/PlayStation gamepad emulation with `install_vigembus.bat`
+  - `install_phone_drivers.bat` for master 1-click batch installation of all hardware & virtual drivers
+- [x] Interactive Real-Time USSD Dialog Reader & Responder (`server/adbManager.js` & `MessagesTab.tsx`):
+  - In-browser live parsing of carrier USSD network messages via UI hierarchy and MMI dumps
+  - Interactive multi-step numerical reply dispatch and instant dialog dismiss
 - [x] Unit & End-to-End Verification Tests (`tests/`)
 - [x] One-click Launcher Script (`start.bat`)

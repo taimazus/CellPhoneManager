@@ -84,10 +84,18 @@ classDiagram
         +getSystemAccounts(serial)
     }
 
+    class ToolManager {
+        +getAdbPath()
+        +getScrcpyPath()
+        +getDiagnosticStatus()
+        +installTool(toolId)
+    }
+
     AdbManager <|-- RootManager
     AdbManager <|-- RomManager
     AdbManager <|-- UniversalBackupManager
     AdbManager <|-- PasswordManager
+    AdbManager ..> ToolManager
 ```
 
 ---

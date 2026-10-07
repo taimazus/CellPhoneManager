@@ -120,10 +120,34 @@ cpmStart.bat
 
 ---
 
-## 📞 Dual-SIM & USSD Automation
+## 📞 Dual-SIM & Interactive USSD Automation
 - **Zero-Interruption Calling & SMS:** Set your default SIM (SIM 1 / SIM 2 / Auto) in the software. Preferences are remembered automatically and passed via ADB intents, preventing phone popup prompts.
-- **USSD Code Runner:** Execute carrier balance inquiries and recharge codes directly (`*140*11#`, `*100#`, `*555#`, `*733#`) with automatic `#` to `%23` encoding and multi-SIM slot dispatch.
+- **Interactive USSD Response Viewer:** Execute carrier balance inquiries and recharge codes directly (`*140*11#`, `*100#`, `*555#`, `*733#`). Live response text is parsed and displayed on-screen with interactive reply input for numbered menus.
 - **Live Call State Polling:** 2.5-second heartbeat telemetry detects ringing states and displays live caller information with direct PC answer/hangup actions.
+- **1-Click Launchers:** Automatically and manually launch phone camera and dialer apps directly on the mobile screen.
+
+---
+
+## 📦 Offline Drivers & Self-Contained Package (`bin/drivers/`)
+To guarantee 100% autonomous operation even without internet access or when remote package managers are unreachable, all essential drivers are bundled locally:
+
+| Package / Driver | Hardware & Scope | 1-Click Offline Installer |
+| :--- | :--- | :--- |
+| 📱 **`install_phone_drivers.bat`** | **Master Driver Installer:** Installs all Android USB connection drivers and virtual audio/gamepad drivers into Windows Driver Store | Double-click to run |
+| 🔌 **`google_usb_driver.zip`** | Official Google Universal ADB & Fastboot USB drivers (**Xiaomi, Samsung, Pixel, OnePlus, Huawei**) | Via `install_phone_drivers.bat` |
+| 🎙️ **`vbcable.zip`** | Official VB-Audio Virtual Cable (Pack 45) for mobile microphone PC routing | Double-click `install_vbcable.bat` |
+| 🎮 **`vigembus_setup.exe`** | Official ViGEmBus Virtual Gamepad driver for Xbox 360 / DualShock controller emulation | Double-click `install_vigembus.bat` |
+
+---
+
+## 🎥 Using Phone Camera & Mic in Telegram, Zoom, OBS & Eitaa Web
+1. **Webcam Streaming:**
+   - In CellPhoneManager, click **"Start Camera Webcam Stream"**.
+   - In **OBS Studio**, add a **Window Capture** source, select the camera window, and click **Start Virtual Camera**.
+   - In Telegram, Zoom, or Eitaa Web browser settings, select **OBS Virtual Camera** as your video source.
+2. **Microphone Forwarding:**
+   - In CellPhoneManager, click **"Start Microphone Stream"**.
+   - Install the offline **VB-Cable** driver and set your audio input in Telegram / Discord / browser to **`CABLE Output (VB-Audio)`**.
 
 ---
 
