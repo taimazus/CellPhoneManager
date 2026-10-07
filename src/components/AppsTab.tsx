@@ -13,7 +13,8 @@ import {
   DownloadCloud,
   FileCode,
   ShieldAlert,
-  Eraser
+  Eraser,
+  ArrowUpDown
 } from 'lucide-react';
 import { Device, DeviceApp } from '../types';
 import { AppIcon } from './AppIcon';
@@ -27,6 +28,7 @@ export const AppsTab: React.FC<AppsTabProps> = ({ device }) => {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'user' | 'system' | 'frozen'>('all');
+  const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'pkg_asc' | 'size_desc'>('name_asc');
   const [isInstalling, setIsInstalling] = useState(false);
   const [notification, setNotification] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -127,16 +129,23 @@ export const AppsTab: React.FC<AppsTabProps> = ({ device }) => {
     }
   };
 
-  const filteredApps = apps.filter((app) => {
-    const matchesSearch = app.appName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          app.packageName.toLowerCase().includes(searchQuery.toLowerCase());
-    if (!matchesSearch) return false;
+  const filteredApps = apps
+    .filter((app) => {
+      const matchesSearch = app.appName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            app.packageName.toLowerCase().includes(searchQuery.toLowerCase());
+      if (!matchesSearch) return false;
 
-    if (filterType === 'user') return !app.isSystem;
-    if (filterType === 'system') return app.isSystem;
-    if (filterType === 'frozen') return !app.enabled;
-    return true;
-  });
+      if (filterType === 'user') return !app.isSystem;
+      if (filterType === 'system') return app.isSystem;
+      if (filterType === 'frozen') return !app.enabled;
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'name_asc') return a.appName.localeCompare(b.appName, 'fa');
+      if (sortBy === 'name_desc') return b.appName.localeCompare(a.appName, 'fa');
+      if (sortBy === 'pkg_asc') return a.packageName.localeCompare(b.packageName);
+      return 0;
+    });
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -188,16 +197,32 @@ export const AppsTab: React.FC<AppsTabProps> = ({ device }) => {
 
       {/* Filter and Search Controls */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        {/* Search Bar */}
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="جستجو در نام یا پکیج برنامه..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900/90 border border-slate-800 rounded-xl pr-10 pl-4 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50"
-          />
+        {/* Search Bar & Sort */}
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-72">
+            <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="جستجو در نام یا پکیج برنامه..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-slate-900/90 border border-slate-800 rounded-xl pr-10 pl-4 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50"
+            />
+          </div>
+
+          {/* Sorting */}
+          <div className="flex items-center gap-1 bg-slate-900/90 px-3 py-2 rounded-xl border border-slate-800 text-xs">
+            <ArrowUpDown className="w-3.5 h-3.5 text-cyan-400" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-transparent text-slate-300 focus:outline-none cursor-pointer pr-1 text-xs"
+            >
+              <option value="name_asc" className="bg-slate-900 text-slate-200">نام (الف - ی)</option>
+              <option value="name_desc" className="bg-slate-900 text-slate-200">نام (ی - الف)</option>
+              <option value="pkg_asc" className="bg-slate-900 text-slate-200">نام پکیج</option>
+            </select>
+          </div>
         </div>
 
         {/* Filter Badges */}

@@ -129,6 +129,25 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
     }
   };
 
+  // Launch Stock Camera App on Device Screen
+  const handleLaunchCameraApp = async () => {
+    if (!device) return;
+    try {
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/camera/launch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ facing })
+      });
+      if (data.success) {
+        showToast(data.message || 'برنامه دوربین روی گوشی باز شد', 'success');
+      } else {
+        showToast(`خطا: ${data.error || 'خطای ناشناخته'}`, 'error');
+      }
+    } catch (err: any) {
+      showToast(`خطا: ${err.message}`, 'error');
+    }
+  };
+
   // Toggle in-browser live viewfinder
   useEffect(() => {
     if (!device || !isLiveStreaming) return;
@@ -191,6 +210,15 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
 
               {/* Quick Switch Buttons */}
               <div className="flex items-center gap-2">
+                <button
+                  onClick={handleLaunchCameraApp}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs font-semibold transition-all"
+                  title="باز کردن مستقیم برنامه دوربین روی صفحه گوشی"
+                >
+                  <Camera className="w-4 h-4 text-emerald-400" />
+                  <span>باز کردن دوربین در گوشی</span>
+                </button>
+
                 <button
                   onClick={() => {
                     const newFacing = facing === 'back' ? 'front' : 'back';

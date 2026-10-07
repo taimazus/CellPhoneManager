@@ -27,7 +27,8 @@ import {
   Play,
   FileCode,
   LayoutGrid,
-  List
+  List,
+  ArrowUpDown
 } from 'lucide-react';
 import { Device } from '../types';
 
@@ -48,6 +49,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
   const [items, setItems] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'size_desc' | 'size_asc' | 'date_desc' | 'date_asc'>('name_asc');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [isUploading, setIsUploading] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -227,7 +229,21 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
     return `/api/devices/${device.id}/files/preview?remotePath=${encodeURIComponent(fullPath)}`;
   };
 
-  const filteredItems = items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredItems = items
+    .filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
+      // Always keep directories on top
+      if (a.isDir && !b.isDir) return -1;
+      if (!a.isDir && b.isDir) return 1;
+
+      if (sortBy === 'name_asc') return a.name.localeCompare(b.name, 'fa');
+      if (sortBy === 'name_desc') return b.name.localeCompare(a.name, 'fa');
+      if (sortBy === 'size_desc') return (parseFloat(b.size) || 0) - (parseFloat(a.size) || 0);
+      if (sortBy === 'size_asc') return (parseFloat(a.size) || 0) - (parseFloat(b.size) || 0);
+      if (sortBy === 'date_desc') return (new Date(b.modified || 0).getTime()) - (new Date(a.modified || 0).getTime());
+      if (sortBy === 'date_asc') return (new Date(a.modified || 0).getTime()) - (new Date(b.modified || 0).getTime());
+      return 0;
+    });
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -346,7 +362,24 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
             </button>
           </div>
 
-          <div className="relative w-full sm:w-60">
+          {/* Sorting */}
+          <div className="flex items-center gap-1 bg-[#050914] px-2 py-1.5 rounded-xl border border-slate-800 text-xs">
+            <ArrowUpDown className="w-3.5 h-3.5 text-cyan-400" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-transparent text-slate-300 focus:outline-none cursor-pointer pr-1 text-xs"
+            >
+              <option value="name_asc" className="bg-slate-900 text-slate-200">نام (الف - ی)</option>
+              <option value="name_desc" className="bg-slate-900 text-slate-200">نام (ی - الف)</option>
+              <option value="size_desc" className="bg-slate-900 text-slate-200">بزرگترین حجم</option>
+              <option value="size_asc" className="bg-slate-900 text-slate-200">کوچکترین حجم</option>
+              <option value="date_desc" className="bg-slate-900 text-slate-200">جدیدترین</option>
+              <option value="date_asc" className="bg-slate-900 text-slate-200">قدیمی‌ترین</option>
+            </select>
+          </div>
+
+          <div className="relative w-full sm:w-52">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"

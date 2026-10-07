@@ -33,7 +33,8 @@ import {
   Radio,
   Sparkles,
   Hash,
-  Play
+  Play,
+  ArrowUpDown
 } from 'lucide-react';
 import { Device } from '../types';
 
@@ -113,6 +114,11 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
   const [newSmsText, setNewSmsText] = useState<string>('');
   const [newSmsRecipient, setNewSmsRecipient] = useState<string>('');
   const [showNewSmsModal, setShowNewSmsModal] = useState<boolean>(false);
+
+  // --- Sorting States ---
+  const [callSort, setCallSort] = useState<'date_desc' | 'date_asc' | 'duration_desc' | 'name_asc'>('date_desc');
+  const [contactSort, setContactSort] = useState<'name_asc' | 'name_desc' | 'phone_asc'>('name_asc');
+  const [smsSort, setSmsSort] = useState<'date_desc' | 'date_asc'>('date_desc');
 
   const timerRef = useRef<any>(null);
 
@@ -517,16 +523,29 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     showToast('پشتیبان‌گیری پیامک‌ها با موفقیت دانلود شد', 'success');
   };
 
-  // Filters
+  // Filters & Sorting
   const filteredCalls = callLogs.filter(c => {
     if (callFilter === 'all') return true;
     return c.type === callFilter;
+  }).sort((a, b) => {
+    if (callSort === 'date_desc') return (new Date(b.date || 0).getTime()) - (new Date(a.date || 0).getTime());
+    if (callSort === 'date_asc') return (new Date(a.date || 0).getTime()) - (new Date(b.date || 0).getTime());
+    if (callSort === 'duration_desc') return (parseInt(b.duration || '0', 10)) - (parseInt(a.duration || '0', 10));
+    if (callSort === 'name_asc') return (a.name || a.number || '').localeCompare(b.name || b.number || '', 'fa');
+    return 0;
   });
 
-  const filteredContacts = contacts.filter(c => 
-    c.name.toLowerCase().includes(contactSearch.toLowerCase()) || 
-    c.phone.includes(contactSearch)
-  );
+  const filteredContacts = contacts
+    .filter(c => 
+      c.name.toLowerCase().includes(contactSearch.toLowerCase()) || 
+      c.phone.includes(contactSearch)
+    )
+    .sort((a, b) => {
+      if (contactSort === 'name_asc') return a.name.localeCompare(b.name, 'fa');
+      if (contactSort === 'name_desc') return b.name.localeCompare(a.name, 'fa');
+      if (contactSort === 'phone_asc') return a.phone.localeCompare(b.phone);
+      return 0;
+    });
 
   // Group SMS by threadId or number
   const smsThreads: { [key: string]: SmsMessage[] } = {};
@@ -862,6 +881,21 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
               </div>
 
               <div className="flex items-center gap-2">
+                {/* Sorting */}
+                <div className="flex items-center gap-1 bg-slate-900 px-2 py-1 rounded-xl border border-slate-800 text-xs">
+                  <ArrowUpDown className="w-3.5 h-3.5 text-cyan-400" />
+                  <select
+                    value={callSort}
+                    onChange={(e) => setCallSort(e.target.value as any)}
+                    className="bg-transparent text-slate-300 focus:outline-none cursor-pointer pr-1 text-xs"
+                  >
+                    <option value="date_desc" className="bg-slate-900 text-slate-200">جدیدترین</option>
+                    <option value="date_asc" className="bg-slate-900 text-slate-200">قدیمی‌ترین</option>
+                    <option value="duration_desc" className="bg-slate-900 text-slate-200">طولانی‌ترین</option>
+                    <option value="name_asc" className="bg-slate-900 text-slate-200">نام مخاطب</option>
+                  </select>
+                </div>
+
                 {/* Filters */}
                 <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
                   {[
@@ -968,8 +1002,9 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
               <h3 className="text-base font-bold text-white">دفترچه مخاطبین (Contacts Manager)</h3>
             </div>
 
-            <div className="flex items-center gap-2.5 w-full sm:w-auto">
-              <div className="relative flex-1 sm:w-64">
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+              {/* Search */}
+              <div className="relative flex-1 sm:w-56">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
@@ -978,6 +1013,20 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                   onChange={(e) => setContactSearch(e.target.value)}
                   className="w-full bg-slate-900 border border-slate-800 rounded-xl pr-9 pl-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
                 />
+              </div>
+
+              {/* Sorting */}
+              <div className="flex items-center gap-1 bg-slate-900 px-2 py-2 rounded-xl border border-slate-800 text-xs">
+                <ArrowUpDown className="w-3.5 h-3.5 text-cyan-400" />
+                <select
+                  value={contactSort}
+                  onChange={(e) => setContactSort(e.target.value as any)}
+                  className="bg-transparent text-slate-300 focus:outline-none cursor-pointer pr-1 text-xs"
+                >
+                  <option value="name_asc" className="bg-slate-900 text-slate-200">الفبا (الف - ی)</option>
+                  <option value="name_desc" className="bg-slate-900 text-slate-200">الفبا (ی - الف)</option>
+                  <option value="phone_asc" className="bg-slate-900 text-slate-200">شماره تلفن</option>
+                </select>
               </div>
 
               <button
