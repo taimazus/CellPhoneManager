@@ -1,90 +1,42 @@
-$c = @'
+$source = @"
 using System;
 using System.Runtime.InteropServices;
 
-public class WinInput {
-    [StructLayout(LayoutKind.Sequential)]
-    struct MOUSEINPUT {
-        public int dx;
-        public int dy;
-        public uint mouseData;
-        public uint dwFlags;
-        public uint time;
-        public IntPtr dwExtraInfo;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    struct KEYBDINPUT {
-        public ushort wVk;
-        public ushort wScan;
-        public uint dwFlags;
-        public uint time;
-        public IntPtr dwExtraInfo;
-    }
-
-    [StructLayout(LayoutKind.Explicit)]
-    struct INPUT_UNION {
-        [FieldOffset(0)]
-        public MOUSEINPUT mi;
-        [FieldOffset(0)]
-        public KEYBDINPUT ki;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    struct INPUT {
-        public uint type;
-        public INPUT_UNION u;
-    }
-
+public class WinInputBridge {
     [DllImport("user32.dll", SetLastError = true)]
-    static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
     [DllImport("user32.dll")]
     public static extern void mouse_event(uint dwFlags, int dx, int dy, uint dwData, UIntPtr dwExtraInfo);
 
-    public const uint INPUT_KEYBOARD = 1;
     public const uint KEYEVENTF_KEYDOWN = 0x0000;
     public const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
     public const uint KEYEVENTF_KEYUP = 0x0002;
-    public const uint KEYEVENTF_SCANCODE = 0x0008;
 
-    // Pure Hardware ScanCode Injection - Completely Independent of Windows Keyboard Language!
-    public static void HardwareKeyDown(ushort scanCode, bool isExtended) {
-        INPUT[] inputs = new INPUT[1];
-        inputs[0].type = INPUT_KEYBOARD;
-        inputs[0].u.ki.wVk = 0; // 0 VK guarantees pure hardware scancode bypasses Windows layout
-        inputs[0].u.ki.wScan = scanCode;
-        inputs[0].u.ki.dwFlags = KEYEVENTF_SCANCODE | (isExtended ? KEYEVENTF_EXTENDEDKEY : 0);
-        inputs[0].u.ki.time = 0;
-        inputs[0].u.ki.dwExtraInfo = IntPtr.Zero;
-        SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
+    public static void KeyDown(byte vk, byte scan, bool isExt) {
+        uint flags = KEYEVENTF_KEYDOWN | (isExt ? KEYEVENTF_EXTENDEDKEY : 0);
+        keybd_event(vk, scan, flags, UIntPtr.Zero);
     }
 
-    public static void HardwareKeyUp(ushort scanCode, bool isExtended) {
-        INPUT[] inputs = new INPUT[1];
-        inputs[0].type = INPUT_KEYBOARD;
-        inputs[0].u.ki.wVk = 0;
-        inputs[0].u.ki.wScan = scanCode;
-        inputs[0].u.ki.dwFlags = KEYEVENTF_KEYUP | KEYEVENTF_SCANCODE | (isExtended ? KEYEVENTF_EXTENDEDKEY : 0);
-        inputs[0].u.ki.time = 0;
-        inputs[0].u.ki.dwExtraInfo = IntPtr.Zero;
-        SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
+    public static void KeyUp(byte vk, byte scan, bool isExt) {
+        uint flags = KEYEVENTF_KEYUP | (isExt ? KEYEVENTF_EXTENDEDKEY : 0);
+        keybd_event(vk, scan, flags, UIntPtr.Zero);
     }
 
-    public static void HardwareKeyTap(ushort scanCode, bool isExtended) {
-        HardwareKeyDown(scanCode, isExtended);
-        System.Threading.Thread.Sleep(45);
-        HardwareKeyUp(scanCode, isExtended);
+    public static void KeyTap(byte vk, byte scan, bool isExt) {
+        KeyDown(vk, scan, isExt);
+        System.Threading.Thread.Sleep(50);
+        KeyUp(vk, scan, isExt);
     }
 
     public static void MouseClick(string type) {
         if (type == "right") {
             mouse_event(0x0008, 0, 0, 0, UIntPtr.Zero);
-            System.Threading.Thread.Sleep(10);
+            System.Threading.Thread.Sleep(15);
             mouse_event(0x0010, 0, 0, 0, UIntPtr.Zero);
         } else {
             mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
-            System.Threading.Thread.Sleep(10);
+            System.Threading.Thread.Sleep(15);
             mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
         }
     }
@@ -93,9 +45,9 @@ public class WinInput {
         mouse_event(0x0001, dx, dy, 0, UIntPtr.Zero);
     }
 }
-'@
+"@
 
-Add-Type -TypeDefinition $c
+Add-Type -TypeDefinition $source
 
 [Console]::Out.WriteLine("READY")
 [Console]::Out.Flush()
@@ -106,32 +58,35 @@ while ($line = [Console]::In.ReadLine()) {
     if ([string]::IsNullOrWhiteSpace($line)) { continue }
 
     try {
-        if ($line.StartsWith("HW_DOWN:")) {
-            # Format: HW_DOWN:<scanCode>,<isExtended>
-            $parts = $line.Substring(8).Split(",")
-            $scan = [ushort]$parts[0]
-            $isExt = if ($parts.Length -gt 1) { [bool]::Parse($parts[1]) } else { $false }
-            [WinInput]::HardwareKeyDown($scan, $isExt)
-        } elseif ($line.StartsWith("HW_UP:")) {
-            $parts = $line.Substring(6).Split(",")
-            $scan = [ushort]$parts[0]
-            $isExt = if ($parts.Length -gt 1) { [bool]::Parse($parts[1]) } else { $false }
-            [WinInput]::HardwareKeyUp($scan, $isExt)
-        } elseif ($line.StartsWith("HW_TAP:")) {
+        if ($line.StartsWith("KEY_DOWN:")) {
+            # Format: KEY_DOWN:vk,scan,isExt
+            $parts = $line.Substring(9).Split(",")
+            $vk = [byte]$parts[0]
+            $scan = [byte]$parts[1]
+            $isExt = [bool]::Parse($parts[2])
+            [WinInputBridge]::KeyDown($vk, $scan, $isExt)
+        } elseif ($line.StartsWith("KEY_UP:")) {
             $parts = $line.Substring(7).Split(",")
-            $scan = [ushort]$parts[0]
-            $isExt = if ($parts.Length -gt 1) { [bool]::Parse($parts[1]) } else { $false }
-            [WinInput]::HardwareKeyTap($scan, $isExt)
+            $vk = [byte]$parts[0]
+            $scan = [byte]$parts[1]
+            $isExt = [bool]::Parse($parts[2])
+            [WinInputBridge]::KeyUp($vk, $scan, $isExt)
+        } elseif ($line.StartsWith("KEY_TAP:")) {
+            $parts = $line.Substring(8).Split(",")
+            $vk = [byte]$parts[0]
+            $scan = [byte]$parts[1]
+            $isExt = [bool]::Parse($parts[2])
+            [WinInputBridge]::KeyTap($vk, $scan, $isExt)
         } elseif ($line.StartsWith("MOUSE:")) {
             $parts = $line.Substring(6).Split(",")
             if ($parts.Length -eq 2) {
                 $dx = [int]$parts[0]
                 $dy = [int]$parts[1]
-                [WinInput]::MouseMove($dx, $dy)
+                [WinInputBridge]::MouseMove($dx, $dy)
             }
         } elseif ($line.StartsWith("CLICK:")) {
             $type = $line.Substring(6)
-            [WinInput]::MouseClick($type)
+            [WinInputBridge]::MouseClick($type)
         }
     } catch {
         # continue loop on error
