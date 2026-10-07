@@ -2,34 +2,94 @@ import { spawn, exec } from 'child_process';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { adbManager } from './adbManager.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Windows Virtual-Key code map
+const VK = {
+  // Arrow Keys
+  UP: 0x26,    // 38
+  DOWN: 0x28,  // 40
+  LEFT: 0x25,  // 37
+  RIGHT: 0x27, // 39
+  // Common Keys
+  SPACE: 0x20, // 32
+  ENTER: 0x0D, // 13
+  ESCAPE: 0x1B,// 27
+  TAB: 0x09,   // 9
+  SHIFT: 0x10, // 16
+  CONTROL: 0x11, // 17
+  ALT: 0x12,   // 18
+  // Letters
+  W: 0x57,     // 87
+  A: 0x41,     // 65
+  S: 0x53,     // 83
+  D: 0x44,     // 68
+  Q: 0x51,     // 81
+  E: 0x45,     // 69
+  R: 0x52,     // 82
+  C: 0x43,     // 67
+  F: 0x46,     // 70
+  Z: 0x5A,     // 90
+  X: 0x58,     // 88
+  // Digits
+  NUM_1: 0x31, // 49
+  NUM_2: 0x32  // 50
+};
 
 export class PcGamepadManager {
   constructor() {
-    this.activeProfile = 'racing'; // 'racing' | 'action' | 'retro' | 'mouse' | 'custom'
-    this.connectedControllers = new Map(); // clientId -> { id, ip, connectedAt, lastPing }
+    this.activeProfile = 'fifa'; // Default to FIFA
+    this.connectedControllers = new Map();
     this.latestInputs = {};
     this.isInputSimulationActive = true;
+    this.bridgeProcess = null;
+    this.isBridgeReady = false;
+
     this.profiles = {
+      fifa: {
+        id: 'fifa',
+        name: '⚽ فوتبال فیفا و پی‌اس (FIFA / PES)',
+        desc: 'پاس کوتاه با S، شوت با D، پاس در عمق با W، سانتر با A، دویدن سریع با Shift/E، شروع با Space/Enter',
+        mappings: {
+          'DPAD_UP': VK.UP,
+          'DPAD_DOWN': VK.DOWN,
+          'DPAD_LEFT': VK.LEFT,
+          'DPAD_RIGHT': VK.RIGHT,
+          'BTN_A': VK.S,      // Short Pass
+          'BTN_B': VK.D,      // Shoot
+          'BTN_X': VK.A,      // Cross / Long Pass
+          'BTN_Y': VK.W,      // Through Ball
+          'L1': VK.Q,         // Player Switch
+          'R1': VK.E,         // Finesse / Sprint
+          'L2': VK.C,         // Shield Ball
+          'R2': VK.SHIFT,     // Sprint
+          'START': VK.SPACE,  // Space (Start/Confirm in FIFA)
+          'SELECT': VK.ESCAPE // Esc
+        }
+      },
       racing: {
         id: 'racing',
         name: '🏎️ مسابقه‌ای و اتومبیل‌رانی (Need for Speed / Forza)',
         desc: 'گاز با W/Up، ترمز با S/Down، نیترو با Space، ترمز دستی با Shift و فرمان با ژیروسکوپ گوشی',
         mappings: {
-          'DPAD_UP': '{UP}',
-          'DPAD_DOWN': '{DOWN}',
-          'DPAD_LEFT': '{LEFT}',
-          'DPAD_RIGHT': '{RIGHT}',
-          'BTN_A': 'w', // Gas / Accelerate
-          'BTN_B': 's', // Brake / Reverse
-          'BTN_X': ' ', // Nitro / Boost (Space)
-          'BTN_Y': 'c', // Change Camera
-          'L1': '{LEFT}',
-          'R1': '{RIGHT}',
-          'L2': 's', // Handbrake
-          'R2': 'w', // Gas
-          'START': '{ENTER}',
-          'SELECT': '{ESC}'
+          'DPAD_UP': VK.UP,
+          'DPAD_DOWN': VK.DOWN,
+          'DPAD_LEFT': VK.LEFT,
+          'DPAD_RIGHT': VK.RIGHT,
+          'BTN_A': VK.W,      // Accelerate
+          'BTN_B': VK.S,      // Brake
+          'BTN_X': VK.SPACE,  // Nitro
+          'BTN_Y': VK.C,      // Camera
+          'L1': VK.LEFT,
+          'R1': VK.RIGHT,
+          'L2': VK.SHIFT,     // Handbrake
+          'R2': VK.W,         // Gas
+          'START': VK.ENTER,
+          'SELECT': VK.ESCAPE
         }
       },
       action: {
@@ -37,44 +97,84 @@ export class PcGamepadManager {
         name: '🎯 اکشن و شوتر (WASD + Action Keys)',
         desc: 'حرکت با WASD، پرش با Space، شلیک با کلیک چپ/Enter، نشستن با C',
         mappings: {
-          'DPAD_UP': 'w',
-          'DPAD_DOWN': 's',
-          'DPAD_LEFT': 'a',
-          'DPAD_RIGHT': 'd',
-          'BTN_A': ' ', // Jump (Space)
-          'BTN_B': 'c', // Crouch
-          'BTN_X': 'r', // Reload
-          'BTN_Y': 'e', // Interact / Use
-          'L1': '{SHIFT}', // Sprint
-          'R1': '{ENTER}', // Fire
-          'L2': 'q', // Melee
-          'R2': 'f', // Grenade
-          'START': '{ESC}',
-          'SELECT': '{TAB}'
+          'DPAD_UP': VK.W,
+          'DPAD_DOWN': VK.S,
+          'DPAD_LEFT': VK.A,
+          'DPAD_RIGHT': VK.D,
+          'BTN_A': VK.SPACE,  // Jump
+          'BTN_B': VK.C,      // Crouch
+          'BTN_X': VK.R,      // Reload
+          'BTN_Y': VK.E,      // Interact
+          'L1': VK.SHIFT,     // Sprint
+          'R1': VK.ENTER,     // Fire
+          'L2': VK.Q,         // Melee
+          'R2': VK.F,         // Grenade
+          'START': VK.ESCAPE,
+          'SELECT': VK.TAB
         }
       },
       retro: {
         id: 'retro',
-        name: '🕹️ شبیه‌سازها و بازی‌های دو بعدی (RetroArch / FIFA)',
-        desc: 'چهار جهت جهت‌نما، دکمه‌های اصلی Z/X/A/S برای فوتبال و پلتفرمر',
+        name: '🕹️ شبیه‌سازها و بازی‌های کلاسیک (RetroArch / MAME)',
+        desc: 'چهار جهت جهت‌نما، دکمه‌های اصلی Z/X/A/S برای پلتفرمر و آرکید',
         mappings: {
-          'DPAD_UP': '{UP}',
-          'DPAD_DOWN': '{DOWN}',
-          'DPAD_LEFT': '{LEFT}',
-          'DPAD_RIGHT': '{RIGHT}',
-          'BTN_A': 'z', // Pass / Action 1
-          'BTN_B': 'x', // Shoot / Action 2
-          'BTN_X': 'a', // Long Pass / Action 3
-          'BTN_Y': 's', // Through Ball / Action 4
-          'L1': 'q',
-          'R1': 'e',
-          'L2': '1',
-          'R2': '2',
-          'START': '{ENTER}',
-          'SELECT': '{ESC}'
+          'DPAD_UP': VK.UP,
+          'DPAD_DOWN': VK.DOWN,
+          'DPAD_LEFT': VK.LEFT,
+          'DPAD_RIGHT': VK.RIGHT,
+          'BTN_A': VK.Z,
+          'BTN_B': VK.X,
+          'BTN_X': VK.A,
+          'BTN_Y': VK.S,
+          'L1': VK.Q,
+          'R1': VK.E,
+          'L2': VK.NUM_1,
+          'R2': VK.NUM_2,
+          'START': VK.ENTER,
+          'SELECT': VK.ESCAPE
         }
       }
     };
+
+    this.initNativeBridge();
+  }
+
+  initNativeBridge() {
+    if (process.platform !== 'win32') return;
+
+    try {
+      const scriptPath = path.join(__dirname, 'winInputBridge.ps1');
+      if (!fs.existsSync(scriptPath)) {
+        return;
+      }
+
+      this.bridgeProcess = spawn('powershell.exe', [
+        '-NoProfile',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', scriptPath
+      ], {
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      this.bridgeProcess.stdout.on('data', (data) => {
+        const text = data.toString().trim();
+        if (text.includes('READY')) {
+          this.isBridgeReady = true;
+        }
+      });
+
+      this.bridgeProcess.on('error', () => {
+        this.isBridgeReady = false;
+        this.bridgeProcess = null;
+      });
+
+      this.bridgeProcess.on('exit', () => {
+        this.isBridgeReady = false;
+        this.bridgeProcess = null;
+      });
+    } catch {
+      this.isBridgeReady = false;
+    }
   }
 
   getProfiles() {
@@ -173,7 +273,7 @@ export class PcGamepadManager {
     } catch (err) {
       return { 
         success: false, 
-        url: localhostUrl,
+        url: localhostUrl, 
         lanUrl,
         error: err.message 
       };
@@ -192,12 +292,12 @@ export class PcGamepadManager {
 
     if (!this.isInputSimulationActive) return;
 
-    // Map button to Windows key
-    const profile = this.profiles[this.activeProfile] || this.profiles.racing;
-    const keyToSend = profile.mappings[button];
+    // Map button to Windows VK code
+    const profile = this.profiles[this.activeProfile] || this.profiles.fifa;
+    const vkCode = profile.mappings[button];
 
-    if (keyToSend && state === 'down') {
-      this.sendWindowsKey(keyToSend);
+    if (vkCode !== undefined) {
+      this.sendWindowsKey(vkCode, state || 'down');
     }
   }
 
@@ -214,57 +314,71 @@ export class PcGamepadManager {
     }
   }
 
-  sendWindowsKey(key) {
-    // Only execute on Windows host
+  sendWindowsKey(vkCode, state = 'down') {
     if (process.platform !== 'win32') return;
 
-    // Escaping key for PowerShell SendKeys
-    const safeKey = key.replace(/'/g, "''");
-    const psCmd = `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('${safeKey}')`;
-    
-    exec(`powershell.exe -NoProfile -NonInteractive -Command "${psCmd}"`, (err) => {
-      if (err) {
-        // Ignored in non-interactive / test runner environments
+    // Ensure bridge is alive
+    if (!this.bridgeProcess || this.bridgeProcess.killed) {
+      this.initNativeBridge();
+    }
+
+    const command = state === 'up' ? `UP:${vkCode}` : (state === 'tap' ? `TAP:${vkCode}` : `DOWN:${vkCode}`);
+
+    if (this.bridgeProcess && this.bridgeProcess.stdin && this.bridgeProcess.stdin.writable) {
+      try {
+        this.bridgeProcess.stdin.write(`${command}\n`);
+      } catch {
+        // bridge write failure
       }
-    });
+    }
   }
 
   sendWindowsMouseClick(clickType = 'left') {
     if (process.platform !== 'win32') return;
-    const clickFlag = clickType === 'right' ? '0x08, 0, 0, 0, 0' : '0x02, 0, 0, 0, 0; [NativeMethods]::mouse_event(0x04, 0, 0, 0, 0)';
-    const psCmd = `
-      $code = @'
-      using System;
-      using System.Runtime.InteropServices;
-      public class NativeMethods {
-        [DllImport("user32.dll")]
-        public static extern void mouse_event(int flags, int dx, int dy, int cButtons, int extraInfo);
+
+    if (!this.bridgeProcess || this.bridgeProcess.killed) {
+      this.initNativeBridge();
+    }
+
+    if (this.bridgeProcess && this.bridgeProcess.stdin && this.bridgeProcess.stdin.writable) {
+      try {
+        this.bridgeProcess.stdin.write(`CLICK:${clickType}\n`);
+      } catch {
+        // bridge write failure
       }
-'@
-      Add-Type -TypeDefinition $code
-      [NativeMethods]::mouse_event(${clickFlag})
-    `;
-    exec(`powershell.exe -NoProfile -NonInteractive -Command "${psCmd}"`, () => {});
+    }
   }
 
   sendWindowsMouseMove(dx, dy) {
     if (process.platform !== 'win32') return;
+
+    if (!this.bridgeProcess || this.bridgeProcess.killed) {
+      this.initNativeBridge();
+    }
+
     const factor = 1.5;
     const moveX = Math.round(dx * factor);
     const moveY = Math.round(dy * factor);
-    const psCmd = `
-      $code = @'
-      using System;
-      using System.Runtime.InteropServices;
-      public class NativeMethods {
-        [DllImport("user32.dll")]
-        public static extern void mouse_event(int flags, int dx, int dy, int cButtons, int extraInfo);
+
+    if (this.bridgeProcess && this.bridgeProcess.stdin && this.bridgeProcess.stdin.writable) {
+      try {
+        this.bridgeProcess.stdin.write(`MOUSE:${moveX},${moveY}\n`);
+      } catch {
+        // bridge write failure
       }
-'@
-      Add-Type -TypeDefinition $code
-      [NativeMethods]::mouse_event(0x0001, ${moveX}, ${moveY}, 0, 0)
-    `;
-    exec(`powershell.exe -NoProfile -NonInteractive -Command "${psCmd}"`, () => {});
+    }
+  }
+
+  destroy() {
+    if (this.bridgeProcess) {
+      try {
+        this.bridgeProcess.stdin.write('QUIT\n');
+        this.bridgeProcess.kill();
+      } catch {
+        // ignore
+      }
+      this.bridgeProcess = null;
+    }
   }
 }
 

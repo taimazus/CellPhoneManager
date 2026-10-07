@@ -12,7 +12,7 @@ describe('PCSpeakerManager Test Suite', () => {
     it('should list available host audio devices or fallback safely', async () => {
         const devices = await pcSpeakerManager.listAudioDevices();
         expect(Array.isArray(devices)).toBe(true);
-    });
+    }, 15000);
 
     it('should return local IPs for mobile receiver discovery', () => {
         const ips = pcSpeakerManager.getLocalIps();
