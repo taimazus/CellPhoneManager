@@ -38,7 +38,12 @@ import {
   CornerDownLeft,
   Camera,
   Mic,
-  Share2
+  Share2,
+  Grid3X3,
+  Maximize2,
+  ChevronsRight,
+  ChevronsLeft,
+  Layers
 } from 'lucide-react';
 import { Device } from '../types';
 
@@ -60,7 +65,10 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'size_desc' | 'size_asc' | 'date_desc' | 'date_asc'>('name_asc');
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'grid' | 'compact' | 'large' | 'tiles'>('grid');
+  const [gridZoom, setGridZoom] = useState<'sm' | 'md' | 'lg' | 'xl'>('md');
+  const [pageSize, setPageSize] = useState<number | 'all'>(48);
+  const [currentPage, setCurrentPage] = useState(1);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -428,6 +436,19 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
       return 0;
     });
 
+  // Reset page when search, sort, path or pageSize changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [currentPath, search, sortBy, pageSize]);
+
+  // Pagination calculations
+  const totalItems = filteredItems.length;
+  const effectivePageSize = pageSize === 'all' ? totalItems : pageSize;
+  const totalPages = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(totalItems / effectivePageSize));
+  const safeCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
+  const startIndex = pageSize === 'all' ? 0 : (safeCurrentPage - 1) * effectivePageSize;
+  const paginatedItems = pageSize === 'all' ? filteredItems : filteredItems.slice(startIndex, startIndex + effectivePageSize);
+
   // Previous & Next file navigation in preview modal
   const previewableFiles = filteredItems.filter(i => !i.isDir);
   const currentFileIndex = previewFile ? previewableFiles.findIndex(i => i.name === previewFile.name) : -1;
@@ -700,31 +721,89 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
             <option value="date_asc">تاریخ (قدیمی‌ترین)</option>
           </select>
 
-          {/* View Mode Toggle */}
-          <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800">
+          {/* Zoom Controller */}
+          <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
+            <button
+              onClick={() => {
+                const sizes: ('sm' | 'md' | 'lg' | 'xl')[] = ['sm', 'md', 'lg', 'xl'];
+                const idx = sizes.indexOf(gridZoom);
+                if (idx > 0) setGridZoom(sizes[idx - 1]);
+              }}
+              disabled={gridZoom === 'sm'}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none transition-all"
+              title="کوچک‌تر کردن پیش‌نمایش‌ها (Zoom Out)"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <span className="text-[10px] font-mono font-bold px-1.5 text-cyan-400 select-none">
+              {gridZoom === 'sm' ? 'ریز' : gridZoom === 'md' ? 'متوسط' : gridZoom === 'lg' ? 'بزرگ' : 'خیلی بزرگ'}
+            </span>
+            <button
+              onClick={() => {
+                const sizes: ('sm' | 'md' | 'lg' | 'xl')[] = ['sm', 'md', 'lg', 'xl'];
+                const idx = sizes.indexOf(gridZoom);
+                if (idx < sizes.length - 1) setGridZoom(sizes[idx + 1]);
+              }}
+              disabled={gridZoom === 'xl'}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none transition-all"
+              title="بزرگ‌تر کردن پیش‌نمایش‌ها (Zoom In)"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* View Mode Switcher (5 Modes: list, grid, compact, large, tiles) */}
+          <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800 gap-0.5">
             <button
               onClick={() => setViewMode('list')}
               className={`p-1.5 rounded-lg transition-all ${
-                viewMode === 'list' ? 'bg-cyan-500/20 text-cyan-400' : 'text-slate-500 hover:text-slate-300'
+                viewMode === 'list' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'
               }`}
-              title="نمایش لیستی"
+              title="نمایش لیستی با جزئیات"
             >
               <List className="w-4 h-4" />
             </button>
             <button
               onClick={() => setViewMode('grid')}
               className={`p-1.5 rounded-lg transition-all ${
-                viewMode === 'grid' ? 'bg-cyan-500/20 text-cyan-400' : 'text-slate-500 hover:text-slate-300'
+                viewMode === 'grid' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'
               }`}
-              title="نمایش شبکه‌ای"
+              title="نمایش شبکه‌ای استاندارد"
             >
               <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('compact')}
+              className={`p-1.5 rounded-lg transition-all ${
+                viewMode === 'compact' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="نمایش شبکه‌ای فشرده و ریز"
+            >
+              <Grid3X3 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('large')}
+              className={`p-1.5 rounded-lg transition-all ${
+                viewMode === 'large' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="نمایش کارت‌های بزرگ پیش‌نمایش"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('tiles')}
+              className={`p-1.5 rounded-lg transition-all ${
+                viewMode === 'tiles' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'
+              }`}
+              title="نمایش تایل‌های عریض"
+            >
+              <Layers className="w-4 h-4" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Files Display (List or Grid) */}
+      {/* Files Display Section */}
       {loading ? (
         <div className="p-20 text-center text-slate-400 space-y-3">
           <RefreshCw className="w-10 h-10 animate-spin text-cyan-400 mx-auto" />
@@ -735,139 +814,37 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
           <Folder className="w-12 h-12 text-slate-600 mx-auto" />
           <p className="text-sm font-semibold">این پوشه خالی است یا فایلی با این نام یافت نشد.</p>
         </div>
-      ) : viewMode === 'grid' ? (
-        /* GRID VIEW */
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {filteredItems.map((item) => {
-            const cat = getFileCategory(item.name);
-            const isImage = !item.isDir && cat === 'image';
-            const isVideo = !item.isDir && cat === 'video';
-            const isSelected = selectedItems.has(item.name);
-
-            return (
-              <div
-                key={item.name}
-                onClick={() => item.isDir ? handleNavigate(item.name) : handleOpenPreview(item)}
-                className={`relative group rounded-2xl p-3 border transition-all cursor-pointer flex flex-col items-center text-center space-y-2 select-none ${
-                  isSelected 
-                    ? 'bg-cyan-950/40 border-cyan-400 shadow-lg shadow-cyan-950/80' 
-                    : 'bg-slate-900/80 hover:bg-slate-800/80 border-slate-800 hover:border-cyan-500/40'
-                }`}
-              >
-                {/* Select Checkbox */}
-                <button
-                  onClick={(e) => toggleSelect(item.name, e)}
-                  className="absolute top-2 right-2 p-1 rounded-lg bg-slate-950/80 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-300 z-10"
-                >
-                  {isSelected ? <CheckSquare className="w-4 h-4 text-cyan-400" /> : <Square className="w-4 h-4" />}
-                </button>
-
-                {/* Thumbnail Icon */}
-                <div className="w-20 h-20 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-md">
-                  {item.isDir ? (
-                    <Folder className="w-10 h-10 text-amber-400 fill-amber-400/20" />
-                  ) : isImage ? (
-                    <img
-                      src={getItemPreviewUrl(item.name)}
-                      alt={item.name}
-                      loading="lazy"
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
-                      onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                    />
-                  ) : isVideo ? (
-                    <Film className="w-8 h-8 text-rose-400" />
-                  ) : cat === 'audio' ? (
-                    <Music className="w-8 h-8 text-purple-400" />
-                  ) : cat === 'text' ? (
-                    <FileCode className="w-8 h-8 text-emerald-400" />
-                  ) : (
-                    <FileText className="w-8 h-8 text-slate-400" />
-                  )}
-                </div>
-
-                {/* Name & Meta */}
-                <div className="w-full truncate">
-                  <span className="font-semibold text-xs text-slate-200 group-hover:text-white truncate block" title={item.name}>
-                    {item.name}
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
-                    {item.isDir ? 'پوشه' : item.size}
-                  </span>
-                </div>
-
-                {/* Quick Action Overlay Buttons */}
-                <div className="flex items-center gap-1 pt-1 opacity-80 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={() => handleOpenRename(item)}
-                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-300"
-                    title="تغییر نام"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-
-                  <button
-                    onClick={() => handleOpenMoveModal(item)}
-                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300"
-                    title="انتقال به پوشه دیگر"
-                  >
-                    <Move className="w-3.5 h-3.5" />
-                  </button>
-
-                  {!item.isDir && (
-                    <button
-                      onClick={() => handleDownload(item.name)}
-                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-300"
-                      title="دانلود فایل"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => handleDelete(item)}
-                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400"
-                    title="حذف"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
       ) : (
-        /* LIST VIEW */
-        <div className="rounded-2xl glass-panel border border-slate-800 overflow-hidden">
-          <div className="divide-y divide-slate-800/60 font-sans text-xs">
-            {filteredItems.map((item) => {
-              const cat = getFileCategory(item.name);
-              const isImage = !item.isDir && cat === 'image';
-              const isVideo = !item.isDir && cat === 'video';
-              const isSelected = selectedItems.has(item.name);
+        <div className="space-y-6">
+          {/* 1. COMPACT DENSE GRID */}
+          {viewMode === 'compact' && (
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2.5">
+              {paginatedItems.map((item) => {
+                const cat = getFileCategory(item.name);
+                const isImage = !item.isDir && cat === 'image';
+                const isVideo = !item.isDir && cat === 'video';
+                const isSelected = selectedItems.has(item.name);
 
-              return (
-                <div
-                  key={item.name}
-                  className={`flex items-center justify-between p-3 transition-colors group select-none ${
-                    isSelected ? 'bg-cyan-950/30' : 'hover:bg-slate-800/40'
-                  }`}
-                >
-                  <div className="flex items-center gap-3.5 flex-1 min-w-0">
-                    {/* Checkbox */}
+                return (
+                  <div
+                    key={item.name}
+                    onClick={() => item.isDir ? handleNavigate(item.name) : handleOpenPreview(item)}
+                    className={`relative group rounded-xl p-2 border transition-all cursor-pointer flex flex-col items-center text-center space-y-1 select-none ${
+                      isSelected 
+                        ? 'bg-cyan-950/50 border-cyan-400 shadow-md shadow-cyan-950/80' 
+                        : 'bg-slate-900/80 hover:bg-slate-800/80 border-slate-800 hover:border-cyan-500/40'
+                    }`}
+                  >
                     <button
                       onClick={(e) => toggleSelect(item.name, e)}
-                      className="p-1 rounded-lg text-slate-500 hover:text-cyan-400 flex-shrink-0"
+                      className="absolute top-1 right-1 p-0.5 rounded bg-slate-950/80 text-slate-400 hover:text-cyan-300 z-10"
                     >
-                      {isSelected ? <CheckSquare className="w-4 h-4 text-cyan-400" /> : <Square className="w-4 h-4" />}
+                      {isSelected ? <CheckSquare className="w-3.5 h-3.5 text-cyan-400" /> : <Square className="w-3.5 h-3.5" />}
                     </button>
 
-                    {/* Thumbnail */}
-                    <div 
-                      onClick={() => item.isDir ? handleNavigate(item.name) : handleOpenPreview(item)}
-                      className="w-11 h-11 rounded-xl bg-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center flex-shrink-0 group-hover:border-cyan-500/40 transition-colors shadow-sm cursor-pointer"
-                    >
+                    <div className="w-14 h-14 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
                       {item.isDir ? (
-                        <Folder className="w-6 h-6 text-amber-400 fill-amber-400/20" />
+                        <Folder className="w-7 h-7 text-amber-400 fill-amber-400/20" />
                       ) : isImage ? (
                         <img
                           src={getItemPreviewUrl(item.name)}
@@ -877,95 +854,571 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
                           onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                         />
                       ) : isVideo ? (
-                        <Film className="w-5 h-5 text-rose-400" />
+                        <Film className="w-6 h-6 text-rose-400" />
                       ) : cat === 'audio' ? (
-                        <Music className="w-5 h-5 text-purple-400" />
+                        <Music className="w-6 h-6 text-purple-400" />
                       ) : cat === 'text' ? (
-                        <FileCode className="w-5 h-5 text-emerald-400" />
+                        <FileCode className="w-6 h-6 text-emerald-400" />
                       ) : (
-                        <FileText className="w-5 h-5 text-slate-400" />
+                        <FileText className="w-6 h-6 text-slate-400" />
                       )}
                     </div>
 
-                    {/* File Meta */}
-                    <div 
-                      onClick={() => item.isDir ? handleNavigate(item.name) : handleOpenPreview(item)}
-                      className="truncate text-right flex-1 min-w-0 cursor-pointer"
+                    <span className="font-medium text-[11px] text-slate-200 group-hover:text-white truncate block w-full" title={item.name}>
+                      {item.name}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 2. STANDARD GRID (Zoom Responsive) */}
+          {viewMode === 'grid' && (
+            <div className={`grid gap-4 ${
+              gridZoom === 'sm' ? 'grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8' :
+              gridZoom === 'md' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6' :
+              gridZoom === 'lg' ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4' :
+              'grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3'
+            }`}>
+              {paginatedItems.map((item) => {
+                const cat = getFileCategory(item.name);
+                const isImage = !item.isDir && cat === 'image';
+                const isVideo = !item.isDir && cat === 'video';
+                const isSelected = selectedItems.has(item.name);
+
+                const thumbSizeClass = 
+                  gridZoom === 'sm' ? 'w-16 h-16' :
+                  gridZoom === 'md' ? 'w-20 h-20' :
+                  gridZoom === 'lg' ? 'w-28 h-28' :
+                  'w-36 h-36';
+
+                return (
+                  <div
+                    key={item.name}
+                    onClick={() => item.isDir ? handleNavigate(item.name) : handleOpenPreview(item)}
+                    className={`relative group rounded-2xl p-3 border transition-all cursor-pointer flex flex-col items-center text-center space-y-2 select-none ${
+                      isSelected 
+                        ? 'bg-cyan-950/40 border-cyan-400 shadow-lg shadow-cyan-950/80' 
+                        : 'bg-slate-900/80 hover:bg-slate-800/80 border-slate-800 hover:border-cyan-500/40'
+                    }`}
+                  >
+                    <button
+                      onClick={(e) => toggleSelect(item.name, e)}
+                      className="absolute top-2 right-2 p-1 rounded-lg bg-slate-950/80 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-300 z-10"
                     >
-                      <span className="font-semibold text-slate-200 group-hover:text-cyan-300 truncate block">
+                      {isSelected ? <CheckSquare className="w-4 h-4 text-cyan-400" /> : <Square className="w-4 h-4" />}
+                    </button>
+
+                    <div className={`${thumbSizeClass} rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-md`}>
+                      {item.isDir ? (
+                        <Folder className="w-10 h-10 text-amber-400 fill-amber-400/20" />
+                      ) : isImage ? (
+                        <img
+                          src={getItemPreviewUrl(item.name)}
+                          alt={item.name}
+                          loading="lazy"
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
+                          onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                        />
+                      ) : isVideo ? (
+                        <Film className="w-8 h-8 text-rose-400" />
+                      ) : cat === 'audio' ? (
+                        <Music className="w-8 h-8 text-purple-400" />
+                      ) : cat === 'text' ? (
+                        <FileCode className="w-8 h-8 text-emerald-400" />
+                      ) : (
+                        <FileText className="w-8 h-8 text-slate-400" />
+                      )}
+                    </div>
+
+                    <div className="w-full truncate">
+                      <span className="font-semibold text-xs text-slate-200 group-hover:text-white truncate block" title={item.name}>
                         {item.name}
                       </span>
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        {item.modified} • {item.isDir ? 'پوشه' : item.size}
+                      <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
+                        {item.isDir ? 'پوشه' : item.size}
                       </span>
                     </div>
+
+                    <div className="flex items-center gap-1 pt-1 opacity-80 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => handleOpenRename(item)}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-300"
+                        title="تغییر نام"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleOpenMoveModal(item)}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300"
+                        title="انتقال به پوشه دیگر"
+                      >
+                        <Move className="w-3.5 h-3.5" />
+                      </button>
+                      {!item.isDir && (
+                        <button
+                          onClick={() => handleDownload(item.name)}
+                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-300"
+                          title="دانلود فایل"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleDelete(item)}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400"
+                        title="حذف"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 3. LARGE PREVIEW SHOWCASE CARDS */}
+          {viewMode === 'large' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {paginatedItems.map((item) => {
+                const cat = getFileCategory(item.name);
+                const isImage = !item.isDir && cat === 'image';
+                const isVideo = !item.isDir && cat === 'video';
+                const isSelected = selectedItems.has(item.name);
+
+                return (
+                  <div
+                    key={item.name}
+                    onClick={() => item.isDir ? handleNavigate(item.name) : handleOpenPreview(item)}
+                    className={`relative group rounded-3xl overflow-hidden border transition-all cursor-pointer flex flex-col select-none ${
+                      isSelected 
+                        ? 'bg-[#0b152d] border-cyan-400 shadow-xl shadow-cyan-950/90' 
+                        : 'bg-slate-900/90 hover:bg-slate-850 border-slate-800 hover:border-cyan-500/40 shadow-lg'
+                    }`}
+                  >
+                    <button
+                      onClick={(e) => toggleSelect(item.name, e)}
+                      className="absolute top-3 right-3 p-1.5 rounded-xl bg-slate-950/80 backdrop-blur-md hover:bg-cyan-500/20 text-slate-300 hover:text-cyan-300 z-10 shadow-md"
+                    >
+                      {isSelected ? <CheckSquare className="w-4 h-4 text-cyan-400" /> : <Square className="w-4 h-4" />}
+                    </button>
+
+                    {/* Big Showcase Cover */}
+                    <div className="w-full h-44 bg-slate-950 flex items-center justify-center overflow-hidden relative border-b border-slate-800/80">
+                      {item.isDir ? (
+                        <div className="p-6 rounded-3xl bg-amber-500/10 border border-amber-500/20">
+                          <Folder className="w-16 h-16 text-amber-400 fill-amber-400/20" />
+                        </div>
+                      ) : isImage ? (
+                        <img
+                          src={getItemPreviewUrl(item.name)}
+                          alt={item.name}
+                          loading="lazy"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                        />
+                      ) : isVideo ? (
+                        <div className="flex flex-col items-center gap-2 text-rose-400">
+                          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20">
+                            <Film className="w-12 h-12" />
+                          </div>
+                          <span className="text-[11px] font-mono text-slate-400">ویدیو آماده پخش</span>
+                        </div>
+                      ) : cat === 'audio' ? (
+                        <div className="flex flex-col items-center gap-2 text-purple-400">
+                          <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20">
+                            <Music className="w-12 h-12" />
+                          </div>
+                          <span className="text-[11px] font-mono text-slate-400">فایل صوتی</span>
+                        </div>
+                      ) : cat === 'text' ? (
+                        <div className="flex flex-col items-center gap-2 text-emerald-400">
+                          <FileCode className="w-14 h-14" />
+                          <span className="text-[11px] font-mono text-slate-400">سورس کد / متن</span>
+                        </div>
+                      ) : (
+                        <FileText className="w-14 h-14 text-slate-500" />
+                      )}
+                    </div>
+
+                    {/* Card Content & Action Footer */}
+                    <div className="p-4 flex flex-col justify-between flex-1 space-y-3">
+                      <div>
+                        <h4 className="font-bold text-xs text-slate-100 group-hover:text-cyan-300 truncate" title={item.name}>
+                          {item.name}
+                        </h4>
+                        <div className="flex items-center justify-between mt-1 text-[11px] text-slate-400 font-mono">
+                          <span>{item.isDir ? 'پوشه' : item.size}</span>
+                          <span>{item.modified || ''}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-800/80" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
+                          {!item.isDir && (
+                            <button
+                              onClick={() => handleOpenPreview(item)}
+                              className="px-2.5 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 text-xs font-semibold flex items-center gap-1"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span>نمایش</span>
+                            </button>
+                          )}
+                          {!item.isDir && (
+                            <button
+                              onClick={() => handleDownload(item.name)}
+                              className="p-1.5 rounded-xl bg-slate-800 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-300"
+                              title="دانلود"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleOpenRename(item)}
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300"
+                            title="تغییر نام"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleOpenMoveModal(item)}
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-purple-500/20 text-slate-400 hover:text-purple-300"
+                            title="انتقال"
+                          >
+                            <Move className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(item)}
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400"
+                            title="حذف"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 4. TILES VIEW (Horizontal 2-Column Cards) */}
+          {viewMode === 'tiles' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {paginatedItems.map((item) => {
+                const cat = getFileCategory(item.name);
+                const isImage = !item.isDir && cat === 'image';
+                const isVideo = !item.isDir && cat === 'video';
+                const isSelected = selectedItems.has(item.name);
+
+                return (
+                  <div
+                    key={item.name}
+                    onClick={() => item.isDir ? handleNavigate(item.name) : handleOpenPreview(item)}
+                    className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
+                      isSelected 
+                        ? 'bg-cyan-950/40 border-cyan-400 shadow-md' 
+                        : 'bg-slate-900/80 hover:bg-slate-800/80 border-slate-800 hover:border-cyan-500/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <button
+                        onClick={(e) => toggleSelect(item.name, e)}
+                        className="p-1 rounded-lg text-slate-500 hover:text-cyan-400 flex-shrink-0"
+                      >
+                        {isSelected ? <CheckSquare className="w-4 h-4 text-cyan-400" /> : <Square className="w-4 h-4" />}
+                      </button>
+
+                      <div className="w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0">
+                        {item.isDir ? (
+                          <Folder className="w-6 h-6 text-amber-400 fill-amber-400/20" />
+                        ) : isImage ? (
+                          <img
+                            src={getItemPreviewUrl(item.name)}
+                            alt={item.name}
+                            loading="lazy"
+                            className="w-full h-full object-cover"
+                            onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                          />
+                        ) : isVideo ? (
+                          <Film className="w-6 h-6 text-rose-400" />
+                        ) : cat === 'audio' ? (
+                          <Music className="w-6 h-6 text-purple-400" />
+                        ) : cat === 'text' ? (
+                          <FileCode className="w-6 h-6 text-emerald-400" />
+                        ) : (
+                          <FileText className="w-6 h-6 text-slate-400" />
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1 text-right">
+                        <span className="font-semibold text-xs text-slate-200 group-hover:text-cyan-300 truncate block">
+                          {item.name}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-mono">
+                          {item.isDir ? 'پوشه' : item.size} • {item.modified || ''}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {!item.isDir && (
+                        <button
+                          onClick={() => handleOpenPreview(item)}
+                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-300"
+                          title="پیش‌نمایش"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleOpenRename(item)}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300"
+                        title="تغییر نام"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item)}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400"
+                        title="حذف"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 5. LIST VIEW (Detailed Row View) */}
+          {viewMode === 'list' && (
+            <div className="rounded-2xl glass-panel border border-slate-800 overflow-hidden">
+              <div className="divide-y divide-slate-800/60 font-sans text-xs">
+                {paginatedItems.map((item) => {
+                  const cat = getFileCategory(item.name);
+                  const isImage = !item.isDir && cat === 'image';
+                  const isVideo = !item.isDir && cat === 'video';
+                  const isSelected = selectedItems.has(item.name);
+
+                  const listThumbClass = 
+                    gridZoom === 'sm' ? 'w-8 h-8' :
+                    gridZoom === 'lg' || gridZoom === 'xl' ? 'w-14 h-14' :
+                    'w-11 h-11';
+
+                  return (
+                    <div
+                      key={item.name}
+                      className={`flex items-center justify-between p-3 transition-colors group select-none ${
+                        isSelected ? 'bg-cyan-950/30' : 'hover:bg-slate-800/40'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                        <button
+                          onClick={(e) => toggleSelect(item.name, e)}
+                          className="p-1 rounded-lg text-slate-500 hover:text-cyan-400 flex-shrink-0"
+                        >
+                          {isSelected ? <CheckSquare className="w-4 h-4 text-cyan-400" /> : <Square className="w-4 h-4" />}
+                        </button>
+
+                        <div 
+                          onClick={() => item.isDir ? handleNavigate(item.name) : handleOpenPreview(item)}
+                          className={`${listThumbClass} rounded-xl bg-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center flex-shrink-0 group-hover:border-cyan-500/40 transition-colors shadow-sm cursor-pointer`}
+                        >
+                          {item.isDir ? (
+                            <Folder className="w-6 h-6 text-amber-400 fill-amber-400/20" />
+                          ) : isImage ? (
+                            <img
+                              src={getItemPreviewUrl(item.name)}
+                              alt={item.name}
+                              loading="lazy"
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
+                              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                            />
+                          ) : isVideo ? (
+                            <Film className="w-5 h-5 text-rose-400" />
+                          ) : cat === 'audio' ? (
+                            <Music className="w-5 h-5 text-purple-400" />
+                          ) : cat === 'text' ? (
+                            <FileCode className="w-5 h-5 text-emerald-400" />
+                          ) : (
+                            <FileText className="w-5 h-5 text-slate-400" />
+                          )}
+                        </div>
+
+                        <div 
+                          onClick={() => item.isDir ? handleNavigate(item.name) : handleOpenPreview(item)}
+                          className="truncate text-right flex-1 min-w-0 cursor-pointer"
+                        >
+                          <span className="font-semibold text-slate-200 group-hover:text-cyan-300 truncate block">
+                            {item.name}
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            {item.modified} • {item.isDir ? 'پوشه' : item.size}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {!item.isDir && (
+                          <button
+                            onClick={() => handleOpenPreview(item)}
+                            className="p-2 rounded-xl bg-slate-900 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-300 border border-slate-800 transition-all flex items-center gap-1.5"
+                            title="پیش‌نمایش"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-cyan-400" />
+                            <span className="hidden sm:inline text-[11px] font-semibold text-cyan-400">نمایش</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleOpenRename(item)}
+                          className="p-2 rounded-xl bg-slate-900 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300 border border-slate-800 transition-all"
+                          title="تغییر نام"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleOpenMoveModal(item)}
+                          className="p-2 rounded-xl bg-slate-900 hover:bg-purple-500/20 text-slate-400 hover:text-purple-300 border border-slate-800 transition-all"
+                          title="انتقال به پوشه دیگر"
+                        >
+                          <Move className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleCutItem(item)}
+                          className="p-2 rounded-xl bg-slate-900 hover:bg-blue-500/20 text-slate-400 hover:text-blue-300 border border-slate-800 transition-all"
+                          title="برش و کات (Cut)"
+                        >
+                          <Scissors className="w-3.5 h-3.5" />
+                        </button>
+                        {!item.isDir && (
+                          <button
+                            onClick={() => handleDownload(item.name)}
+                            className="p-2 rounded-xl bg-slate-900 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-300 border border-slate-800 transition-all"
+                            title="دانلود روی کامپیوتر"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDelete(item)}
+                          className="p-2 rounded-xl bg-slate-900 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-800 transition-all"
+                          title="حذف"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* PAGINATION & SHOW-ALL CONTROLLER */}
+          {filteredItems.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-slate-900/90 backdrop-blur-md rounded-2xl border border-slate-800 text-xs text-slate-300 shadow-xl">
+              {/* Left: Page Size Selector & Count info */}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-slate-400 font-medium">تعداد در هر صفحه:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setPageSize(val === 'all' ? 'all' : Number(val));
+                    setCurrentPage(1);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-cyan-400 text-xs font-bold focus:outline-none focus:border-cyan-500 cursor-pointer shadow-inner"
+                >
+                  <option value={24}>۲۴ مورد</option>
+                  <option value={48}>۴۸ مورد</option>
+                  <option value={96}>۹۶ مورد</option>
+                  <option value={200}>۲۰۰ مورد</option>
+                  <option value="all">نمایش همه ({totalItems})</option>
+                </select>
+                <span className="text-slate-500 font-mono text-[11px] pr-2 border-r border-slate-800">
+                  نمایش {startIndex + 1} تا {Math.min(startIndex + effectivePageSize, totalItems)} از {totalItems} فایل
+                </span>
+              </div>
+
+              {/* Right: Page Navigation Controls */}
+              {pageSize !== 'all' && totalPages > 1 && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={safeCurrentPage === 1}
+                    className="p-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-cyan-400 disabled:opacity-30 disabled:pointer-events-none border border-slate-800 transition-all"
+                    title="صفحه اول"
+                  >
+                    <ChevronsRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                    disabled={safeCurrentPage === 1}
+                    className="px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-cyan-400 disabled:opacity-30 disabled:pointer-events-none border border-slate-800 transition-all flex items-center gap-1 text-xs"
+                    title="صفحه قبلی"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                    <span>قبلی</span>
+                  </button>
+
+                  {/* Dynamic Page Buttons */}
+                  <div className="flex items-center gap-1 px-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(page => {
+                        if (totalPages <= 7) return true;
+                        if (page === 1 || page === totalPages) return true;
+                        return Math.abs(page - safeCurrentPage) <= 1;
+                      })
+                      .map((page, idx, arr) => {
+                        const prev = arr[idx - 1];
+                        return (
+                          <React.Fragment key={page}>
+                            {prev && page - prev > 1 && (
+                              <span className="text-slate-600 px-1 font-mono">...</span>
+                            )}
+                            <button
+                              onClick={() => setCurrentPage(page)}
+                              className={`min-w-[32px] h-[32px] rounded-xl font-mono text-xs font-bold transition-all ${
+                                safeCurrentPage === page
+                                  ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/30'
+                                  : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          </React.Fragment>
+                        );
+                      })}
                   </div>
 
-                  {/* Actions Toolbar on Right */}
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {/* Preview Button */}
-                    {!item.isDir && (
-                      <button
-                        onClick={() => handleOpenPreview(item)}
-                        className="p-2 rounded-xl bg-slate-900 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-300 border border-slate-800 transition-all flex items-center gap-1.5"
-                        title="پیش‌نمایش"
-                      >
-                        <Eye className="w-3.5 h-3.5 text-cyan-400" />
-                        <span className="hidden sm:inline text-[11px] font-semibold text-cyan-400">نمایش</span>
-                      </button>
-                    )}
-
-                    {/* Rename Button */}
-                    <button
-                      onClick={() => handleOpenRename(item)}
-                      className="p-2 rounded-xl bg-slate-900 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300 border border-slate-800 transition-all"
-                      title="تغییر نام"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-
-                    {/* Move Button */}
-                    <button
-                      onClick={() => handleOpenMoveModal(item)}
-                      className="p-2 rounded-xl bg-slate-900 hover:bg-purple-500/20 text-slate-400 hover:text-purple-300 border border-slate-800 transition-all"
-                      title="انتقال به پوشه دیگر"
-                    >
-                      <Move className="w-3.5 h-3.5" />
-                    </button>
-
-                    {/* Cut / Move to Clipboard */}
-                    <button
-                      onClick={() => handleCutItem(item)}
-                      className="p-2 rounded-xl bg-slate-900 hover:bg-blue-500/20 text-slate-400 hover:text-blue-300 border border-slate-800 transition-all"
-                      title="برش و کات (Cut)"
-                    >
-                      <Scissors className="w-3.5 h-3.5" />
-                    </button>
-
-                    {/* Download Button */}
-                    {!item.isDir && (
-                      <button
-                        onClick={() => handleDownload(item.name)}
-                        className="p-2 rounded-xl bg-slate-900 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-300 border border-slate-800 transition-all"
-                        title="دانلود روی کامپیوتر"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-
-                    {/* Delete Button */}
-                    <button
-                      onClick={() => handleDelete(item)}
-                      className="p-2 rounded-xl bg-slate-900 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-800 transition-all"
-                      title="حذف"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                    disabled={safeCurrentPage === totalPages}
+                    className="px-3 py-1.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-cyan-400 disabled:opacity-30 disabled:pointer-events-none border border-slate-800 transition-all flex items-center gap-1 text-xs"
+                    title="صفحه بعدی"
+                  >
+                    <span>بعدی</span>
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={safeCurrentPage === totalPages}
+                    className="p-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-cyan-400 disabled:opacity-30 disabled:pointer-events-none border border-slate-800 transition-all"
+                    title="صفحه آخر"
+                  >
+                    <ChevronsLeft className="w-4 h-4" />
+                  </button>
                 </div>
-              );
-            })}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
