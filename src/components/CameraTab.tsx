@@ -34,6 +34,7 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
   const [facing, setFacing] = useState<'back' | 'front'>('back');
   const [cameraSize, setCameraSize] = useState<string>('1920x1080');
   const [cameraFps, setCameraFps] = useState<number>(30);
+  const [orientation, setOrientation] = useState<number>(0);
   const [highSpeed, setHighSpeed] = useState<boolean>(false);
   const [stayOnTop, setStayOnTop] = useState<boolean>(true);
   const [torchEnabled, setTorchEnabled] = useState<boolean>(false);
@@ -53,7 +54,7 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
   };
 
   // Launch Native Scrcpy Camera Webcam
-  const handleStartWebcam = async (customFacing = facing) => {
+  const handleStartWebcam = async (customFacing = facing, customOrientation = orientation) => {
     if (!device) return;
     try {
       const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/camera/webcam/start`, {
@@ -61,6 +62,7 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           facing: customFacing,
+          orientation: customOrientation,
           cameraSize,
           cameraFps,
           highSpeed,
@@ -469,6 +471,34 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
                     }`}
                   >
                     {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Orientation / Rotation Selector */}
+            <div>
+              <label className="text-[11px] text-slate-400 block mb-1.5">جهت و زاویه چرخش دوربین (Orientation):</label>
+              <div className="grid grid-cols-4 gap-1.5">
+                {[
+                  { label: '۰° (افقی)', val: 0 },
+                  { label: '۹۰° (عمودی)', val: 90 },
+                  { label: '۱۸۰°', val: 180 },
+                  { label: '۲۷۰° (عمودی)', val: 270 }
+                ].map(o => (
+                  <button
+                    key={o.val}
+                    onClick={() => {
+                      setOrientation(o.val);
+                      if (isWebcamActive) handleStartWebcam(facing, o.val);
+                    }}
+                    className={`py-2 px-1 rounded-xl text-[11px] font-semibold transition-all border text-center ${
+                      orientation === o.val 
+                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 font-bold' 
+                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                    }`}
+                  >
+                    {o.label}
                   </button>
                 ))}
               </div>

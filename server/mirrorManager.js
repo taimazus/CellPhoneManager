@@ -113,6 +113,10 @@ export class MirrorManager {
     const winTitle = isFront ? 'Sahand HD Webcam (Selfie)' : 'Sahand HD Webcam (Back)';
     args.push(`--window-title=${winTitle}`);
 
+    if (options.orientation !== undefined && options.orientation !== null) {
+      args.push(`--orientation=${options.orientation}`);
+    }
+
     if (options.recordPath) {
       args.push('--record', options.recordPath);
     }
