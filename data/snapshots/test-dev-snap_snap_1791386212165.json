@@ -1,0 +1,9 @@
+{
+  "snapshotId": "snap_1791386212165",
+  "serial": "test-dev-snap",
+  "timestamp": "2026-10-07T15:16:52.165Z",
+  "settings": {
+    "refreshRate": 90,
+    "animationScale": 1
+  }
+}

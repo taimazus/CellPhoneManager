@@ -115,16 +115,68 @@ export class PcGamepadManager {
   }
 
   async launchOnPhone(serial) {
+    const localIps = this.getLocalIps();
+    const primaryIp = localIps.find(i => i.ip.startsWith('192.168.') || i.ip.startsWith('10.') || i.ip.startsWith('172.'))?.ip || '127.0.0.1';
+    const lanUrl = `http://${primaryIp}:3001/gamepad.html`;
+    const localhostUrl = 'http://localhost:3001/gamepad.html';
+
     if (!serial || serial.startsWith('mock-')) {
-      return { success: true, url: 'http://localhost:3001/gamepad.html' };
+      return { 
+        success: true, 
+        url: localhostUrl, 
+        lanUrl,
+        message: 'دستگاه شبیه‌سازی: آدرس دسته بازی آماده است.' 
+      };
     }
     try {
+      // 1. Setup ADB reverse port forwarding for USB
       await this.setupAdbReverse(serial);
-      const targetUrl = 'http://localhost:3001/gamepad.html';
-      await adbManager.runAdb(['shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', targetUrl], serial);
-      return { success: true, url: targetUrl, message: 'صفحه دسته بازی روی مرورگر گوشی باز شد.' };
+
+      // 2. Wake up screen and dismiss lockscreen if possible
+      try {
+        await adbManager.runAdb(['shell', 'input', 'keyevent', '224'], serial);
+        await adbManager.runAdb(['shell', 'wm', 'dismiss-keyguard'], serial);
+      } catch {
+        // non-fatal
+      }
+
+      // 3. Try to launch using browser packages in sequence
+      const browserIntents = [
+        ['shell', 'am', 'start', '-n', 'com.android.chrome/com.google.android.apps.chrome.Main', '-d', localhostUrl, '-f', '0x10000000'],
+        ['shell', 'am', 'start', '-n', 'com.mi.globalbrowser/com.android.browser.BrowserActivity', '-d', localhostUrl, '-f', '0x10000000'],
+        ['shell', 'am', 'start', '-n', 'com.sec.android.app.sbrowser/com.sec.android.app.sbrowser.SBrowserMainActivity', '-d', localhostUrl, '-f', '0x10000000'],
+        ['shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', localhostUrl, '-f', '0x10000000'],
+        ['shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-d', lanUrl, '-f', '0x10000000']
+      ];
+
+      let launched = false;
+      let lastErr = null;
+      for (const intentArgs of browserIntents) {
+        try {
+          const res = await adbManager.runAdb(intentArgs, serial);
+          if (res && !res.includes('Error:') && !res.includes('does not exist')) {
+            launched = true;
+            break;
+          }
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+
+      return { 
+        success: true, 
+        url: localhostUrl, 
+        lanUrl,
+        launched,
+        message: 'صفحه دسته بازی برای گوشی ارسال شد. در صورت نیاز می‌توانید QR کد را نیز اسکن کنید.' 
+      };
     } catch (err) {
-      return { success: false, error: err.message };
+      return { 
+        success: false, 
+        url: localhostUrl,
+        lanUrl,
+        error: err.message 
+      };
     }
   }
 

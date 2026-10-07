@@ -62,12 +62,15 @@ wss.on('connection', (ws) => {
 });
 
 const PORT = process.env.PORT || 3001;
-const HOST = process.env.HOST || '127.0.0.1';
+const HOST = process.env.HOST || '0.0.0.0';
 
-// Restrict CORS to localhost and 127.0.0.1
+// Restrict CORS to localhost, 127.0.0.1, and local private subnets (LAN)
 const allowedOrigins = [
   /^http:\/\/localhost(:\d+)?$/,
-  /^http:\/\/127\.0\.0\.1(:\d+)?$/
+  /^http:\/\/127\.0\.0\.1(:\d+)?$/,
+  /^http:\/\/192\.168\.\d+\.\d+(:\d+)?$/,
+  /^http:\/\/10\.\d+\.\d+\.\d+(:\d+)?$/,
+  /^http:\/\/172\.(1[6-9]|2\d|3[01])\.\d+\.\d+(:\d+)?$/
 ];
 
 app.use(cors({
@@ -86,6 +89,22 @@ app.use(express.json());
 
 // Global Security & Authentication Gate
 app.use(securityManager.getAuthMiddleware());
+
+// Serve public directory (gamepad.html, screen-test.html, icons, etc.)
+const publicPath = path.join(process.cwd(), 'public');
+if (fs.existsSync(publicPath)) {
+  app.use(express.static(publicPath));
+}
+
+// Explicit Gamepad route
+app.get('/gamepad', (req, res) => {
+  const gamepadFile = path.join(publicPath, 'gamepad.html');
+  if (fs.existsSync(gamepadFile)) {
+    res.sendFile(gamepadFile);
+  } else {
+    res.status(404).send('Gamepad HTML not found');
+  }
+});
 
 // Multer upload destination with 500MB limit
 const uploadsDir = path.join(process.cwd(), 'uploads');

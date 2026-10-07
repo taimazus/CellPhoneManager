@@ -14,7 +14,12 @@ import {
   Flame,
   Volume2,
   RefreshCw,
-  Crown
+  Crown,
+  QrCode,
+  Copy,
+  Check,
+  HelpCircle,
+  Play
 } from 'lucide-react';
 import { Device } from '../types';
 import { safeFetchJson } from '../utils/api';
@@ -36,12 +41,14 @@ export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device
   const [profiles, setProfiles] = useState<GamepadProfile[]>([]);
   const [activeProfile, setActiveProfile] = useState<string>('racing');
   const [latestInputs, setLatestInputs] = useState<any>({});
+  const [localIps, setLocalIps] = useState<{ name: string; ip: string }[]>([]);
   const [isLaunching, setIsLaunching] = useState<boolean>(false);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToast({ text, type });
-    setTimeout(() => setToast(null), 3500);
+    setTimeout(() => setToast(null), 4000);
   };
 
   useEffect(() => {
@@ -51,17 +58,24 @@ export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device
   }, []);
 
   const fetchGamepadStatus = async () => {
-    const data = await safeFetchJson('/api/gamepad/status');
+    const data = await safeFetchJson<{
+      success: boolean;
+      profiles?: GamepadProfile[];
+      activeProfile?: string;
+      latestInputs?: any;
+      localIps?: { name: string; ip: string }[];
+    }>('/api/gamepad/status');
     if (data && data.success) {
       if (data.profiles) setProfiles(data.profiles);
       if (data.activeProfile) setActiveProfile(data.activeProfile);
       if (data.latestInputs) setLatestInputs(data.latestInputs);
+      if (data.localIps) setLocalIps(data.localIps);
     }
   };
 
   const handleSelectProfile = async (profileId: string) => {
     setActiveProfile(profileId);
-    const res = await safeFetchJson('/api/gamepad/profile', {
+    const res = await safeFetchJson<{ success: boolean; profile?: GamepadProfile }>('/api/gamepad/profile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ profileId })
@@ -78,19 +92,25 @@ export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device
     }
     setIsLaunching(true);
     try {
-      const res = await safeFetchJson(`/api/devices/${device.id}/gamepad/launch`, {
+      const res = await safeFetchJson<{ success: boolean; url?: string; lanUrl?: string; message?: string; error?: string }>(`/api/devices/${device.id}/gamepad/launch`, {
         method: 'POST'
       });
       if (res && res.success) {
-        showToast('صفحه دسته بازی روی مرورگر گوشی باز شد! اکنون می‌توانید بازی کنید.', 'success');
+        showToast('فرمان باز کردن دسته بازی به گوشی ارسال شد! صفحه گوشی را چک کنید یا QR کد را اسکن نمایید.', 'success');
       } else {
-        showToast(res?.error || 'خطا در باز کردن صفحه روی گوشی', 'error');
+        showToast(res?.error || 'خطا در ارسال به گوشی. می‌توانید از QR کد یا آدرس مستقیم استفاده کنید.', 'error');
       }
     } catch (err: any) {
       showToast(err.message, 'error');
     } finally {
       setIsLaunching(false);
     }
+  };
+
+  const handleCopy = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(key);
+    setTimeout(() => setCopied(null), 2000);
   };
 
   const handleSendPhoneKey = async (keycode: number, name = 'کلید') => {
@@ -107,6 +127,10 @@ export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device
     }
   };
 
+  const primaryIp = localIps.find(i => i.ip.startsWith('192.168.') || i.ip.startsWith('10.') || i.ip.startsWith('172.'))?.ip || '127.0.0.1';
+  const phoneLanUrl = `http://${primaryIp}:3001/gamepad.html`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(phoneLanUrl)}&color=d4af37&bgcolor=121319`;
+
   return (
     <div className="space-y-6 animate-fadeIn font-sans text-right" dir="rtl">
       {/* Toast Notification */}
@@ -116,105 +140,119 @@ export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device
             ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 shadow-amber-500/20' 
             : 'bg-rose-500 text-white shadow-rose-500/20'
         }`}>
-          {toast.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          {toast.type === 'success' ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
           <span>{toast.text}</span>
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="rounded-3xl bg-gradient-to-r from-[#141520] via-[#181a28] to-amber-950/20 p-6 border border-amber-500/30 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl shadow-black/30">
-        <div className="space-y-1">
-          <h2 className="text-xl font-black text-white flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-stone-950 shadow-md shadow-amber-500/20">
-              <Gamepad2 className="w-5 h-5" />
-            </div>
-            <span>تبدیل گوشی به دسته بازی کامپیوتر (PC Virtual Gamepad)</span>
-          </h2>
-          <p className="text-xs text-stone-400">
-            استفاده از گوشی به عنوان دسته بازی حرفه‌ای ویندوز (Xbox/PS)، شبیه‌ساز فرمان مسابقه‌ای و تاچ‌پد لمسی با تاخیر صفر
-          </p>
-        </div>
-
-        {/* Mode Switcher */}
-        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-[#101118] border border-stone-800">
+      {/* Main Tab Guide Banner */}
+      <TabGuideCard
+        icon={Gamepad2}
+        title="تبدیل گوشی به دسته بازی کامپیوتر (PC Virtual Gamepad)"
+        subtitle="استفاده از گوشی به عنوان دسته بازی حرفه‌ای ویندوز (Xbox/PS)، شبیه‌ساز فرمان مسابقه‌ای و تاچ‌پد لمسی با تاخیر صفر"
+      >
+        <div className="flex flex-wrap items-center gap-2 mt-2">
           <button
             onClick={() => setActiveTabMode('pc_gamepad')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTabMode === 'pc_gamepad' 
-                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 shadow-md shadow-amber-500/20' 
-                : 'text-stone-400 hover:text-stone-200'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTabMode === 'pc_gamepad'
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-black shadow-md shadow-amber-500/20'
+                : 'bg-stone-800 text-stone-300 hover:text-white'
             }`}
           >
-            <Gamepad2 className="w-3.5 h-3.5" />
-            <span>دسته بازی برای ویندوز</span>
+            🎮 دسته بازی برای ویندوز
           </button>
           <button
             onClick={() => setActiveTabMode('trackpad')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTabMode === 'trackpad' 
-                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 shadow-md shadow-amber-500/20' 
-                : 'text-stone-400 hover:text-stone-200'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTabMode === 'trackpad'
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-black shadow-md shadow-amber-500/20'
+                : 'bg-stone-800 text-stone-300 hover:text-white'
             }`}
           >
-            <MousePointer className="w-3.5 h-3.5" />
-            <span>ماوس و تاچ‌پد PC</span>
+            🖱️ ماوس و تاچ‌پد PC
           </button>
           <button
             onClick={() => setActiveTabMode('phone_control')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeTabMode === 'phone_control' 
-                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 shadow-md shadow-amber-500/20' 
-                : 'text-stone-400 hover:text-stone-200'
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTabMode === 'phone_control'
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-black shadow-md shadow-amber-500/20'
+                : 'bg-stone-800 text-stone-300 hover:text-white'
             }`}
           >
-            <Smartphone className="w-3.5 h-3.5" />
-            <span>کنترل از روی PC</span>
+            📱 کنترل از روی PC
           </button>
         </div>
-      </div>
-
-      <TabGuideCard 
-        title="آموزش تبدیل گوشی به دسته بازی رایانه"
-        description="بدون نیاز به خرید کنترلر مجزا یا نصب نرم‌افزار جانبی روی گوشی، صفحه نمایش گوشی شما به یک دسته بازی و تاچ‌پد حرفه‌ای تبدیل می‌شود."
-        steps={[
-          'گوشی خود را با کابل USB یا Wi-Fi به کامپیوتر متصل کنید.',
-          'دکمه «راه‌اندازی فوری دسته بازی روی گوشی» را لمس کنید تا صفحه لمسی کنترلر روی گوشی باز شود.',
-          'پروفایل بازی دلخواه خود (مسابقه‌ای، شوتر، شبیه‌ساز) را در زیر انتخاب نمایید و بازی ویندوزی خود را اجرا کنید!'
-        ]}
-        tips={[
-          'برای بازی‌های اتومبیل‌رانی مانند Forza و Need for Speed، از پروفایل مسابقه‌ای استفاده کنید.',
-          'با لمس هر کلید روی گوشی، ویبره هپتیک آنی فعال می‌شود تا حس لمس دکمه‌های واقعی شبیه‌سازی شود.'
-        ]}
-      />
+      </TabGuideCard>
 
       {/* MODE 1: PC VIRTUAL GAMEPAD */}
       {activeTabMode === 'pc_gamepad' && (
         <div className="space-y-6">
           {/* Main Action Launcher Card */}
           <div className="p-6 rounded-3xl bg-[#12131c] border border-amber-500/30 flex flex-col lg:flex-row items-center justify-between gap-6 shadow-xl">
-            <div className="space-y-2 text-right">
+            <div className="space-y-3 text-right flex-1">
               <div className="flex items-center gap-2">
                 <span className="p-1.5 rounded-lg bg-amber-500/15 text-yellow-300 font-bold border border-amber-500/30">
                   <Zap className="w-4 h-4" />
                 </span>
                 <h3 className="text-base font-bold text-white">راه‌اندازی اتصال دسته لمسی روی گوشی</h3>
               </div>
-              <p className="text-xs text-stone-400 leading-relaxed max-w-xl">
-                با کلیک روی دکمه روبرو، پورت ارتباطی پرسرعت (<code className="text-yellow-300 bg-black/40 px-1 rounded">ADB Reverse</code>) فعال شده و کنترلر تمام‌صفحه با ویبره هپتیک روی گوشی ظاهر می‌شود.
+              <p className="text-xs text-stone-300 leading-relaxed">
+                با زدن دکمه زیر، صفحه دسته بازی روی گوشی باز می‌شود. همچنین با اسکن QR کد با دوربین گوشی یا باز کردن آدرس زیر در مرورگر Chrome/Safari گوشی می‌توانید فوراً متصل شوید:
               </p>
-              <div className="text-[11px] text-amber-300/80 font-mono">
-                آدرس مستقیم در مرورگر گوشی: <strong>http://localhost:3001/gamepad.html</strong>
+              
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <div className="p-2 px-3 rounded-xl bg-[#0a0a0f] border border-stone-800 font-mono text-amber-300 flex items-center gap-2">
+                  <span>{phoneLanUrl}</span>
+                  <button
+                    onClick={() => handleCopy(phoneLanUrl, 'lan_url')}
+                    className="p-1 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white transition-colors"
+                    title="کپی آدرس"
+                  >
+                    {copied === 'lan_url' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+
+                <a
+                  href="/gamepad.html"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-2 px-3 rounded-xl bg-[#1c1d2c] hover:bg-[#25273b] border border-amber-500/25 text-yellow-300 hover:text-yellow-200 font-bold flex items-center gap-1.5 transition-all"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>تست روی کامپیوتر</span>
+                </a>
               </div>
             </div>
 
-            <button
-              onClick={handleLaunchOnPhone}
-              disabled={isLaunching || !device}
-              className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black text-sm shadow-lg shadow-amber-500/25 transition-all active:scale-95 flex items-center gap-2 shrink-0 disabled:opacity-50"
-            >
-              <Gamepad2 className="w-5 h-5" />
-              <span>{isLaunching ? 'در حال راه‌اندازی...' : '🚀 راه‌اندازی دسته بازی روی گوشی'}</span>
-            </button>
+            {/* QR Code & Action Button */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 flex-shrink-0">
+              <div className="p-2.5 rounded-2xl bg-[#0a0a0f] border border-amber-500/30 text-center space-y-1">
+                <img 
+                  src={qrCodeUrl} 
+                  alt="QR Code Gamepad" 
+                  className="w-24 h-24 sm:w-28 sm:sh-28 rounded-xl object-contain bg-[#121319]"
+                />
+                <span className="text-[10px] text-stone-400 font-bold block">اسکن با دوربین گوشی</span>
+              </div>
+
+              <button
+                onClick={handleLaunchOnPhone}
+                disabled={isLaunching || !device}
+                className="px-6 py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black text-xs sm:text-sm shadow-lg shadow-amber-500/25 transition-all active:scale-95 flex items-center gap-2 shrink-0 disabled:opacity-50"
+              >
+                <Gamepad2 className="w-5 h-5" />
+                <span>{isLaunching ? 'در حال ارسال...' : '🚀 راه‌اندازی دسته بازی روی گوشی'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Notice for Xiaomi / MIUI Users */}
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-stone-300 flex items-start gap-2.5">
+            <HelpCircle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+            <p className="leading-relaxed">
+              <strong>نکته مهم برای گوشی‌های شیائومی و سامسونگ:</strong> لطفاً قفل صفحه گوشی را باز نگه دارید. در صورتی که پس از زدن دکمه، پنجره انتخاب مرورگر روی گوشی ظاهر شد، مرورگر <strong>Chrome</strong> یا <strong>Mi Browser</strong> را انتخاب کنید، یا کافیست <strong>QR کد</strong> بالا را با دوربین گوشی اسکن نمایید.
+            </p>
           </div>
 
           {/* Game Profiles Grid */}
@@ -308,12 +346,23 @@ export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device
                 با باز کردن صفحه روی گوشی، با کشیدن انگشت نشانگر ماوس ویندوز حرکت کرده و با دو انگشت اسکرول انجام می‌شود.
               </p>
             </div>
-            <button
-              onClick={handleLaunchOnPhone}
-              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-black text-xs shadow-md shadow-amber-500/20 transition-all active:scale-95"
-            >
-              🚀 باز کردن تاچ‌پد روی گوشی
-            </button>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={handleLaunchOnPhone}
+                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-black text-xs shadow-md shadow-amber-500/20 transition-all active:scale-95"
+              >
+                🚀 باز کردن تاچ‌پد روی گوشی
+              </button>
+              <a
+                href="/gamepad.html"
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-3 rounded-2xl bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-bold transition-all flex items-center gap-1.5"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>تست روی PC</span>
+              </a>
+            </div>
           </div>
         </div>
       )}
