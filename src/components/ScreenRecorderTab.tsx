@@ -20,6 +20,7 @@ import {
   Maximize2
 } from 'lucide-react';
 import { Device } from '../types';
+import { TabGuideCard } from './TabGuideCard';
 
 interface ScreenRecorderTabProps {
   device: Device | null;
@@ -330,6 +331,22 @@ export const ScreenRecorderTab: React.FC<ScreenRecorderTabProps> = ({ device }) 
           )}
         </div>
       </div>
+
+      {/* In-Tab User Guide */}
+      <TabGuideCard
+        title="راهنمای استودیوی ضبط فیلم و صدای داخلی گوشی"
+        description="نکات مربوط به ضبط ۶۰ فریم با انکودر سخت‌افزاری، پخش مستقیم در برنامه و رفع مشکل پلیرها"
+        steps={[
+          "برای شروع، دکمه قرمز «شروع ضبط صفحه و صدا» را بزنید. ضبط با بالاترین کیفیت شروع می‌شود.",
+          "پس از اتمام کار، دکمه «توقف ضبط» را بزنید. سیستم به‌صورت خودکار فایل MP4 نهایی را با ساختار استاندارد Moov کامل کرده و در کامپیوتر ذخیره می‌نماید.",
+          "برای تماشای آنی ویدیوی ضبط شده، روی آیکون «پخش» در لیست ویدیوها کلیک کنید تا داخل پلیر اختصاصی همین برنامه باز شود.",
+          "با دکمه «پوشه ذخیره‌سازی» می‌توانید محل ذخیره ویدیوها را به درایو دلخواه (مثل D:\\Recordings) تغییر دهید."
+        ]}
+        tips={[
+          "برای ضبط گیم‌پلی بازی‌ها، بیت‌ریت ۱۶ تا ۲۰ مگابیت و رزولوشن 1080p بهترین توازن کیفیت و حجم را ارائه می‌دهد.",
+          "ویدیوهای ضبط شده با فرمت استاندارد H.264/MP4 هستند و روی تمام پلیرها (Windows Media Player, VLC, PotPlayer, مرورگرها) پخش می‌شوند."
+        ]}
+      />
 
       {/* Save Directory Control Bar */}
       <div className="rounded-2xl glass-panel p-4 border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3">

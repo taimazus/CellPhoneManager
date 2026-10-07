@@ -2321,6 +2321,125 @@ app.post('/api/backups/open-folder', async (req, res) => {
   }
 });
 
+// -------------------------------------------------------------
+// Screen Recorder & Video Streaming API Suite
+// -------------------------------------------------------------
+app.get('/api/recordings', (req, res) => {
+  try {
+    const list = recorderManager.listRecordings();
+    const directory = recorderManager.getRecordingsDir();
+    res.json({ success: true, recordings: list, directory });
+  } catch (err) {
+    console.error('API /api/recordings error:', err);
+    res.status(500).json({ success: false, error: err.message, recordings: [] });
+  }
+});
+
+app.post('/api/recordings/directory', (req, res) => {
+  const { directory } = req.body;
+  const result = recorderManager.setRecordingsDir(directory);
+  res.json(result);
+});
+
+app.post('/api/recordings/open-folder', (req, res) => {
+  const { path: customPath } = req.body;
+  const result = recorderManager.openDirectoryInExplorer(customPath);
+  res.json(result);
+});
+
+app.post('/api/recordings/open-file', (req, res) => {
+  const { fileName } = req.body;
+  const result = recorderManager.openFileInExplorer(fileName);
+  res.json(result);
+});
+
+app.delete('/api/recordings/:fileName', (req, res) => {
+  const { fileName } = req.params;
+  const result = recorderManager.deleteRecording(fileName);
+  res.json(result);
+});
+
+app.post('/api/devices/:id/recorder/start', async (req, res) => {
+  const { id } = req.params;
+  const { resolution = '1080', bitrate = 16, captureAudio = true } = req.body;
+  try {
+    const result = await recorderManager.startScreenRecording(id, { resolution, bitrate, captureAudio });
+    res.json(result);
+  } catch (err) {
+    console.error(`API /api/devices/${id}/recorder/start error:`, err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/recorder/stop', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await recorderManager.stopScreenRecording(id);
+    res.json(result);
+  } catch (err) {
+    console.error(`API /api/devices/${id}/recorder/stop error:`, err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/devices/:id/recorder/status', (req, res) => {
+  const { id } = req.params;
+  const status = recorderManager.getRecordingStatus(id);
+  res.json({ success: true, ...status });
+});
+
+// Video Stream endpoint with HTTP 206 partial range streaming
+app.get('/api/recordings/stream/:filename', (req, res) => {
+  const { filename } = req.params;
+  const safeFilename = path.basename(filename);
+  const filePath = path.join(recorderManager.getRecordingsDir(), safeFilename);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'فایل ویدیو یافت نشد' });
+  }
+
+  const stat = fs.statSync(filePath);
+  const fileSize = stat.size;
+  const range = req.headers.range;
+
+  let contentType = 'video/mp4';
+  if (safeFilename.endsWith('.mkv')) contentType = 'video/x-matroska';
+  else if (safeFilename.endsWith('.webm')) contentType = 'video/webm';
+
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    const chunksize = (end - start) + 1;
+    const file = fs.createReadStream(filePath, { start, end });
+    const head = {
+      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': chunksize,
+      'Content-Type': contentType,
+    };
+    res.writeHead(206, head);
+    file.pipe(res);
+  } else {
+    const head = {
+      'Content-Length': fileSize,
+      'Content-Type': contentType,
+    };
+    res.writeHead(200, head);
+    fs.createReadStream(filePath).pipe(res);
+  }
+});
+
+app.get('/api/recordings/download/:filename', (req, res) => {
+  const { filename } = req.params;
+  const safeFilename = path.basename(filename);
+  const filePath = path.join(recorderManager.getRecordingsDir(), safeFilename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'فایل ویدیو یافت نشد' });
+  }
+  res.download(filePath, safeFilename);
+});
+
 // API 404 Handler - Never return HTML for /api/* requests
 app.all('/api/*', (req, res) => {
   res.status(404).json({ success: false, error: `آدرس وب‌سرویس یافت نشد: ${req.method} ${req.originalUrl}` });

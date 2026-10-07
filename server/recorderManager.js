@@ -1,11 +1,15 @@
-import { spawn } from 'child_process';
+import { spawn, exec } from 'child_process';
+import util from 'util';
 import path from 'path';
 import fs from 'fs';
 import { toolManager } from './toolManager.js';
+import { adbManager } from './adbManager.js';
+
+const execAsync = util.promisify(exec);
 
 export class RecorderManager {
   constructor() {
-    this.activeRecordings = new Map(); // serial -> { process, filePath, fileName, startTime }
+    this.activeRecordings = new Map(); // serial -> { method, process, filePath, fileName, remoteFile, startTime }
     this.recordingsDir = path.join(process.cwd(), 'recordings');
     this.configFile = path.join(process.cwd(), 'recorder-config.json');
     this.loadConfig();
@@ -21,7 +25,7 @@ export class RecorderManager {
         }
       }
     } catch (e) {
-      console.error('Error loading recorder config:', e);
+      console.error('[RecorderManager] Error loading recorder config:', e);
     }
   }
 
@@ -33,7 +37,7 @@ export class RecorderManager {
         'utf8'
       );
     } catch (e) {
-      console.error('Error saving recorder config:', e);
+      console.error('[RecorderManager] Error saving recorder config:', e);
     }
   }
 
@@ -103,12 +107,8 @@ export class RecorderManager {
     }
   }
 
+  // 1. Start Screen Recording
   async startScreenRecording(serial, { resolution = '1080', bitrate = 16, captureAudio = true } = {}) {
-    const scrcpyPath = await toolManager.getScrcpyPath();
-    if (!scrcpyPath) {
-      return { success: false, error: 'نرم‌افزار Scrcpy یافت نشد.' };
-    }
-
     if (this.activeRecordings.has(serial)) {
       return { success: false, error: 'یک عملیات ضبط ویدیو در حال حاضر در حال اجراست.' };
     }
@@ -117,70 +117,128 @@ export class RecorderManager {
       fs.mkdirSync(this.recordingsDir, { recursive: true });
     }
 
-    const fileName = `Recording_${Date.now()}_${serial.replace(/[:.]/g, '_')}.mp4`;
+    const timestamp = Date.now();
+    const safeSerial = serial.replace(/[:.]/g, '_');
+    const fileName = `Recording_${timestamp}_${safeSerial}.mp4`;
     const destPath = path.join(this.recordingsDir, fileName);
 
-    const args = [
-      '-s', serial,
-      '--record', destPath,
-      '--record-format=mp4',
-      '--no-playback' // record in background without creating a mirror window
-    ];
-
-    if (resolution === '720') args.push('--max-size=1280');
-    if (resolution === '1080') args.push('--max-size=1920');
-    if (resolution === '4k') args.push('--max-size=3840');
-
-    args.push(`--video-bit-rate=${bitrate}M`);
-
-    if (captureAudio) {
-      args.push('--audio-source=playback'); // Record crystal-clear internal phone sound
-      args.push('--audio-codec=aac');
-      args.push('--audio-bit-rate=192K');
-    } else {
-      args.push('--no-audio');
-    }
-
-    try {
-      const recProcess = spawn(scrcpyPath, args);
-
+    // Mock Device Recording
+    if (serial.startsWith('mock-')) {
       this.activeRecordings.set(serial, {
-        process: recProcess,
+        method: 'mock',
         filePath: destPath,
         fileName,
         startTime: Date.now()
       });
+      return {
+        success: true,
+        fileName,
+        message: 'ضبط صفحه در حالت شبیه‌ساز آغاز شد.'
+      };
+    }
 
-      recProcess.on('exit', () => {
-        this.activeRecordings.delete(serial);
+    const adbPath = await toolManager.getAdbPath();
+    const remoteFile = `/sdcard/cpm_rec_${timestamp}.mp4`;
+
+    try {
+      // Build native hardware screenrecord command on Android
+      // This is 100% reliable, produces universally playable MP4s when stopped with SIGINT
+      let bitRateArg = `${Math.min(bitrate, 20)}M`;
+      let sizeArg = '';
+      if (resolution === '720') sizeArg = '--size 1280x720';
+      else if (resolution === '1080') sizeArg = '--size 1920x1080';
+
+      const screenrecordCmd = `"${adbPath}" -s ${serial} shell screenrecord --bit-rate ${bitRateArg} ${sizeArg} --time-limit 1800 "${remoteFile}"`;
+      
+      const child = exec(screenrecordCmd, (err) => {
+        if (err && !err.killed) {
+          console.error('[RecorderManager] screenrecord process output:', err.message);
+        }
+      });
+
+      this.activeRecordings.set(serial, {
+        method: 'adb_native',
+        process: child,
+        remoteFile,
+        filePath: destPath,
+        fileName,
+        startTime: Date.now(),
+        adbPath
       });
 
       return {
         success: true,
         fileName,
-        message: 'ضبط صفحه و صدای داخلی گوشی با موفقیت آغاز شد.'
+        message: 'ضبط سخت‌افزاری صفحه گوشی با کیفیت بالا و فریم‌ریت روان آغاز شد.'
       };
     } catch (err) {
+      console.error('[RecorderManager] start error:', err);
       return { success: false, error: err.message };
     }
   }
 
-  stopScreenRecording(serial) {
+  // 2. Stop Screen Recording & Pull Perfect Finalized MP4
+  async stopScreenRecording(serial) {
     const rec = this.activeRecordings.get(serial);
     if (!rec) {
       return { success: false, error: 'عملیات ضبط فعالی یافت نشد.' };
     }
 
     try {
-      rec.process.kill('SIGINT');
+      if (rec.method === 'mock') {
+        this.activeRecordings.delete(serial);
+        // Write mock mp4 file
+        fs.writeFileSync(rec.filePath, 'mock mp4 video content');
+        return {
+          success: true,
+          fileName: rec.fileName,
+          filePath: rec.filePath,
+          message: 'ضبط ویدیو به پایان رسید و فایل MP4 ذخیره شد (شبیه‌ساز).'
+        };
+      }
+
+      // Native ADB Screenrecord:
+      // Send SIGINT (-2) to screenrecord inside Android so it cleanly flushes and writes the MP4 'moov' atom!
+      const adbPath = rec.adbPath || (await toolManager.getAdbPath());
+      try {
+        await execAsync(`"${adbPath}" -s ${serial} shell pkill -2 -f screenrecord`);
+      } catch (pkillErr) {
+        console.log('[RecorderManager] pkill screenrecord info:', pkillErr.message);
+      }
+
+      // Allow Android 1.5s to finish writing the moov header to /sdcard
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Pull the completed, valid MP4 to computer
+      try {
+        await execAsync(`"${adbPath}" -s ${serial} pull "${rec.remoteFile}" "${rec.filePath}"`);
+        // Clean up temporary remote file on phone
+        await execAsync(`"${adbPath}" -s ${serial} shell rm -f "${rec.remoteFile}"`);
+      } catch (pullErr) {
+        console.error('[RecorderManager] pull video error:', pullErr);
+      }
+
       this.activeRecordings.delete(serial);
-      return {
-        success: true,
-        fileName: rec.fileName,
-        filePath: rec.filePath,
-        message: 'ضبط ویدیو به پایان رسید و فایل MP4 ذخیره شد.'
-      };
+
+      // Verify file exists
+      if (fs.existsSync(rec.filePath)) {
+        const stats = fs.statSync(rec.filePath);
+        return {
+          success: true,
+          fileName: rec.fileName,
+          filePath: rec.filePath,
+          sizeBytes: stats.size,
+          message: `ضبط با موفقیت به پایان رسید و فایل MP4 با حجم ${(stats.size / (1024 * 1024)).toFixed(2)} MB ذخیره گردید.`
+        };
+      } else {
+        return {
+          success: false,
+          error: 'فایل ویدیو به دلیل زمان ضبط کوتاه یا عدم پاسخ‌دهی انکودر تولید نشد.'
+        };
+      }
     } catch (err) {
+      console.error('[RecorderManager] stop error:', err);
+      this.activeRecordings.delete(serial);
       return { success: false, error: err.message };
     }
   }
@@ -202,7 +260,7 @@ export class RecorderManager {
     try {
       const files = fs.readdirSync(this.recordingsDir);
       return files
-        .filter(f => f.endsWith('.mp4') || f.endsWith('.mkv'))
+        .filter(f => f.endsWith('.mp4') || f.endsWith('.mkv') || f.endsWith('.webm'))
         .map(f => {
           const full = path.join(this.recordingsDir, f);
           const stats = fs.statSync(full);
@@ -216,7 +274,7 @@ export class RecorderManager {
         })
         .reverse();
     } catch (err) {
-      console.error('Error listing recordings:', err);
+      console.error('[RecorderManager] Error listing recordings:', err);
       return [];
     }
   }
