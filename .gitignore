@@ -13,6 +13,14 @@ recordings/*
 !recordings/.gitkeep
 backups/*
 !backups/.gitkeep
+audio_recordings/*
+!audio_recordings/.gitkeep
+data/snapshots/*
+!data/snapshots/.gitkeep
+data/telemetry/*
+!data/telemetry/.gitkeep
+data/security/audit_log.json
+data/automation/history.json
 
 # Logs & temp
 npm-debug.log*

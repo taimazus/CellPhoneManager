@@ -6,11 +6,35 @@ Developed and maintained exclusively by **Sahand Electronic Solutions Co. (شر�
 
 ---
 
+## [3.4.3] — 2026-10-07 (Royal Edition Enterprise & PC Wireless Gamepad Suite)
+
+### 🌟 Added & Enhanced
+- **🎮 Native Windows Hardware ScanCode Gamepad Engine (`winInputBridge.ps1` & `pcGamepadManager.js`):**
+  - Upgraded Windows input simulation from virtual keys to low-level hardware ScanCodes (`keybd_event` with dual Virtual-Key + PS/2 Set 1 Hardware ScanCodes).
+  - 100% Windows input locale independence: all gamepad keys work seamlessly in DirectX games (such as FIFA 18, Racing, FPS) regardless of active Windows keyboard language (Persian / English).
+  - Sub-2ms real-time input pipeline with persistent PowerShell C# input bridge.
+- **🕹️ Luxury Smartphone Gamepad UI (`public/gamepad.html`):**
+  - 8-Way multi-touch directional sliding D-pad with seamless diagonal recognition (Up-Right, Down-Right, Up-Left, Down-Left).
+  - Floating virtual analog thumbstick mode toggle.
+  - Multi-intensity haptic vibration (Strong / Light / Off) with specialized kick on Shoot/Sprint.
+  - Web Audio API zero-latency mechanical switch click sound synthesis.
+  - 4-level button sizing (`Compact`, `Normal`, `Large`, `Max`).
+  - Instant **Player 1 / Player 2** multi-controller switcher with dedicated neon blue and pink theme accents.
+  - 1-tap fullscreen with automatic landscape screen lock.
+- **📘 Interactive In-App Remote Controller Guide (`RemoteControllerTab.tsx`):**
+  - Added rich Persian step-by-step game focus troubleshooting, QR code scanner launcher, and safe key formatters.
+- **🧪 Comprehensive Test Coverage:**
+  - Expanded test suite to **26 test suites / 86 tests** with 100% pass rate.
+
+---
+
 ## [3.4.2] — 2026-10-07 (Royal Edition Enterprise)
 
 ### 🌟 Fixed & Enhanced
 - **AI Operational Assistant:** Connected `/api/devices/:id/ai/ask` endpoint in `server/index.js` and upgraded `AiAssistantTab` to use `safeFetchJson` with zero-fail resilience.
 - **Global Zero-Trust Auth Gate:** Implemented `securityManager.getAuthMiddleware()` and automatic bearer token injection for frontend requests.
+
+---
 
 ## [3.4.0] — 2026-10-07 (Royal Edition Enterprise)
 

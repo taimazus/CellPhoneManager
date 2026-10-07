@@ -6,9 +6,51 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#0a0b10">
-  <title>👑 گیم‌پد سلطنتی ویندوز | دو نفره با ویبره هوشمند</title>
+  <meta name="theme-color" content="#070913">
+  <title>👑 دسته بازی حرفه‌ای ویندوز | ارگونومیک سهند</title>
   <style>
+    :root {
+      --primary-color: #f59e0b;
+      --primary-glow: rgba(245, 158, 11, 0.45);
+      --bg-dark: #070913;
+      --panel-bg: rgba(18, 22, 36, 0.85);
+      --dpad-size: 220px;
+      --btn-size: 70px;
+      --trigger-height: 52px;
+    }
+
+    /* Size presets */
+    body.size-compact {
+      --dpad-size: 190px;
+      --btn-size: 60px;
+      --trigger-height: 44px;
+    }
+    body.size-normal {
+      --dpad-size: 220px;
+      --btn-size: 70px;
+      --trigger-height: 52px;
+    }
+    body.size-large {
+      --dpad-size: 250px;
+      --btn-size: 78px;
+      --trigger-height: 58px;
+    }
+    body.size-xlarge {
+      --dpad-size: 280px;
+      --btn-size: 88px;
+      --trigger-height: 64px;
+    }
+
+    /* Player Themes */
+    body.theme-p1 {
+      --player-accent: #38bdf8;
+      --player-glow: rgba(56, 189, 248, 0.4);
+    }
+    body.theme-p2 {
+      --player-accent: #f472b6;
+      --player-glow: rgba(244, 114, 182, 0.4);
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
@@ -18,216 +60,340 @@
       touch-action: none;
       -webkit-tap-highlight-color: transparent;
     }
+
     html, body {
-      background-color: #07080c;
+      background: radial-gradient(circle at 50% 20%, #151928 0%, #080a12 65%, #030408 100%);
       color: #f3f4f6;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Vazirmatn", sans-serif;
       height: 100%;
       width: 100%;
       overflow: hidden;
       position: fixed;
     }
+
     body {
       display: flex;
       flex-direction: column;
     }
 
-    /* Top Bar */
+    /* Subtle background grid pattern */
+    body::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 32px 32px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Top Bar Header */
     .header-bar {
       height: 48px;
       min-height: 48px;
-      background: linear-gradient(180deg, #161824 0%, #0d0e17 100%);
-      border-bottom: 1px solid rgba(245, 158, 11, 0.35);
+      background: rgba(10, 13, 22, 0.95);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 8px;
-      gap: 5px;
+      padding: 0 12px;
+      gap: 6px;
       z-index: 50;
+      position: relative;
     }
-    .header-left {
+
+    .header-left, .header-right {
       display: flex;
       align-items: center;
-      gap: 5px;
+      gap: 6px;
     }
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .player-toggle-btn {
-      background: #1e2030;
-      color: #38bdf8;
-      border: 1.5px solid #0284c7;
-      border-radius: 8px;
-      padding: 4px 7px;
+
+    .btn-pill {
+      background: rgba(26, 32, 50, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 5px 9px;
       font-size: 11px;
-      font-weight: bold;
+      font-weight: 700;
+      color: #e2e8f0;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 3px;
-    }
-    .player-toggle-btn.p2 {
-      color: #f472b6;
-      border-color: #db2777;
-    }
-    .profile-select {
-      background: #1e2030;
-      color: #fcd34d;
-      border: 1px solid rgba(245, 158, 11, 0.4);
-      border-radius: 8px;
-      padding: 4px 6px;
-      font-size: 11px;
-      font-weight: bold;
+      gap: 5px;
       outline: none;
-      max-width: 105px;
+      transition: all 0.15s ease;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
     }
-    .vibrate-btn {
-      background: #1e2030;
-      color: #a3e635;
-      border: 1px solid rgba(163, 230, 53, 0.4);
-      border-radius: 8px;
-      padding: 4px 6px;
-      font-size: 11px;
-      font-weight: bold;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 3px;
+    .btn-pill:active { transform: scale(0.94); }
+
+    .player-btn {
+      color: var(--player-accent);
+      border-color: var(--player-accent);
+      background: rgba(56, 189, 248, 0.12);
     }
-    .vibrate-btn.muted {
-      color: #9ca3af;
-      border-color: #4b5563;
-      background: #141520;
+    body.theme-p2 .player-btn {
+      background: rgba(244, 114, 182, 0.12);
     }
-    .fullscreen-btn {
-      background: linear-gradient(135deg, #d97706, #b45309);
-      color: #fff;
-      border: none;
-      border-radius: 8px;
+
+    .profile-select {
+      background: rgba(24, 30, 48, 0.9);
+      color: #fcd34d;
+      border: 1px solid rgba(245, 158, 11, 0.45);
+      border-radius: 10px;
       padding: 5px 8px;
       font-size: 11px;
-      font-weight: bold;
+      font-weight: 700;
+      outline: none;
+      max-width: 140px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    .mode-btn {
+      color: #c084fc;
+      border-color: rgba(192, 132, 252, 0.35);
+    }
+
+    .fullscreen-btn {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #05070f;
+      border: none;
+      border-radius: 10px;
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: 900;
       display: flex;
       align-items: center;
-      gap: 3px;
+      gap: 4px;
       cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      box-shadow: 0 2px 10px rgba(245, 158, 11, 0.35);
     }
-    .fullscreen-btn:active {
-      transform: scale(0.94);
-      filter: brightness(1.2);
-    }
+
     .status-badge {
-      padding: 3px 6px;
+      padding: 3px 8px;
       border-radius: 9999px;
-      font-size: 9px;
-      font-weight: bold;
-      background: rgba(16, 185, 129, 0.2);
+      font-size: 10px;
+      font-weight: 800;
+      background: rgba(16, 185, 129, 0.18);
       color: #34d399;
       border: 1px solid rgba(16, 185, 129, 0.4);
       white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
     .status-badge.disconnected {
-      background: rgba(239, 68, 68, 0.2);
+      background: rgba(239, 68, 68, 0.18);
       color: #f87171;
       border-color: rgba(239, 68, 68, 0.4);
     }
 
-    /* Main Container */
+    /* Main Container Grid */
     .gamepad-container {
       flex: 1;
       display: grid;
       grid-template-columns: 1fr 140px 1fr;
       grid-template-rows: auto 1fr;
-      padding: 8px 12px 12px 12px;
+      padding: 6px 14px 12px 14px;
       gap: 8px;
       height: calc(100% - 48px);
+      position: relative;
+      z-index: 1;
     }
 
-    /* Shoulder / Trigger Buttons Top */
+    /* Top Triggers & Bumpers */
     .triggers-row {
       grid-column: 1 / -1;
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr 1fr;
-      gap: 8px;
-      height: 52px;
+      grid-template-columns: 1.3fr 1fr 1fr 1.3fr;
+      gap: 10px;
+      height: var(--trigger-height);
     }
+
     .trigger-btn {
-      background: linear-gradient(180deg, #202234 0%, #131422 100%);
-      border: 1.5px solid rgba(245, 158, 11, 0.4);
-      border-radius: 12px;
-      color: #fbbf24;
+      background: linear-gradient(180deg, #23293f 0%, #131726 100%);
+      border: 1.5px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      color: #f3f4f6;
       font-weight: 900;
-      font-size: 15px;
+      font-size: 13px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-      transition: transform 0.04s, background 0.04s, box-shadow 0.04s;
+      box-shadow: 0 5px 14px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.12);
+      transition: transform 0.05s, background 0.05s, box-shadow 0.05s;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
     }
-    .trigger-btn .sub-label {
-      font-size: 9px;
-      color: #9ca3af;
-      margin-top: 1px;
-    }
-    .trigger-btn.active {
-      transform: scale(0.94);
-      background: #f59e0b !important;
-      color: #000 !important;
-      box-shadow: 0 0 16px rgba(245, 158, 11, 0.8) !important;
-    }
-    .trigger-btn.active .sub-label {
-      color: #111 !important;
+    .trigger-btn::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 10%;
+      right: 10%;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 9999px;
     }
 
-    /* D-Pad Left Area */
+    .trigger-btn.r2, .trigger-btn.l2 {
+      border-color: rgba(245, 158, 11, 0.5);
+      color: #fbbf24;
+      background: linear-gradient(180deg, #332a1b 0%, #19140a 100%);
+    }
+    .trigger-btn.r2::after, .trigger-btn.l2::after {
+      background: #f59e0b;
+      box-shadow: 0 0 8px #f59e0b;
+    }
+
+    .trigger-btn .sub-label {
+      font-size: 9px;
+      color: #94a3b8;
+      margin-top: 1px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+    }
+    .trigger-btn.r2 .sub-label, .trigger-btn.l2 .sub-label {
+      color: #fde68a;
+    }
+
+    .trigger-btn.active {
+      transform: translateY(2px) scale(0.95);
+      background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+      color: #05070f !important;
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.9) !important;
+    }
+    .trigger-btn.active .sub-label { color: #05070f !important; }
+
+    /* Left D-Pad / Joystick Area */
     .dpad-area {
       display: flex;
       align-items: center;
       justify-content: center;
       position: relative;
     }
+
+    /* Classic 8-Way Ergonomic D-Pad */
     .dpad-cross {
-      width: 210px;
-      height: 210px;
+      width: var(--dpad-size);
+      height: var(--dpad-size);
       position: relative;
+      background: radial-gradient(circle at 50% 50%, rgba(32, 38, 62, 0.7) 0%, rgba(12, 15, 26, 0.85) 75%);
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(0, 0, 0, 0.5);
     }
+
     .dpad-btn {
       position: absolute;
-      width: 68px;
-      height: 68px;
-      background: linear-gradient(145deg, #24263a 0%, #151624 100%);
-      border: 2px solid rgba(245, 158, 11, 0.45);
-      border-radius: 16px;
+      width: var(--btn-size);
+      height: var(--btn-size);
+      background: linear-gradient(145deg, #2a314d 0%, #15192a 100%);
+      border: 2px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
       font-size: 26px;
-      color: #fcd34d;
-      box-shadow: 0 6px 14px rgba(0,0,0,0.6);
-      transition: transform 0.04s, background 0.04s;
+      color: #93c5fd;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.6), inset 0 1px 2px rgba(255,255,255,0.18);
+      transition: transform 0.04s, background 0.04s, box-shadow 0.04s, color 0.04s;
     }
+
     .dpad-btn.active {
-      background: #f59e0b !important;
-      color: #0c0d12 !important;
+      background: linear-gradient(135deg, #38bdf8, #0284c7) !important;
+      color: #030712 !important;
       transform: scale(0.92) !important;
-      box-shadow: 0 0 20px rgba(245, 158, 11, 0.9) !important;
+      box-shadow: 0 0 24px rgba(56, 189, 248, 0.95) !important;
+      border-color: #e0f2fe !important;
     }
-    .dpad-up { top: 0; left: 71px; }
-    .dpad-down { bottom: 0; left: 71px; }
-    .dpad-left { top: 71px; left: 0; }
-    .dpad-right { top: 71px; right: 0; }
-    .dpad-center {
+
+    .dpad-up { top: 0; left: 50%; transform: translateX(-50%); }
+    .dpad-down { bottom: 0; left: 50%; transform: translateX(-50%); }
+    .dpad-left { top: 50%; left: 0; transform: translateY(-50%); }
+    .dpad-right { top: 50%; right: 0; transform: translateY(-50%); }
+
+    /* Diagonal touch zones on D-pad for smooth 8-direction control */
+    .dpad-diag {
       position: absolute;
-      top: 71px;
-      left: 71px;
-      width: 68px;
-      height: 68px;
-      background: radial-gradient(circle, #1c1e2f 0%, #10111d 100%);
-      border-radius: 8px;
+      width: calc(var(--btn-size) * 0.7);
+      height: calc(var(--btn-size) * 0.7);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.03);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: rgba(147, 197, 253, 0.4);
+      z-index: 2;
+    }
+    .dpad-diag.diag-ur { top: 12%; right: 12%; }
+    .dpad-diag.diag-ul { top: 12%; left: 12%; }
+    .dpad-diag.diag-dr { bottom: 12%; right: 12%; }
+    .dpad-diag.diag-dl { bottom: 12%; left: 12%; }
+    .dpad-diag.active {
+      background: rgba(56, 189, 248, 0.35);
+      color: #38bdf8;
+    }
+
+    .dpad-center-hub {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: calc(var(--btn-size) * 0.75);
+      height: calc(var(--btn-size) * 0.75);
+      background: radial-gradient(circle, #1f253d 0%, #0e111d 100%);
+      border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.08);
+      box-shadow: inset 0 3px 6px rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255, 255, 255, 0.2);
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    /* Virtual Floating Thumbstick Mode */
+    .virtual-joystick-box {
+      display: none;
+      width: var(--dpad-size);
+      height: var(--dpad-size);
+      position: relative;
+      background: radial-gradient(circle at 50% 50%, rgba(30, 36, 58, 0.8) 0%, rgba(10, 13, 23, 0.95) 75%);
+      border-radius: 50%;
+      border: 2px solid rgba(56, 189, 248, 0.3);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 0 25px rgba(56, 189, 248, 0.1);
+    }
+    .virtual-joystick-box.active-mode {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .joystick-knob {
+      width: calc(var(--btn-size) * 1.1);
+      height: calc(var(--btn-size) * 1.1);
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #38bdf8 0%, #0284c7 60%, #034875 100%);
+      border: 2.5px solid #e0f2fe;
+      box-shadow: 0 6px 18px rgba(2, 132, 199, 0.6), inset 0 2px 4px rgba(255, 255, 255, 0.4);
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      transition: transform 0.04s ease-out;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 20px;
     }
 
     /* Center Middle Menu */
@@ -237,140 +403,156 @@
       align-items: center;
       justify-content: center;
       gap: 10px;
-      padding: 0 4px;
+      padding: 0 2px;
     }
+
     .menu-btn {
       width: 100%;
       height: 48px;
-      background: linear-gradient(180deg, #222438 0%, #171827 100%);
-      border: 1.5px solid #4b5563;
-      border-radius: 12px;
+      background: linear-gradient(180deg, #22283e 0%, #131726 100%);
+      border: 1.5px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
       color: #e5e7eb;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 800;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.45);
       transition: transform 0.04s, background 0.04s;
+      cursor: pointer;
     }
     .menu-btn .sub-label {
-      font-size: 9px;
-      color: #9ca3af;
-      margin-top: 2px;
+      font-size: 8px;
+      color: #94a3b8;
+      margin-top: 1px;
     }
+
     .menu-btn.start-btn {
       border-color: rgba(245, 158, 11, 0.7);
-      background: linear-gradient(180deg, #78350f 0%, #451a03 100%);
+      background: linear-gradient(180deg, #92400e 0%, #451a03 100%);
       color: #fef08a;
     }
     .menu-btn.enter-btn {
-      border-color: rgba(16, 185, 129, 0.6);
-      background: linear-gradient(180deg, #064e3b 0%, #022c22 100%);
+      border-color: rgba(16, 185, 129, 0.65);
+      background: linear-gradient(180deg, #065f46 0%, #022c22 100%);
       color: #a7f3d0;
     }
+
     .menu-btn.active {
       background: #f59e0b !important;
-      color: #000 !important;
-      transform: scale(0.92) !important;
-      box-shadow: 0 0 16px rgba(245, 158, 11, 0.8) !important;
+      color: #05070f !important;
+      transform: translateY(2px) scale(0.94) !important;
+      box-shadow: 0 0 18px rgba(245, 158, 11, 0.9) !important;
     }
-    .menu-btn.active .sub-label {
-      color: #111 !important;
-    }
+    .menu-btn.active .sub-label { color: #05070f !important; }
 
-    /* ABXY Cluster Right */
+    /* Right ABXY Action Area */
     .abxy-area {
       display: flex;
       align-items: center;
       justify-content: center;
       position: relative;
     }
+
     .abxy-cluster {
-      width: 210px;
-      height: 210px;
+      width: var(--dpad-size);
+      height: var(--dpad-size);
       position: relative;
+      background: radial-gradient(circle at 50% 50%, rgba(32, 38, 62, 0.7) 0%, rgba(12, 15, 26, 0.85) 75%);
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(0, 0, 0, 0.5);
     }
+
     .action-btn {
       position: absolute;
-      width: 68px;
-      height: 68px;
+      width: var(--btn-size);
+      height: var(--btn-size);
       border-radius: 50%;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 900;
-      box-shadow: 0 8px 18px rgba(0,0,0,0.6);
-      transition: transform 0.04s, filter 0.04s;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.65), inset 0 2px 4px rgba(255,255,255,0.3);
+      transition: transform 0.04s, filter 0.04s, box-shadow 0.04s;
+      cursor: pointer;
+    }
+    .action-btn .main-letter {
+      line-height: 1;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.6);
     }
     .action-btn .sub-label {
       font-size: 9px;
-      font-weight: 700;
-      margin-top: -2px;
+      font-weight: 800;
+      margin-top: 1px;
+      opacity: 0.9;
     }
+
     .action-btn.active {
       transform: scale(0.9) !important;
-      filter: brightness(1.6) contrast(1.2) !important;
-      box-shadow: 0 0 24px currentColor !important;
+      filter: brightness(1.7) contrast(1.2) !important;
+      box-shadow: 0 0 28px currentColor !important;
     }
 
+    /* Y (Top - Amber Gold) */
     .btn-y { 
-      top: 0; 
-      left: 71px; 
-      background: radial-gradient(circle at 35% 35%, #b45309, #78350f 70%, #451a03 100%); 
-      color: #fef08a; 
-      border: 2.5px solid #f59e0b; 
-    }
-    .btn-a { 
-      bottom: 0; 
-      left: 71px; 
-      background: radial-gradient(circle at 35% 35%, #059669, #065f46 70%, #022c22 100%); 
-      color: #a7f3d0; 
-      border: 2.5px solid #10b981; 
-    }
-    .btn-x { 
-      top: 71px; 
-      left: 0; 
-      background: radial-gradient(circle at 35% 35%, #2563eb, #1e40af 70%, #172554 100%); 
-      color: #bfdbfe; 
-      border: 2.5px solid #3b82f6; 
-    }
-    .btn-b { 
-      top: 71px; 
-      right: 0; 
-      background: radial-gradient(circle at 35% 35%, #db2777, #9d174d 70%, #500724 100%); 
-      color: #fbcfe8; 
-      border: 2.5px solid #ec4899; 
+      top: 0; left: 50%; transform: translateX(-50%);
+      background: radial-gradient(circle at 35% 35%, #f59e0b, #b45309 65%, #451a03 100%); 
+      color: #fffbeb; 
+      border: 2.5px solid #fbbf24; 
     }
 
-    /* Small screens tweak */
-    @media (max-height: 380px) {
-      .header-bar { height: 38px; min-height: 38px; }
-      .gamepad-container { height: calc(100% - 38px); padding: 4px 8px; }
-      .triggers-row { height: 44px; }
-      .dpad-cross, .abxy-cluster { width: 180px; height: 180px; }
-      .dpad-btn, .action-btn { width: 58px; height: 58px; font-size: 20px; }
-      .dpad-up, .btn-y { left: 61px; }
-      .dpad-down, .btn-a { left: 61px; }
-      .dpad-left, .btn-x { top: 61px; }
-      .dpad-right, .btn-b { top: 61px; }
-      .dpad-center { top: 61px; left: 61px; width: 58px; height: 58px; }
-      .menu-btn { height: 40px; font-size: 11px; }
+    /* A (Bottom - Emerald Green) */
+    .btn-a { 
+      bottom: 0; left: 50%; transform: translateX(-50%);
+      background: radial-gradient(circle at 35% 35%, #10b981, #047857 65%, #022c22 100%); 
+      color: #ecfdf5; 
+      border: 2.5px solid #34d399; 
+    }
+
+    /* X (Left - Sapphire Blue) */
+    .btn-x { 
+      top: 50%; left: 0; transform: translateY(-50%);
+      background: radial-gradient(circle at 35% 35%, #3b82f6, #1d4ed8 65%, #172554 100%); 
+      color: #eff6ff; 
+      border: 2.5px solid #60a5fa; 
+    }
+
+    /* B (Right - Ruby Red) */
+    .btn-b { 
+      top: 50%; right: 0; transform: translateY(-50%);
+      background: radial-gradient(circle at 35% 35%, #f43f5e, #be123c 65%, #4c0519 100%); 
+      color: #fff1f2; 
+      border: 2.5px solid #fb7185; 
+    }
+
+    /* Compact Landscape Adjustments */
+    @media (max-height: 400px) {
+      .header-bar { height: 38px; min-height: 38px; padding: 0 8px; }
+      .gamepad-container { height: calc(100% - 38px); padding: 4px 8px; gap: 6px; }
+      .triggers-row { height: 38px; }
+      .trigger-btn { font-size: 11px; border-radius: 12px; }
+      .trigger-btn .sub-label { font-size: 8px; }
+      .menu-btn { height: 38px; font-size: 10px; border-radius: 10px; }
+      .menu-btn .sub-label { font-size: 7px; }
+      .btn-pill, .profile-select, .fullscreen-btn { padding: 3px 6px; font-size: 10px; }
     }
   </style>
 </head>
-<body>
+<body class="size-normal theme-p1">
 
-  <!-- Top Bar -->
+  <!-- Top Bar Header -->
   <div class="header-bar">
     <div class="header-left">
-      <button id="playerToggleBtn" class="player-toggle-btn" onclick="togglePlayer()">
+      <button id="playerToggleBtn" class="btn-pill player-btn" onclick="togglePlayer()" title="تغییر بازیکن ۱ / ۲">
         <span id="playerIcon">🎮</span>
         <span id="playerText">بازیکن ۱</span>
       </button>
+
       <select id="profileSelect" class="profile-select" onchange="onProfileChange(this.value)">
         <option value="fifa" selected>⚽ فیفا جهت‌نما</option>
         <option value="fifa_wasd">⚽ فیفا WASD</option>
@@ -381,15 +563,34 @@
     </div>
 
     <div class="header-right">
-      <button id="vibrateBtn" class="vibrate-btn" onclick="toggleVibration()">
-        <span>📳</span>
-        <span id="vibrateText">ویبره</span>
+      <button id="dpadModeBtn" class="btn-pill mode-btn" onclick="toggleDpadMode()" title="تغییر حالت فرمان">
+        <span id="dpadModeIcon">🎮</span>
+        <span id="dpadModeText">جهت‌نما</span>
       </button>
-      <button class="fullscreen-btn" onclick="toggleFullscreen()">
+
+      <button id="sizeBtn" class="btn-pill" onclick="cyclePadSize()" title="تغییر ابعاد دکمه‌ها">
+        <span>📐</span>
+        <span id="sizeText">عادی</span>
+      </button>
+
+      <button id="vibrateBtn" class="btn-pill" onclick="cycleVibration()" title="تنظیم شدت ویبره">
+        <span id="vibrateIcon">📳</span>
+        <span id="vibrateText">ویبره قوی</span>
+      </button>
+
+      <button id="soundBtn" class="btn-pill" onclick="toggleSound()" title="صدای کلیک">
+        <span id="soundIcon">🔊</span>
+      </button>
+
+      <button class="fullscreen-btn" onclick="toggleFullscreen()" title="حالت تمام‌صفحه">
         <span>⛶</span>
         <span>تمام‌صفحه</span>
       </button>
-      <div id="statusBadge" class="status-badge">درحال اتصال...</div>
+
+      <div id="statusBadge" class="status-badge">
+        <span>●</span>
+        <span id="statusText">اتصال...</span>
+      </div>
     </div>
   </div>
 
@@ -397,32 +598,43 @@
   <div class="gamepad-container">
     <!-- Top Triggers Row -->
     <div class="triggers-row">
-      <div class="trigger-btn" data-btn="L2">
+      <div class="trigger-btn l2" data-btn="L2">
         <span>L2</span>
         <span class="sub-label" id="lbl_L2">حفاظت توپ</span>
       </div>
-      <div class="trigger-btn" data-btn="L1">
+      <div class="trigger-btn l1" data-btn="L1">
         <span>L1</span>
         <span class="sub-label" id="lbl_L1">تعویض یار</span>
       </div>
-      <div class="trigger-btn" data-btn="R1">
+      <div class="trigger-btn r1" data-btn="R1">
         <span>R1</span>
         <span class="sub-label" id="lbl_R1">دویدن E</span>
       </div>
-      <div class="trigger-btn" data-btn="R2">
-        <span>R2</span>
+      <div class="trigger-btn r2" data-btn="R2">
+        <span>R2 🏃</span>
         <span class="sub-label" id="lbl_R2">سرعت Shift</span>
       </div>
     </div>
 
-    <!-- D-Pad Left -->
-    <div class="dpad-area">
-      <div class="dpad-cross">
+    <!-- D-Pad / Joystick Left Area -->
+    <div class="dpad-area" id="dpadTouchZone">
+      <!-- Standard 8-Way D-Pad -->
+      <div class="dpad-cross" id="dpadCross">
+        <div class="dpad-center-hub">●</div>
         <div class="dpad-btn dpad-up" data-btn="DPAD_UP">▲</div>
         <div class="dpad-btn dpad-down" data-btn="DPAD_DOWN">▼</div>
         <div class="dpad-btn dpad-left" data-btn="DPAD_LEFT">◄</div>
         <div class="dpad-btn dpad-right" data-btn="DPAD_RIGHT">►</div>
-        <div class="dpad-center"></div>
+        <!-- Diagonals -->
+        <div class="dpad-diag diag-ul" data-diag="UL">↖</div>
+        <div class="dpad-diag diag-ur" data-diag="UR">↗</div>
+        <div class="dpad-diag diag-dl" data-diag="DL">↙</div>
+        <div class="dpad-diag diag-dr" data-diag="DR">↘</div>
+      </div>
+
+      <!-- Virtual Thumbstick Alternative -->
+      <div class="virtual-joystick-box" id="joystickBox">
+        <div class="joystick-knob" id="joystickKnob">🕹️</div>
       </div>
     </div>
 
@@ -443,22 +655,22 @@
     </div>
 
     <!-- ABXY Cluster Right -->
-    <div class="abxy-area">
+    <div class="abxy-area" id="abxyTouchZone">
       <div class="abxy-cluster">
         <div class="action-btn btn-y" data-btn="BTN_Y">
-          <span>Y</span>
+          <span class="main-letter">Y</span>
           <span class="sub-label" id="lbl_Y">عمقی (W)</span>
         </div>
         <div class="action-btn btn-a" data-btn="BTN_A">
-          <span>A</span>
+          <span class="main-letter">A</span>
           <span class="sub-label" id="lbl_A">پاس (S)</span>
         </div>
         <div class="action-btn btn-x" data-btn="BTN_X">
-          <span>X</span>
+          <span class="main-letter">X</span>
           <span class="sub-label" id="lbl_X">سانتر (A)</span>
         </div>
         <div class="action-btn btn-b" data-btn="BTN_B">
-          <span>B</span>
+          <span class="main-letter">B</span>
           <span class="sub-label" id="lbl_B">شوت (D)</span>
         </div>
       </div>
@@ -467,13 +679,69 @@
 
   <script>
     let ws = null;
-    let isVibrationEnabled = localStorage.getItem('cpm_gamepad_vibrate') !== 'false';
+    let vibrateLevel = parseInt(localStorage.getItem('cpm_gamepad_vibrate_level') || '2', 10); // 0=Off, 1=Light, 2=Strong
+    let isSoundEnabled = localStorage.getItem('cpm_gamepad_sound') === 'true';
+    let isJoystickMode = localStorage.getItem('cpm_gamepad_joymode') === 'true';
     let currentPlayer = parseInt(localStorage.getItem('cpm_gamepad_player') || '1', 10);
+    const padSizeClasses = ['size-compact', 'size-normal', 'size-large', 'size-xlarge'];
+    const padSizeNames = ['کوچک', 'عادی', 'بزرگ', 'حداکثر'];
+    let currentSizeIndex = parseInt(localStorage.getItem('cpm_gamepad_size') || '1', 10);
+
     const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
     const playerToggleBtn = document.getElementById('playerToggleBtn');
     const playerText = document.getElementById('playerText');
     const vibrateBtn = document.getElementById('vibrateBtn');
     const vibrateText = document.getElementById('vibrateText');
+    const sizeText = document.getElementById('sizeText');
+    const soundBtn = document.getElementById('soundBtn');
+    const soundIcon = document.getElementById('soundIcon');
+    const dpadModeBtn = document.getElementById('dpadModeBtn');
+    const dpadModeIcon = document.getElementById('dpadModeIcon');
+    const dpadModeText = document.getElementById('dpadModeText');
+    const dpadCross = document.getElementById('dpadCross');
+    const joystickBox = document.getElementById('joystickBox');
+    const joystickKnob = document.getElementById('joystickKnob');
+
+    // Active button states map
+    const activeButtons = new Set();
+
+    // Web Audio Synthesizer for instant haptic click sound
+    let audioCtx = null;
+    function playClickTone(type = 'normal') {
+      if (!isSoundEnabled) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        const now = audioCtx.currentTime;
+        if (type === 'heavy') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(140, now);
+          osc.frequency.exponentialRampToValueAtTime(40, now + 0.06);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+          osc.start(now);
+          osc.stop(now + 0.06);
+        } else {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(320, now);
+          osc.frequency.exponentialRampToValueAtTime(120, now + 0.04);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+          osc.start(now);
+          osc.stop(now + 0.04);
+        }
+      } catch {}
+    }
 
     const profileLabels = {
       fifa: {
@@ -598,42 +866,105 @@
       }
     };
 
+    function applySize() {
+      padSizeClasses.forEach(c => document.body.classList.remove(c));
+      const targetClass = padSizeClasses[currentSizeIndex] || 'size-normal';
+      document.body.classList.add(targetClass);
+      sizeText.textContent = padSizeNames[currentSizeIndex] || 'عادی';
+    }
+
+    function cyclePadSize() {
+      vibratePattern(20);
+      currentSizeIndex = (currentSizeIndex + 1) % padSizeClasses.length;
+      localStorage.setItem('cpm_gamepad_size', currentSizeIndex.toString());
+      applySize();
+    }
+
     function updatePlayerUI() {
       if (currentPlayer === 2) {
         playerText.textContent = 'بازیکن ۲';
-        playerToggleBtn.className = 'player-toggle-btn p2';
+        document.body.classList.remove('theme-p1');
+        document.body.classList.add('theme-p2');
       } else {
         playerText.textContent = 'بازیکن ۱';
-        playerToggleBtn.className = 'player-toggle-btn';
+        document.body.classList.remove('theme-p2');
+        document.body.classList.add('theme-p1');
       }
       const activeProfile = document.getElementById('profileSelect').value;
       updateLabels(activeProfile);
     }
 
     function togglePlayer() {
-      vibratePattern([30, 20, 30]);
+      vibratePattern([35, 25, 35]);
+      playClickTone('heavy');
       currentPlayer = currentPlayer === 1 ? 2 : 1;
       localStorage.setItem('cpm_gamepad_player', currentPlayer.toString());
       updatePlayerUI();
     }
 
     function updateVibrateUI() {
-      if (isVibrationEnabled) {
-        vibrateBtn.className = 'vibrate-btn';
-        vibrateText.textContent = 'ویبره فعال';
+      if (vibrateLevel === 2) {
+        vibrateText.textContent = 'ویبره قوی';
+        vibrateBtn.style.opacity = '1';
+        vibrateBtn.style.color = '#a3e635';
+      } else if (vibrateLevel === 1) {
+        vibrateText.textContent = 'ویبره ملایم';
+        vibrateBtn.style.opacity = '0.9';
+        vibrateBtn.style.color = '#fef08a';
       } else {
-        vibrateBtn.className = 'vibrate-btn muted';
         vibrateText.textContent = 'ویبره خاموش';
+        vibrateBtn.style.opacity = '0.55';
+        vibrateBtn.style.color = '#94a3b8';
       }
     }
 
-    function toggleVibration() {
-      isVibrationEnabled = !isVibrationEnabled;
-      localStorage.setItem('cpm_gamepad_vibrate', isVibrationEnabled ? 'true' : 'false');
+    function cycleVibration() {
+      vibrateLevel = (vibrateLevel + 1) % 3;
+      localStorage.setItem('cpm_gamepad_vibrate_level', vibrateLevel.toString());
       updateVibrateUI();
-      if (isVibrationEnabled) {
-        vibratePattern([40, 20, 40]);
+      if (vibrateLevel > 0) {
+        vibratePattern(vibrateLevel === 2 ? 45 : 20);
       }
+    }
+
+    function updateSoundUI() {
+      if (isSoundEnabled) {
+        soundIcon.textContent = '🔊';
+        soundBtn.style.color = '#38bdf8';
+      } else {
+        soundIcon.textContent = '🔇';
+        soundBtn.style.color = '#94a3b8';
+      }
+    }
+
+    function toggleSound() {
+      isSoundEnabled = !isSoundEnabled;
+      localStorage.setItem('cpm_gamepad_sound', isSoundEnabled ? 'true' : 'false');
+      updateSoundUI();
+      if (isSoundEnabled) playClickTone();
+    }
+
+    function updateDpadModeUI() {
+      if (isJoystickMode) {
+        dpadCross.style.display = 'none';
+        joystickBox.classList.add('active-mode');
+        dpadModeIcon.textContent = '🕹️';
+        dpadModeText.textContent = 'آنالوگ';
+      } else {
+        dpadCross.style.display = 'block';
+        joystickBox.classList.remove('active-mode');
+        dpadModeIcon.textContent = '🎮';
+        dpadModeText.textContent = 'جهت‌نما';
+      }
+    }
+
+    function toggleDpadMode() {
+      isJoystickMode = !isJoystickMode;
+      localStorage.setItem('cpm_gamepad_joymode', isJoystickMode ? 'true' : 'false');
+      vibratePattern(30);
+      playClickTone();
+      updateDpadModeUI();
+      releaseAllDirections();
     }
 
     function updateLabels(profile) {
@@ -656,6 +987,7 @@
 
     function toggleFullscreen() {
       vibratePattern(40);
+      playClickTone('heavy');
       const doc = document.documentElement;
       if (!document.fullscreenElement && !document.webkitFullscreenElement) {
         if (doc.requestFullscreen) {
@@ -676,27 +1008,33 @@
     }
 
     function vibratePattern(pattern) {
-      if (!isVibrationEnabled) return;
+      if (vibrateLevel === 0) return;
       if (navigator.vibrate) {
         try {
-          navigator.vibrate(pattern);
+          if (typeof pattern === 'number') {
+            const mult = vibrateLevel === 1 ? 0.6 : 1;
+            navigator.vibrate(Math.round(pattern * mult));
+          } else if (Array.isArray(pattern)) {
+            const mult = vibrateLevel === 1 ? 0.6 : 1;
+            navigator.vibrate(pattern.map(p => Math.round(p * mult)));
+          }
         } catch {}
       }
     }
 
-    function triggerButtonHaptic(btn) {
+    function triggerHaptics(btn) {
       if (btn === 'BTN_B' || btn === 'R2' || btn === 'L2') {
-        // Heavy kick for Shoot / Sprint / Shield
         vibratePattern(50);
+        playClickTone('heavy');
       } else if (btn === 'START' || btn === 'ENTER' || btn === 'SELECT') {
-        // Double pulse for menu
         vibratePattern([30, 20, 30]);
+        playClickTone('normal');
       } else if (btn.startsWith('DPAD_')) {
-        // Fast crisp click for DPad
         vibratePattern(25);
+        playClickTone('normal');
       } else {
-        // Standard action button pulse
         vibratePattern(35);
+        playClickTone('normal');
       }
     }
 
@@ -706,14 +1044,14 @@
       ws = new WebSocket(`${proto}//${host}`);
 
       ws.onopen = () => {
-        statusBadge.textContent = 'متصل 🟢';
+        statusText.textContent = 'متصل';
         statusBadge.className = 'status-badge';
         const activeProfile = document.getElementById('profileSelect').value;
         onProfileChange(activeProfile);
       };
 
       ws.onclose = () => {
-        statusBadge.textContent = 'قطع 🔴';
+        statusText.textContent = 'قطع';
         statusBadge.className = 'status-badge disconnected';
         setTimeout(connectWs, 2000);
       };
@@ -725,8 +1063,14 @@
 
     function sendBtnEvent(button, state) {
       if (state === 'down') {
-        triggerButtonHaptic(button);
+        if (!activeButtons.has(button)) {
+          activeButtons.add(button);
+          triggerHaptics(button);
+        }
+      } else {
+        activeButtons.delete(button);
       }
+
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
           type: 'GAMEPAD_INPUT',
@@ -738,8 +1082,138 @@
       }
     }
 
-    // Attach Multi-Touch Event Listeners
-    document.querySelectorAll('[data-btn]').forEach(el => {
+    function setBtnVisualState(btnName, isActive) {
+      const el = document.querySelector(`[data-btn="${btnName}"]`);
+      if (el) {
+        if (isActive) el.classList.add('active');
+        else el.classList.remove('active');
+      }
+    }
+
+    // Direction management (8-way)
+    let currentDirections = {
+      up: false,
+      down: false,
+      left: false,
+      right: false
+    };
+
+    function applyDirectionStates(up, down, left, right) {
+      if (currentDirections.up !== up) {
+        currentDirections.up = up;
+        setBtnVisualState('DPAD_UP', up);
+        sendBtnEvent('DPAD_UP', up ? 'down' : 'up');
+      }
+      if (currentDirections.down !== down) {
+        currentDirections.down = down;
+        setBtnVisualState('DPAD_DOWN', down);
+        sendBtnEvent('DPAD_DOWN', down ? 'down' : 'up');
+      }
+      if (currentDirections.left !== left) {
+        currentDirections.left = left;
+        setBtnVisualState('DPAD_LEFT', left);
+        sendBtnEvent('DPAD_LEFT', left ? 'down' : 'up');
+      }
+      if (currentDirections.right !== right) {
+        currentDirections.right = right;
+        setBtnVisualState('DPAD_RIGHT', right);
+        sendBtnEvent('DPAD_RIGHT', right ? 'down' : 'up');
+      }
+
+      // Update Diagonals Visuals
+      document.querySelector('[data-diag="UL"]')?.classList.toggle('active', up && left);
+      document.querySelector('[data-diag="UR"]')?.classList.toggle('active', up && right);
+      document.querySelector('[data-diag="DL"]')?.classList.toggle('active', down && left);
+      document.querySelector('[data-diag="DR"]')?.classList.toggle('active', down && right);
+    }
+
+    function releaseAllDirections() {
+      applyDirectionStates(false, false, false, false);
+      joystickKnob.style.transform = 'translate(-50%, -50%)';
+    }
+
+    // Smooth D-pad / Joystick pointer tracker
+    const dpadTouchZone = document.getElementById('dpadTouchZone');
+    let dpadPointerId = null;
+
+    function handleDpadPointer(e) {
+      const rect = dpadTouchZone.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const deltaX = e.clientX - centerX;
+      const deltaY = e.clientY - centerY;
+      const dist = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      const deadZone = 14;
+
+      if (dist < deadZone) {
+        applyDirectionStates(false, false, false, false);
+        if (isJoystickMode) joystickKnob.style.transform = 'translate(-50%, -50%)';
+        return;
+      }
+
+      // Calculate angle in degrees (0 = right, 90 = down, 180 = left, 270 = up)
+      let angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+      if (angle < 0) angle += 360;
+
+      // 8 Sectors of 45 degrees
+      let up = false, down = false, left = false, right = false;
+
+      if (angle >= 337.5 || angle < 22.5) { // Pure Right
+        right = true;
+      } else if (angle >= 22.5 && angle < 67.5) { // Down-Right
+        down = true; right = true;
+      } else if (angle >= 67.5 && angle < 112.5) { // Pure Down
+        down = true;
+      } else if (angle >= 112.5 && angle < 157.5) { // Down-Left
+        down = true; left = true;
+      } else if (angle >= 157.5 && angle < 202.5) { // Pure Left
+        left = true;
+      } else if (angle >= 202.5 && angle < 247.5) { // Up-Left
+        up = true; left = true;
+      } else if (angle >= 247.5 && angle < 292.5) { // Pure Up
+        up = true;
+      } else if (angle >= 292.5 && angle < 337.5) { // Up-Right
+        up = true; right = true;
+      }
+
+      applyDirectionStates(up, down, left, right);
+
+      if (isJoystickMode) {
+        const maxDist = rect.width / 2.8;
+        const clampedDist = Math.min(dist, maxDist);
+        const rad = angle * (Math.PI / 180);
+        const knobX = Math.cos(rad) * clampedDist;
+        const knobY = Math.sin(rad) * clampedDist;
+        joystickKnob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
+      }
+    }
+
+    dpadTouchZone.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      dpadPointerId = e.pointerId;
+      dpadTouchZone.setPointerCapture(e.pointerId);
+      handleDpadPointer(e);
+    }, { passive: false });
+
+    dpadTouchZone.addEventListener('pointermove', (e) => {
+      if (e.pointerId === dpadPointerId) {
+        e.preventDefault();
+        handleDpadPointer(e);
+      }
+    }, { passive: false });
+
+    const handleDpadEnd = (e) => {
+      if (e.pointerId === dpadPointerId) {
+        e.preventDefault();
+        dpadPointerId = null;
+        releaseAllDirections();
+      }
+    };
+    dpadTouchZone.addEventListener('pointerup', handleDpadEnd, { passive: false });
+    dpadTouchZone.addEventListener('pointercancel', handleDpadEnd, { passive: false });
+
+    // Multi-touch discrete buttons (Triggers, Menu, ABXY)
+    document.querySelectorAll('[data-btn]:not([data-btn^="DPAD_"])').forEach(el => {
       const btn = el.getAttribute('data-btn');
 
       const handleDown = (e) => {
@@ -759,8 +1233,11 @@
       el.addEventListener('pointercancel', handleUp, { passive: false });
     });
 
-    // Initialize
+    // Initialize UI settings
+    applySize();
     updateVibrateUI();
+    updateSoundUI();
+    updateDpadModeUI();
     updatePlayerUI();
     connectWs();
   </script>
