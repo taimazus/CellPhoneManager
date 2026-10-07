@@ -901,8 +901,23 @@ export class AdbManager {
   }
 
   async launchCamera(serial, facing = 'back') {
-    const extra = facing === 'front' ? '--ei android.intent.extras.CAMERA_FACING 1' : '--ei android.intent.extras.CAMERA_FACING 0';
-    return await this.runAdb(`shell am start -a android.media.action.IMAGE_CAPTURE ${extra}`, serial);
+    const extra = facing === 'front' 
+      ? '--ei android.intent.extras.CAMERA_FACING 1 --ei android.intent.extra.USE_FRONT_CAMERA true' 
+      : '--ei android.intent.extras.CAMERA_FACING 0';
+    try {
+      const res = await this.runAdb(`shell am start -a android.media.action.STILL_IMAGE_CAMERA ${extra}`, serial);
+      if (!res.success) {
+        return await this.runAdb(`shell am start -a android.media.action.IMAGE_CAPTURE ${extra}`, serial);
+      }
+      return res;
+    } catch {
+      return await this.runAdb(`shell am start -a android.media.action.IMAGE_CAPTURE ${extra}`, serial);
+    }
+  }
+
+  async launchDialer(serial, number = '') {
+    const uri = number ? `tel:${number}` : 'tel:';
+    return await this.runAdb(`shell am start -a android.intent.action.DIAL -d "${uri}"`, serial);
   }
 
   async runFastboot(args) {

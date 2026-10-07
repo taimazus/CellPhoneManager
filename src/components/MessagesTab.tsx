@@ -469,6 +469,24 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
   };
 
   // --- Call Actions ---
+  const handleLaunchDialer = async (numToDial = dialNumber) => {
+    if (!device) return;
+    try {
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/telephony/launch-dialer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number: numToDial })
+      });
+      if (data.success) {
+        showToast('برنامه شماره‌گیر روی گوشی باز شد', 'success');
+      } else {
+        showToast(`خطا: ${data.error}`, 'error');
+      }
+    } catch (err: any) {
+      showToast(`خطا: ${err.message}`, 'error');
+    }
+  };
+
   const handleMakeCall = async (numberToCall: string, name = 'تماس') => {
     if (!device || !numberToCall.trim()) return;
     try {
@@ -1035,16 +1053,27 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
               </div>
             </div>
 
-            {/* Call Action Button */}
-            <div className="space-y-3 pt-2">
-              <button
-                onClick={() => handleMakeCall(dialNumber)}
-                disabled={!dialNumber.trim()}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-slate-950 font-bold text-sm shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50"
-              >
-                <PhoneCall className="w-5 h-5" />
-                <span>برقراری تماس با گوشی</span>
-              </button>
+            {/* Call Action Buttons */}
+            <div className="space-y-2 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  onClick={() => handleMakeCall(dialNumber)}
+                  disabled={!dialNumber.trim()}
+                  className="flex items-center justify-center gap-2 py-3 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50"
+                >
+                  <PhoneCall className="w-4 h-4" />
+                  <span>برقراری تماس مستقیم</span>
+                </button>
+
+                <button
+                  onClick={() => handleLaunchDialer(dialNumber)}
+                  className="flex items-center justify-center gap-2 py-3 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-300 hover:text-white border border-slate-700 hover:border-cyan-500/40 text-xs font-bold transition-all"
+                  title="باز کردن شماره‌گیر پیش‌فرض روی صفحه نمایش گوشی"
+                >
+                  <Smartphone className="w-4 h-4 text-cyan-400" />
+                  <span>باز کردن شماره‌گیر در گوشی</span>
+                </button>
+              </div>
 
               {/* Quick USSD Section */}
               <div className="pt-2 border-t border-slate-800/80 space-y-2">

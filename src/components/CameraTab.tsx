@@ -148,6 +148,13 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
     }
   };
 
+  // Automatically open camera app on phone when entering Camera tab
+  useEffect(() => {
+    if (device && device.type === 'android') {
+      handleLaunchCameraApp();
+    }
+  }, [device?.id]);
+
   // Toggle in-browser live viewfinder
   useEffect(() => {
     if (!device || !isLiveStreaming) return;

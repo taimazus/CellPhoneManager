@@ -994,6 +994,20 @@ app.post('/api/devices/:id/telephony/default-sim', async (req, res) => {
   }
 });
 
+app.post('/api/devices/:id/telephony/launch-dialer', async (req, res) => {
+  const { id } = req.params;
+  const { number } = req.body;
+  try {
+    if (id.startsWith('mock-')) {
+      return res.json({ success: true, message: 'برنامه تماس روی گوشی باز شد (شبیه‌ساز)' });
+    }
+    const result = await adbManager.launchDialer(id, number);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/devices/:id/calls/delete', async (req, res) => {
   const { id } = req.params;
   const { callId } = req.body;
