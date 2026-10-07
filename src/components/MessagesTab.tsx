@@ -364,10 +364,18 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
   };
 
   useEffect(() => {
+    if (device?.id) {
+      fetchCalls();
+      fetchContacts();
+      fetchSms();
+    }
+  }, [device?.id]);
+
+  useEffect(() => {
     if (subTab === 'calls') fetchCalls();
     if (subTab === 'contacts') fetchContacts();
     if (subTab === 'sms') fetchSms();
-  }, [device?.id, subTab]);
+  }, [subTab]);
 
   // --- Interactive Live Call Actions ---
   const handleAnswerCall = async () => {
@@ -541,10 +549,14 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       const data = await res.json();
       if (data.success) {
         showToast('تماس از تاریخچه حذف شد', 'success');
-        setCallLogs(callLogs.filter(c => c.id !== callId));
+        fetchCalls();
+      } else {
+        showToast(`خطا: ${data.error || 'عملیات ناموفق بود'}`, 'error');
+        fetchCalls();
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
+      fetchCalls();
     }
   };
 
@@ -557,9 +569,14 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       if (data.success) {
         showToast('کل تاریخچه تماس‌ها با موفقیت پاک شد', 'success');
         setCallLogs([]);
+        fetchCalls();
+      } else {
+        showToast(`خطا: ${data.error || 'پاکسازی ناموفق بود'}`, 'error');
+        fetchCalls();
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
+      fetchCalls();
     }
   };
 
@@ -1600,6 +1617,17 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                   ))}
                 </div>
 
+                {/* Refresh Call Logs */}
+                <button
+                  onClick={fetchCalls}
+                  disabled={loading}
+                  className="p-2 rounded-xl bg-slate-900 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-400 border border-slate-800 transition-all disabled:opacity-50"
+                  title="بروزرسانی و همگام‌سازی تاریخچه تماس‌ها"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-cyan-400' : ''}`} />
+                </button>
+
+                {/* Clear All Calls */}
                 <button
                   onClick={handleClearAllCalls}
                   className="p-2 rounded-xl bg-slate-900 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-800 transition-all"
@@ -2053,6 +2081,16 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                     title={isSmsSelectMode ? 'خروج از حالت انتخاب' : 'حالت انتخاب چندتایی'}
                   >
                     <ListChecks className="w-4 h-4" />
+                  </button>
+
+                  {/* Refresh SMS */}
+                  <button
+                    onClick={fetchSms}
+                    disabled={loading}
+                    className="p-1.5 rounded-lg bg-slate-900 text-slate-400 hover:text-cyan-400 border border-slate-800 transition-all disabled:opacity-50"
+                    title="بروزرسانی و همگام‌سازی پیامک‌ها"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-cyan-400' : ''}`} />
                   </button>
 
                   {/* Export Backup JSON */}
