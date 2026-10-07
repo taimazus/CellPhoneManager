@@ -38,7 +38,6 @@ import { taskQueueManager } from './taskQueueManager.js';
 import { telemetryManager } from './telemetryManager.js';
 import { profileManager } from './profileManager.js';
 import { firmwareGuardManager } from './firmwareGuardManager.js';
-import { automationManager } from './automationManager.js';
 import { capabilityManager } from './capabilityManager.js';
 
 const app = express();
@@ -67,6 +66,9 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// Global Security & Authentication Gate
+app.use(securityManager.getAuthMiddleware());
 
 // Multer upload destination with 500MB limit
 const uploadsDir = path.join(process.cwd(), 'uploads');
@@ -2834,6 +2836,47 @@ app.post('/api/devices/:id/capabilities/evaluate', async (req, res) => {
   const device = req.body || { id, serial: id };
   const result = await capabilityManager.evaluateDevice({ ...device, id, serial: id });
   res.json(result);
+});
+
+// -------------------------------------------------------------
+// 39. Security, Authentication & Audit Trail APIs
+// -------------------------------------------------------------
+app.get('/api/security/auth/status', (req, res) => {
+  const config = securityManager.getAuthConfig();
+  res.json({
+    success: true,
+    authEnabled: config.authEnabled,
+    createdAt: config.createdAt
+  });
+});
+
+app.post('/api/security/auth/config', (req, res) => {
+  const { authEnabled, apiKey } = req.body;
+  res.json(securityManager.setAuthConfig({ authEnabled, apiKey }));
+});
+
+app.post('/api/security/auth/login', (req, res) => {
+  const { apiKey } = req.body;
+  if (!apiKey) {
+    return res.status(400).json({ success: false, error: 'ارائه کلید API الزامی است' });
+  }
+  const result = securityManager.authenticate(apiKey);
+  if (!result.success) {
+    return res.status(401).json(result);
+  }
+  res.json(result);
+});
+
+app.get('/api/security/audit/logs', (req, res) => {
+  const limit = parseInt(req.query.limit) || 100;
+  res.json({
+    success: true,
+    logs: securityManager.getAuditLogs(limit)
+  });
+});
+
+app.post('/api/security/audit/clear', (req, res) => {
+  res.json(securityManager.clearAuditLogs());
 });
 
 // API 404 Handler - Never return HTML for /api/* requests

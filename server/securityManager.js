@@ -125,15 +125,70 @@ export class SecurityManager {
     }
   }
 
-  clearAuditLogs() {
-    try {
-      this.initSecurity();
-      fs.writeFileSync(this.auditLogFile, JSON.stringify([]));
-      return { success: true, message: 'لاگ‌های امنیتی با موفقیت پاک شدند.' };
-    } catch (err) {
-      return { success: false, error: err.message };
+  authenticate(key) {
+    const config = this.getAuthConfig();
+    if (key === config.apiKey) {
+      const session = this.createSession('admin');
+      this.logEvent({
+        action: 'LOGIN_SUCCESS',
+        status: 'SUCCESS',
+        details: 'ورود موفق مدیر سیستم'
+      });
+      return { success: true, session };
     }
+    this.logEvent({
+      action: 'LOGIN_FAILURE',
+      status: 'FAILED',
+      details: 'تلاش ناموفق برای ورود با کلید API نامعتبر'
+    });
+    return { success: false, error: 'کلید API نامعتبر است' };
+  }
+
+  getAuthMiddleware() {
+    return (req, res, next) => {
+      // Exclude public/health/auth routes and non-API paths
+      const publicPaths = [
+        '/api/health',
+        '/api/security/auth/status',
+        '/api/security/auth/login',
+        '/api/security/auth/config'
+      ];
+      if (publicPaths.includes(req.path) || !req.path.startsWith('/api/')) {
+        return next();
+      }
+
+      const config = this.getAuthConfig();
+      if (!config.authEnabled) {
+        return next();
+      }
+
+      const authHeader = req.headers['authorization'] || req.headers['x-api-key'] || req.query.apiKey;
+      let token = null;
+      if (authHeader && typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7).trim();
+      } else if (authHeader) {
+        token = String(authHeader).trim();
+      }
+
+      const validation = this.validateToken(token);
+      if (!validation.valid) {
+        this.logEvent({
+          action: 'UNAUTHORIZED_API_CALL',
+          status: 'BLOCKED',
+          details: `مسیر ${req.method} ${req.path} به دلیل نبود یا نامعتبر بودن توکن مسدود شد`,
+          ip: req.ip || '127.0.0.1'
+        });
+        return res.status(401).json({
+          success: false,
+          error: validation.error || 'دسترسی غیرمجاز: لطفاً کلید امنیتی یا توکن ورود را ارائه دهید'
+        });
+      }
+
+      req.user = { role: validation.role };
+      next();
+    };
   }
 }
 
 export const securityManager = new SecurityManager();
+

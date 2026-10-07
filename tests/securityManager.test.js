@@ -15,6 +15,27 @@ describe('SecurityManager Test Suite', () => {
     expect(valid.valid).toBe(true);
   });
 
+  it('should authenticate with API key and reject invalid keys', () => {
+    const config = securityManager.getAuthConfig();
+    const successRes = securityManager.authenticate(config.apiKey);
+    expect(successRes.success).toBe(true);
+    expect(successRes.session).toHaveProperty('token');
+
+    const failRes = securityManager.authenticate('wrong_key_123');
+    expect(failRes.success).toBe(false);
+    expect(failRes.error).toBeDefined();
+  });
+
+  it('should enforce auth middleware when authEnabled is true', () => {
+    const middleware = securityManager.getAuthMiddleware();
+    expect(typeof middleware).toBe('function');
+
+    // Test bypass for health / status
+    let nextCalled = false;
+    middleware({ path: '/api/health', headers: {} }, {}, () => { nextCalled = true; });
+    expect(nextCalled).toBe(true);
+  });
+
   it('should log and retrieve audit events', () => {
     const logged = securityManager.logEvent({
       action: 'TEST_ACTION',

@@ -1,6 +1,13 @@
-export async function safeFetchJson(url: string, options?: RequestInit): Promise<any> {
+export async function safeFetchJson(url: string, options: RequestInit = {}): Promise<any> {
   try {
-    const res = await fetch(url, options);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('cpm_auth_token') : null;
+    const headers = new Headers(options.headers || {});
+
+    if (token && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    const res = await fetch(url, { ...options, headers });
     const contentType = res.headers.get('content-type') || '';
     
     if (contentType.includes('application/json')) {
