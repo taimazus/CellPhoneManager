@@ -93,7 +93,8 @@ export class ToolManager {
           version: adbCheck.version || 'Not Installed',
           path: adbPath,
           category: 'android',
-          description: 'مدیریت و اتصال خط فرمان به گوشی‌های اندروید'
+          isOfflineReady: fs.existsSync(path.join(this.binDir, 'platform-tools', 'adb.exe')),
+          description: 'مدیریت و اتصال خط فرمان به گوشی‌های اندروید (کاملاً آفلاین)'
         },
         scrcpy: {
           name: 'Scrcpy Screen Mirror',
@@ -101,13 +102,15 @@ export class ToolManager {
           version: scrcpyCheck.version || 'Not Installed',
           path: scrcpyPath,
           category: 'android',
-          description: 'نمایش و کنترل مستقیم صفحه گوشی با فریم‌ریت و کیفیت بالا'
+          isOfflineReady: fs.existsSync(path.join(this.binDir, 'scrcpy', 'scrcpy.exe')),
+          description: 'نمایش و کنترل مستقیم صفحه گوشی با فریم‌ریت و کیفیت بالا (کاملاً آفلاین)'
         },
         python: {
           name: 'Python Runtime',
           installed: pythonCheck.installed,
           version: pythonCheck.version || 'Not Installed',
           category: 'core',
+          isOfflineReady: pythonCheck.installed,
           description: 'محیط اجرای اسکریپت‌ها و ماژول‌های پیشرفته iOS'
         },
         pymobiledevice: {
@@ -115,13 +118,15 @@ export class ToolManager {
           installed: pymobiledeviceCheck.installed,
           version: pymobiledeviceCheck.installed ? 'Active' : 'Not Installed',
           category: 'ios',
-          description: 'واسط ارتباطی قدرتمند و بدون نیاز به جیلبریک برای آیفون و آیپد'
+          isOfflineReady: fs.existsSync(path.join(this.binDir, 'wheels')),
+          description: 'واسط ارتباطی بدون نیاز به جیلبریک برای آیفون و آیپد'
         },
         itunesService: {
           name: 'Apple Mobile Device Driver',
           installed: itunesDriver.installed,
           version: itunesDriver.detail,
           category: 'ios',
+          isOfflineReady: itunesDriver.installed,
           description: 'درایور رسمی ویندوز برای شناسایی کابل لایتنینگ و USB-C آیفون'
         }
       }
@@ -129,10 +134,18 @@ export class ToolManager {
   }
 
   async installTool(toolId, logCallback = () => {}) {
-    logCallback(`شروع نصب یا بروزرسانی ${toolId}...`);
+    logCallback(`شروع بررسی و آماده‌سازی ${toolId}...`);
     try {
       if (toolId === 'pymobiledevice') {
-        logCallback('در حال نصب ماژول pymobiledevice3 با دستور pip...');
+        const localWheelsDir = path.join(this.binDir, 'wheels');
+        if (fs.existsSync(localWheelsDir)) {
+          logCallback('در حال نصب ماژول pymobiledevice3 از پکیج محلی آفلاین (Local Wheels)...');
+          const { stdout, stderr } = await execAsync(`python -m pip install --no-index --find-links="${localWheelsDir}" pymobiledevice3`);
+          logCallback(`نصب آفلاین انجام شد:\n${stdout}\n${stderr || ''}`);
+          return { success: true, message: 'pymobiledevice3 از پکیج محلی نصب شد.' };
+        }
+
+        logCallback('پکیج محلی یافت نشد؛ در حال نصب از مخزن انلاین pip...');
         const { stdout, stderr } = await execAsync('python -m pip install --upgrade pymobiledevice3');
         logCallback(`نصب انجام شد:\n${stdout}\n${stderr || ''}`);
         return { success: true, message: 'pymobiledevice3 با موفقیت نصب شد' };
