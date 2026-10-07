@@ -21,6 +21,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { Device } from '../types';
+import { APP_VERSION } from '../constants';
 
 interface DeviceHeaderProps {
   devices: Device[];
@@ -191,7 +192,7 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
         >
           <Crown className="w-3.5 h-3.5 text-yellow-400" />
           <span>راهکار الکترونیک سهند</span>
-          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-yellow-200 border border-amber-500/30">v3.4.2</span>
+          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-yellow-200 border border-amber-500/30">{APP_VERSION}</span>
           <ExternalLink className="w-3 h-3 opacity-70 group-hover:opacity-100" />
         </a>
 

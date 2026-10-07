@@ -42,6 +42,7 @@ import {
   Crown,
   ExternalLink
 } from 'lucide-react';
+import { APP_VERSION } from '../constants';
 
 interface SidebarProps {
   activeTab: string;
@@ -148,7 +149,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     CellPhone<span className="text-yellow-400">Manager</span>
                   </h1>
                   <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-amber-500/20 text-yellow-300 font-mono font-bold border border-amber-500/40">
-                    v3.2.0
+                    {APP_VERSION}
                   </span>
                 </div>
                 <a
@@ -266,7 +267,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <ExternalLink className="w-2.5 h-2.5 opacity-70 group-hover:opacity-100" />
             </div>
             <div className="text-[9px] font-mono text-stone-400 mt-0.5">
-              https://irres.ir • v3.4.2 Royal
+              https://irres.ir • {APP_VERSION} Royal
             </div>
           </a>
         )}
