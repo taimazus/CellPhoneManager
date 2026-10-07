@@ -66,7 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, devic
     { id: 'inspector', label: 'آنالایزر امنیتی APK', icon: ShieldCheck, desc: 'اسکن دسترسی‌ها و ریسک برنامه‌ها', platform: 'android' },
     { id: 'apps', label: 'مدیریت برنامه‌ها', icon: Layers, desc: 'نصب، حذف و استخراج APK/IPA', platform: 'universal' },
     { id: 'files', label: 'مدیریت و انتقال فایل‌ها', icon: HardDrive, desc: 'مرور حافظه، ارسال و دریافت', platform: 'universal' },
-    { id: 'backup', label: 'پشتیبان‌گیری و تایپ PC', icon: Archive, desc: 'بکاپ، استخراج بسته و تایپ', platform: 'universal' },
+    { id: 'backup', label: 'پشتیبان‌گیری و بازیابی جامع', icon: Archive, desc: 'بکاپ کامل/سفارشی روی PC یا گوشی و بازیابی', platform: 'universal' },
     { id: 'root', label: 'روت و آن‌روت کامل', icon: Flame, desc: 'روت Magisk، تست فست‌بوت و Unroot', platform: 'android' },
     { id: 'rom', label: 'فلش رام و آپدیت OS', icon: DownloadCloud, desc: 'آپدیت رسمی، LineageOS، GSI و Sideload', platform: 'android' },
     { id: 'fastboot', label: 'ابزارهای فست‌بوت و فلش', icon: Flame, desc: 'بوت‌لودر، اسلات‌ها و ریکاوری', platform: 'android' },

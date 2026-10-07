@@ -2035,6 +2035,15 @@ app.delete('/api/backups/:backupId', async (req, res) => {
   res.json(result);
 });
 
+app.post('/api/backups/open-folder', (req, res) => {
+  const backupDir = path.join(process.cwd(), 'backups');
+  if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+  if (process.platform === 'win32') {
+    spawn('explorer.exe', [backupDir], { detached: true });
+  }
+  res.json({ success: true, message: 'پوشه نسخه‌های پشتیبان در کامپیوتر باز شد' });
+});
+
 // -------------------------------------------------------------
 // 29. Password Vault, Wi-Fi Keys & Account Manager APIs
 // -------------------------------------------------------------
@@ -2239,6 +2248,75 @@ app.post('/api/devices/:id/ai/ask', async (req, res) => {
       timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })
     });
   } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// -------------------------------------------------------------
+// Universal Backup & Restore API Suite
+// -------------------------------------------------------------
+app.get('/api/backups', async (req, res) => {
+  try {
+    const result = await universalBackupManager.listBackups();
+    res.json(result);
+  } catch (err) {
+    console.error('API /api/backups error:', err);
+    res.status(500).json({ success: false, error: err.message, backups: [] });
+  }
+});
+
+app.post('/api/devices/:id/backup/create', async (req, res) => {
+  const { id } = req.params;
+  const { type = 'android', deviceName = 'Phone', options = {}, destinationTarget = 'pc' } = req.body;
+  try {
+    const result = await universalBackupManager.createBackup({
+      serial: id,
+      type,
+      deviceName,
+      options,
+      destinationTarget
+    });
+    res.json(result);
+  } catch (err) {
+    console.error(`API /api/devices/${id}/backup/create error:`, err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/backups/:backupId/restore', async (req, res) => {
+  const { backupId } = req.params;
+  const { targetSerial, targetType = 'android', options = {} } = req.body;
+  try {
+    const result = await universalBackupManager.restoreBackup({
+      backupId,
+      targetSerial,
+      targetType,
+      options
+    });
+    res.json(result);
+  } catch (err) {
+    console.error(`API /api/backups/${backupId}/restore error:`, err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/backups/:backupId', async (req, res) => {
+  const { backupId } = req.params;
+  try {
+    const result = await universalBackupManager.deleteBackup(backupId);
+    res.json(result);
+  } catch (err) {
+    console.error(`API /api/backups/${backupId} delete error:`, err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/backups/open-folder', async (req, res) => {
+  try {
+    const result = await universalBackupManager.openBackupFolder();
+    res.json(result);
+  } catch (err) {
+    console.error('API /api/backups/open-folder error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
