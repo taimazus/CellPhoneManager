@@ -98,6 +98,10 @@ app.get('/api/tools/status', async (req, res) => {
   }
 });
 
+app.get('/api/tools/catalog', (req, res) => {
+  res.json({ success: true, catalog: toolManager.getToolCatalog() });
+});
+
 app.post('/api/tools/install', async (req, res) => {
   const { toolId } = req.body;
   if (!toolId) {
@@ -105,6 +109,21 @@ app.post('/api/tools/install', async (req, res) => {
   }
   try {
     const result = await toolManager.installTool(toolId, (msg) => {
+      broadcastWs({ type: 'TOOL_INSTALL_LOG', toolId, message: msg });
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/tools/install-local', async (req, res) => {
+  const { toolId, localPath } = req.body;
+  if (!toolId || !localPath) {
+    return res.status(400).json({ error: 'شناسه ابزار و مسیر محلی الزامی است.' });
+  }
+  try {
+    const result = await toolManager.installFromLocalFile(toolId, localPath, (msg) => {
       broadcastWs({ type: 'TOOL_INSTALL_LOG', toolId, message: msg });
     });
     res.json(result);

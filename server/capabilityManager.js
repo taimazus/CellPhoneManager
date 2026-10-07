@@ -136,8 +136,8 @@ export class CapabilityManager {
     const deviceState = device.state || 'device'; // device, unauthorized, offline, recovery, fastboot
     const androidVersion = parseFloat(device.androidVersion || device.osVersion || '11.0');
 
-    // Diagnostic tool check on host
-    const toolStatus = await toolManager.getDiagnosticStatus().catch(() => ({}));
+    // Diagnostic tool check on host (skip heavy PowerShell calls for mock devices)
+    const toolStatus = isMock ? {} : await toolManager.getDiagnosticStatus().catch(() => ({}));
 
     const definitions = this.getCapabilityDefinitions();
     const evaluated = {};

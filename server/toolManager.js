@@ -235,7 +235,87 @@ export class ToolManager {
       return { success: false, error: err.message };
     }
   }
-}
 
+  // Tool Catalog with Transparent Metadata (Size, Source, Capabilities)
+  getToolCatalog() {
+    return [
+      {
+        id: 'adb',
+        name: 'Android Platform Tools (ADB & Fastboot)',
+        downloadUrl: 'https://dl.google.com/android/repository/platform-tools-latest-windows.zip',
+        estimatedSizeMb: 12.5,
+        category: 'android',
+        activatedFeatures: ['دستورات خط فرمان ADB', 'مدیریت فایل اندروید', 'نصب برنامه‌ها', 'پشتیبان‌گیری'],
+        offlineSupport: 'فایل‌های adb.exe و fastboot.exe در bin/platform-tools'
+      },
+      {
+        id: 'scrcpy',
+        name: 'Scrcpy Screen Mirroring Engine',
+        downloadUrl: 'https://github.com/Genymobile/scrcpy/releases/download/v2.4/scrcpy-win64-v2.4.zip',
+        estimatedSizeMb: 8.2,
+        category: 'android',
+        activatedFeatures: ['انتقال زنده تصویر گوشی با ۶۰/۱۲۰ فریم', 'کنترل لمسی و کیبورد'],
+        offlineSupport: 'فایل‌های scrcpy.exe در bin/scrcpy'
+      },
+      {
+        id: 'pymobiledevice',
+        name: 'pymobiledevice3 (iOS Communication Engine)',
+        downloadUrl: 'https://pypi.org/project/pymobiledevice3/',
+        estimatedSizeMb: 18.0,
+        category: 'ios',
+        activatedFeatures: ['مدیریت برنامه‌های iOS', 'انتقال فایل AFC', 'شبیه‌سازی موقعیت GPS', 'استخراج لاگ کرش'],
+        offlineSupport: 'پکیج‌های پایتون .whl در bin/wheels'
+      },
+      {
+        id: 'itunesService',
+        name: 'Apple Mobile Device Support Driver',
+        downloadUrl: 'https://www.apple.com/itunes/download/win64',
+        estimatedSizeMb: 220.0,
+        category: 'ios',
+        activatedFeatures: ['شناسایی سخت‌افزاری کابل لایتنینگ و USB-C آیفون در ویندوز'],
+        offlineSupport: 'فایل نصاب رسمی iTunes و درایور Apple Mobile Device'
+      },
+      {
+        id: 'vbcable',
+        name: 'VB-Audio Virtual Cable (PC Speaker Loopback)',
+        downloadUrl: 'https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack45.zip',
+        estimatedSizeMb: 1.2,
+        category: 'audio',
+        activatedFeatures: ['کپچر صدای سیستم ویندوز برای استریم مستقیم به گوشی'],
+        offlineSupport: 'فایل vbcable.zip در bin/drivers/'
+      },
+      {
+        id: 'vigembus',
+        name: 'ViGEmBus Virtual Gamepad Driver',
+        downloadUrl: 'https://github.com/nefarius/ViGEmBus/releases/download/v1.22.0/ViGEmBus_1.22.0_x64_x86_arm64.exe',
+        estimatedSizeMb: 2.5,
+        category: 'controller',
+        activatedFeatures: ['تبدیل گوشی به دسته بازی مجازی استاندارد Xbox/PlayStation در ویندوز'],
+        offlineSupport: 'فایل vigembus_setup.exe در bin/drivers/'
+      }
+    ];
+  }
+
+  async installFromLocalFile(toolId, localFilePath, logCallback = () => {}) {
+    if (!fs.existsSync(localFilePath)) {
+      return { success: false, error: 'فایل نصبی محلی در مسیر مشخص‌شده یافت نشد.' };
+    }
+    logCallback(`در حال استقرار ${toolId} از فایل محلی: ${localFilePath}`);
+    try {
+      if (localFilePath.endsWith('.zip')) {
+        await execAsync(`powershell -Command "Expand-Archive -Path '${localFilePath}' -DestinationPath '${this.binDir}' -Force"`);
+        logCallback(`فایل فشرده با موفقیت در ${this.binDir} استخراج شد.`);
+        return { success: true, message: 'ابزار با موفقیت از پکیج محلی آفلاین نصب گردید.' };
+      }
+      if (localFilePath.endsWith('.exe')) {
+        await execAsync(`powershell -NoProfile -Command "Start-Process -FilePath '${localFilePath}' -Verb RunAs"`);
+        return { success: true, message: 'نصاب محلی با دسترسی مدیر اجرا شد.' };
+      }
+      return { success: false, error: 'فرمت فایل محلی پشتیبانی نمی‌شود (فقط zip و exe).' };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+}
 
 export const toolManager = new ToolManager();

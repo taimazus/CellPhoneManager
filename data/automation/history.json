@@ -1,5 +1,25 @@
 [
   {
+    "id": "exec_1791384228418_rule_health_log",
+    "ruleId": "rule_health_log",
+    "ruleName": "ثبت تاریخچه سلامت و دمای باتری در اتصال",
+    "action": "TELEMETRY_SNAPSHOT",
+    "deviceSerial": "mock-test-phone",
+    "timestamp": "2026-10-07T14:43:48.418Z",
+    "status": "SUCCESS",
+    "details": "اتوماسیون 'ثبت تاریخچه سلامت و دمای باتری در اتصال' با موفقیت اجرا شد."
+  },
+  {
+    "id": "exec_1791384157148_rule_health_log",
+    "ruleId": "rule_health_log",
+    "ruleName": "ثبت تاریخچه سلامت و دمای باتری در اتصال",
+    "action": "TELEMETRY_SNAPSHOT",
+    "deviceSerial": "mock-test-phone",
+    "timestamp": "2026-10-07T14:42:37.148Z",
+    "status": "SUCCESS",
+    "details": "اتوماسیون 'ثبت تاریخچه سلامت و دمای باتری در اتصال' با موفقیت اجرا شد."
+  },
+  {
     "id": "exec_1791384004238_rule_health_log",
     "ruleId": "rule_health_log",
     "ruleName": "ثبت تاریخچه سلامت و دمای باتری در اتصال",

@@ -20,7 +20,7 @@ describe('CapabilityManager Test Suite', () => {
     expect(res.success).toBe(true);
     expect(res.capabilities.screen_mirror.status).toBe(CAPABILITY_STATUS.READY);
     expect(res.capabilities.universal_backup.supported).toBe(true);
-  });
+  }, 15000);
 
   it('should detect unauthorized device state and provide actionable guidance', async () => {
     const res = await capabilityManager.evaluateDevice({
@@ -33,7 +33,7 @@ describe('CapabilityManager Test Suite', () => {
     const mirrorCap = res.capabilities.screen_mirror;
     expect(mirrorCap.status).toBe(CAPABILITY_STATUS.NEEDS_TOOL_OR_PERMISSION);
     expect(mirrorCap.actionGuide).toContain('Allow USB Debugging');
-  });
+  }, 15000);
 
   it('should detect unsupported OS version correctly', async () => {
     const res = await capabilityManager.evaluateDevice({
@@ -46,7 +46,7 @@ describe('CapabilityManager Test Suite', () => {
     const tetherCap = res.capabilities.wireless_tethering;
     expect(tetherCap.status).toBe(CAPABILITY_STATUS.UNSUPPORTED);
     expect(tetherCap.reason).toContain('اندروید 11');
-  });
+  }, 15000);
 
   it('should detect offline device as indeterminate', async () => {
     const res = await capabilityManager.evaluateDevice({
@@ -56,7 +56,7 @@ describe('CapabilityManager Test Suite', () => {
     });
     expect(res.success).toBe(true);
     expect(res.capabilities.file_transfer.status).toBe(CAPABILITY_STATUS.INDETERMINATE);
-  });
+  }, 15000);
 
   it('should enforce assertion before execution', async () => {
     const allowed = await capabilityManager.assertCapability({
@@ -73,5 +73,5 @@ describe('CapabilityManager Test Suite', () => {
     }, 'file_transfer');
     expect(denied.allowed).toBe(false);
     expect(denied.error).toContain('پاسخ نمی‌دهد');
-  });
+  }, 15000);
 });

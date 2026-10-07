@@ -1,5 +1,41 @@
 [
   {
+    "id": "sec_1791384226707_bzpes",
+    "timestamp": "2026-10-07T14:43:46.707Z",
+    "action": "TEST_ACTION",
+    "status": "SUCCESS",
+    "targetDevice": "mock-phone-1",
+    "details": "Audit logging unit test",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "sec_1791384226704_dhtsm",
+    "timestamp": "2026-10-07T14:43:46.704Z",
+    "action": "SESSION_CREATE",
+    "status": "SUCCESS",
+    "targetDevice": null,
+    "details": "نشست جدید امنیتی ایجاد شد",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "sec_1791384157270_gz54l",
+    "timestamp": "2026-10-07T14:42:37.270Z",
+    "action": "TEST_ACTION",
+    "status": "SUCCESS",
+    "targetDevice": "mock-phone-1",
+    "details": "Audit logging unit test",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "sec_1791384157260_uhzh8",
+    "timestamp": "2026-10-07T14:42:37.260Z",
+    "action": "SESSION_CREATE",
+    "status": "SUCCESS",
+    "targetDevice": null,
+    "details": "نشست جدید امنیتی ایجاد شد",
+    "ip": "127.0.0.1"
+  },
+  {
     "id": "sec_1791384005154_w8924",
     "timestamp": "2026-10-07T14:40:05.154Z",
     "action": "TEST_ACTION",
