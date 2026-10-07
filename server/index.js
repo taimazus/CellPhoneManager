@@ -30,7 +30,7 @@ import { romManager } from './romManager.js';
 import { universalBackupManager } from './universalBackupManager.js';
 import { passwordManager } from './passwordManager.js';
 import { audioRecorderManager } from './audioRecorderManager.js';
-
+import { hardwareLabManager } from './hardwareLabManager.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -1413,12 +1413,72 @@ app.get('/api/network/vpn-location', async (req, res) => {
 // -------------------------------------------------------------
 app.post('/api/devices/:id/hardware/vibrate', async (req, res) => {
   const { id } = req.params;
-  const duration = req.body.duration || 800;
+  const { pattern = 'normal', duration = 800 } = req.body;
   try {
-    if (id.startsWith('mock-')) {
-      return res.json({ success: true, message: 'ویبره شبیه‌سازی شد' });
-    }
-    const result = await adbManager.testVibrator(id, duration);
+    const result = await hardwareLabManager.triggerVibration(id, pattern, duration);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/hardware/button', async (req, res) => {
+  const { id } = req.params;
+  const { buttonKey } = req.body;
+  try {
+    const result = await hardwareLabManager.testPhysicalButton(id, buttonKey);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/hardware/camera', async (req, res) => {
+  const { id } = req.params;
+  const { mode = 'still' } = req.body;
+  try {
+    const result = await hardwareLabManager.launchCameraTest(id, mode);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/hardware/screen-test', async (req, res) => {
+  const { id } = req.params;
+  const { color = 'rgb' } = req.body;
+  try {
+    const result = await hardwareLabManager.launchScreenTest(id, color);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/devices/:id/hardware/sensors', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await hardwareLabManager.getSensorDiagnostics(id);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/devices/:id/hardware/battery', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await hardwareLabManager.getBatteryDiagnostics(id);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/devices/:id/hardware/bluetooth', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await hardwareLabManager.getBluetoothDiagnostics(id);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
