@@ -1,48 +1,52 @@
-# راهنمای استقرار و عملکرد کاملاً آفلاین (Air-Gapped & Offline Deployment)
+# 📦 Air-Gapped & Offline Deployment Guide
 
-## 🏢 شرکت راهکار الکترونیک سهند ([https://irres.ir](https://irres.ir))
-**نسخه نرم‌افزار:** `v3.3.0` | **سامانه جامع مدیریت و عیب‌یابی تلفن همراه**
+<div align="center">
+  <p><strong>Sahand Electronic Solutions Co. (شرکت راهکار الکترونیک سهند)</strong> — <a href="https://irres.ir">https://irres.ir</a></p>
+  <p><strong>Software Version:</strong> <code>v3.4.4 Royal Edition</code> | <strong>Universal Smartphone Management Suite</strong></p>
+  <p><strong><a href="OFFLINE_DEPLOYMENT.fa.md">🇮🇷 برای مشاهده نسخه فارسی اینجا کلیک کنید</a></strong></p>
+</div>
 
 ---
 
-### ۱. قابلیت‌های کاملاً آفلاین و بی‌نیاز از اینترنت (Offline-Ready)
-کلیه ابزارهای اصلی و حیاتی پروژه در پوشه محلی `bin/` تعبیه شده‌اند و **بدون نیاز به ذره‌ای اینترنت** در محیط‌های کاری، آزمایشگاهی و سازمانی عمل می‌کنند:
+### 1. 100% Offline-Ready Core Features
+All mission-critical tools and binaries are pre-packaged within the local `bin/` directory and operate with **zero internet connectivity** in secure, air-gapped lab or enterprise environments:
 
-| قابلیت | وضعیت آفلاین | ابزار محلی |
+| Feature / Module | Offline Status | Local Binary & Mechanism |
 | :--- | :---: | :--- |
-| **کنترل و انتقال تصویر (Screen Mirroring)** | ✅ ۱۰۰٪ آفلاین | `bin/scrcpy/scrcpy.exe` |
-| **ارتباط، دستورات و مدیریت فایل اندروید** | ✅ ۱۰۰٪ آفلاین | `bin/platform-tools/adb.exe` |
-| **فلش فریمور، روت و آنلاک بوت‌لودر** | ✅ ۱۰۰٪ آفلاین | `bin/platform-tools/fastboot.exe` |
-| **پشتیبان‌گیری جامع و رمزگذاری AES-256** | ✅ ۱۰۰٪ آفلاین | موتور داخلی `UniversalBackupManager` |
-| **تله‌متری سلامت باتری، دما و فضای ذخیره** | ✅ ۱۰۰٪ آفلاین | ثبت محلی در `data/telemetry/` |
-| **استریم صدای کامپیوتر روی گوشی (PC Speaker)** | ✅ ۱۰۰٪ آفلاین | پروتکل محلی WebSocket و PCM Audio |
-| **بهینه‌سازی، تغییر نرخ نوسازی و شخصی‌سازی** | ✅ ۱۰۰٪ آفلاین | خط فرمان امن ADB |
-| **استخراج متن از تصویر (Screen OCR)** | ✅ ۱۰۰٪ آفلاین | اسکریپت محلی Canvas / Node |
-| **درایورهای اندروید و کابل صدا** | ✅ ۱۰۰٪ آفلاین | بسته‌های زیپ در `bin/drivers/` |
+| **Wireless PC Gamepad & Remote Engine** | ✅ 100% Offline | Native `winInputBridge.ps1` & local WebSocket |
+| **Screen Mirroring & High-FPS Control** | ✅ 100% Offline | `bin/scrcpy/scrcpy.exe` |
+| **Android ADB Shell & File Management** | ✅ 100% Offline | `bin/platform-tools/adb.exe` |
+| **Firmware Flashing, Root & Bootloader** | ✅ 100% Offline | `bin/platform-tools/fastboot.exe` |
+| **Universal AES-256 Encrypted Backups** | ✅ 100% Offline | Internal `UniversalBackupManager` engine |
+| **Battery Health, Thermals & Telemetry** | ✅ 100% Offline | Local time-series logging in `data/telemetry/` |
+| **PC Speaker Mode Audio Stream** | ✅ 100% Offline | Local WebSocket PCM Audio & Equalizer |
+| **System Tuning, Tweaks & Debloating** | ✅ 100% Offline | Secure ADB commands |
+| **Screen OCR Text Extractor** | ✅ 100% Offline | Local OCR Canvas / Tesseract engine |
+| **Android & Audio Drivers** | ✅ 100% Offline | Pre-bundled driver packages in `bin/drivers/` |
 
 ---
 
-### ۲. نحوه آماده‌سازی بسته کامل برای دستگاه‌های iOS در حالت آفلاین
-ارتباط با دستگاه‌های اپل بر پایه ابزار امن `pymobiledevice3` طراحی شده است. برای اجرای بدون اینترنت iOS در محیط‌های فاقد شبکه:
+### 2. Offline Preparation for Apple iOS Devices
+iOS device management is powered by `pymobiledevice3`. For air-gapped deployment on isolated systems:
 
-1. بر روی یک سیستم دارای اینترنت دستور زیر را اجرا کنید تا پکیج‌های پایتون دانلود شوند:
+1. On an internet-connected computer, download the required Python wheels:
    ```bash
    pip download pymobiledevice3 -d bin/wheels
    ```
-2. پوشه `bin/wheels/` را در کنار پروژه قرار دهید.
-3. نرم‌افزار CellPhoneManager هنگام نصب ابزار، به‌طور خودکار ابتدا وجود `bin/wheels/` را بررسی کرده و دستور زیر را بدون اتصال به اینترنت اجرا می‌کند:
+2. Copy the `bin/wheels/` directory to your target offline workstation.
+3. When requested to initialize iOS tools, CellPhoneManager will detect `bin/wheels/` and run the offline installer automatically:
    ```bash
    python -m pip install --no-index --find-links=bin/wheels pymobiledevice3
    ```
-4. درایور رسمی اپل (`Apple Mobile Device Support`) نیز از طریق فایل نصب آفلاین iTunes بدون نیاز به اینترنت قابل استقرار است.
+4. Install `Apple Mobile Device Support` using offline iTunes setup packages.
 
 ---
 
-### ۳. امکاناتی که ذاتاً به اینترنت نیاز دارند
-- **استعلام IP عمومی (Public IP):** از سرویس جهانی `api.ipify.org` استفاده می‌کند.
-- **موقعیت‌یابی جغرافیایی سرور VPN:** از دیتابیس آنلاین `ipapi.co` استفاده می‌کند.
+### 3. Features Inherently Requiring Internet
+- **Public IP Verification:** Uses `api.ipify.org`.
+- **VPN Server Geolocation:** Uses `ipapi.co`.
 
 ---
 
-### ۴. اسکریپت راه‌اندازی سریع آفلاین
-برای استقرار پرتابل، فایل `cpmStart.bat` را اجرا نمایید. چنانچه پیش‌نیازها از قبل نصب باشند، نرم‌افزار با سرعت بالا در مرورگر اجرا خواهد شد.
+### 4. Fast Offline Startup
+Simply execute `cpmStart.bat`. All internal services initialize rapidly and launch the responsive dashboard in your default browser.

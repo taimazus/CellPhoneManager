@@ -100,9 +100,13 @@ npm run build
 
 * **وب‌سایت رسمی:** [https://irres.ir](https://irres.ir)
 * **مخزن گیت‌هاب:** [https://github.com/taimazus/CellPhoneManager](https://github.com/taimazus/CellPhoneManager)
-* **راهنمای استقرار آفلاین:** [`docs/OFFLINE_DEPLOYMENT.md`](docs/OFFLINE_DEPLOYMENT.md)
-* **مشخصات معماری نرم‌افزار:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-* **تاریخچه تغییرات:** [`CHANGELOG.md`](CHANGELOG.md)
-* **مجوز انتشار:** مجوز متن‌باز MIT
+* **📘 راهنمای جامع تمامی بخش‌ها و زبانه‌ها (فارسی):** [`docs/USER_GUIDE.fa.md`](docs/USER_GUIDE.fa.md)
+* **📘 Complete User & Modules Guide (English):** [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md)
+* **📦 راهنمای استقرار آفلاین (فارسی):** [`docs/OFFLINE_DEPLOYMENT.fa.md`](docs/OFFLINE_DEPLOYMENT.fa.md)
+* **📦 Offline Deployment Guide (English):** [`docs/OFFLINE_DEPLOYMENT.md`](docs/OFFLINE_DEPLOYMENT.md)
+* **🏗️ سند معماری نرم‌افزار (فارسی):** [`docs/ARCHITECTURE.fa.md`](docs/ARCHITECTURE.fa.md)
+* **🏗️ Architecture Specifications (English):** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+* **📜 تاریخچه تغییرات:** [`CHANGELOG.md`](CHANGELOG.md)
+* **📄 مجوز انتشار:** مجوز متن‌باز MIT
 
 </div>
