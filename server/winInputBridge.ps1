@@ -3,40 +3,96 @@ using System;
 using System.Runtime.InteropServices;
 
 public class WinInput {
+    [StructLayout(LayoutKind.Sequential)]
+    struct MOUSEINPUT {
+        public int dx;
+        public int dy;
+        public uint mouseData;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct KEYBDINPUT {
+        public ushort wVk;
+        public ushort wScan;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;
+    }
+
+    [StructLayout(LayoutKind.Explicit)]
+    struct INPUT_UNION {
+        [FieldOffset(0)]
+        public MOUSEINPUT mi;
+        [FieldOffset(0)]
+        public KEYBDINPUT ki;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    struct INPUT {
+        public uint type;
+        public INPUT_UNION u;
+    }
+
     [DllImport("user32.dll", SetLastError = true)]
-    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+    static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
     [DllImport("user32.dll")]
-    public static extern uint MapVirtualKey(uint uCode, uint uMapType);
+    static extern uint MapVirtualKey(uint uCode, uint uMapType);
+
+    [DllImport("user32.dll")]
+    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
     [DllImport("user32.dll")]
     public static extern void mouse_event(uint dwFlags, int dx, int dy, uint dwData, UIntPtr dwExtraInfo);
 
+    public const uint INPUT_KEYBOARD = 1;
     public const uint KEYEVENTF_KEYDOWN = 0x0000;
     public const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
     public const uint KEYEVENTF_KEYUP = 0x0002;
+    public const uint KEYEVENTF_SCANCODE = 0x0008;
 
     public static void KeyDown(byte vk) {
-        byte scan = (byte)MapVirtualKey((uint)vk, 0);
-        uint flags = KEYEVENTF_KEYDOWN;
-        if (vk >= 0x21 && vk <= 0x28) {
-            flags |= KEYEVENTF_EXTENDEDKEY;
-        }
-        keybd_event(vk, scan, flags, UIntPtr.Zero);
+        ushort scan = (ushort)MapVirtualKey((uint)vk, 0);
+        bool isExt = (vk >= 0x21 && vk <= 0x28) || vk == 0x2D || vk == 0x2E;
+
+        // 1. Hardware DirectInput SendInput
+        INPUT[] inputs = new INPUT[1];
+        inputs[0].type = INPUT_KEYBOARD;
+        inputs[0].u.ki.wVk = (ushort)vk;
+        inputs[0].u.ki.wScan = scan;
+        inputs[0].u.ki.dwFlags = (isExt ? KEYEVENTF_EXTENDEDKEY : 0);
+        inputs[0].u.ki.time = 0;
+        inputs[0].u.ki.dwExtraInfo = IntPtr.Zero;
+        SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
+
+        // 2. Hardware keybd_event dual layer
+        keybd_event(vk, (byte)scan, (isExt ? KEYEVENTF_EXTENDEDKEY : 0), UIntPtr.Zero);
     }
 
     public static void KeyUp(byte vk) {
-        byte scan = (byte)MapVirtualKey((uint)vk, 0);
-        uint flags = KEYEVENTF_KEYUP;
-        if (vk >= 0x21 && vk <= 0x28) {
-            flags |= KEYEVENTF_EXTENDEDKEY;
-        }
-        keybd_event(vk, scan, flags, UIntPtr.Zero);
+        ushort scan = (ushort)MapVirtualKey((uint)vk, 0);
+        bool isExt = (vk >= 0x21 && vk <= 0x28) || vk == 0x2D || vk == 0x2E;
+
+        // 1. Hardware DirectInput SendInput
+        INPUT[] inputs = new INPUT[1];
+        inputs[0].type = INPUT_KEYBOARD;
+        inputs[0].u.ki.wVk = (ushort)vk;
+        inputs[0].u.ki.wScan = scan;
+        inputs[0].u.ki.dwFlags = KEYEVENTF_KEYUP | (isExt ? KEYEVENTF_EXTENDEDKEY : 0);
+        inputs[0].u.ki.time = 0;
+        inputs[0].u.ki.dwExtraInfo = IntPtr.Zero;
+        SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
+
+        // 2. Hardware keybd_event dual layer
+        keybd_event(vk, (byte)scan, KEYEVENTF_KEYUP | (isExt ? KEYEVENTF_EXTENDEDKEY : 0), UIntPtr.Zero);
     }
 
     public static void KeyTap(byte vk) {
         KeyDown(vk);
-        System.Threading.Thread.Sleep(50);
+        System.Threading.Thread.Sleep(45);
         KeyUp(vk);
     }
 

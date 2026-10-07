@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Windows Virtual-Key code map
-const VK = {
+export const VK = {
   // Arrow Keys
   UP: 0x26,    // 38
   DOWN: 0x28,  // 40
@@ -59,8 +59,8 @@ export class PcGamepadManager {
           'DPAD_DOWN': VK.DOWN,
           'DPAD_LEFT': VK.LEFT,
           'DPAD_RIGHT': VK.RIGHT,
-          'BTN_A': VK.S,      // Short Pass
-          'BTN_B': VK.D,      // Shoot
+          'BTN_A': VK.S,      // Short Pass / Menu Select
+          'BTN_B': VK.D,      // Shoot / Cancel
           'BTN_X': VK.A,      // Cross / Long Pass
           'BTN_Y': VK.W,      // Through Ball
           'L1': VK.Q,         // Player Switch
@@ -68,7 +68,8 @@ export class PcGamepadManager {
           'L2': VK.C,         // Shield Ball
           'R2': VK.SHIFT,     // Sprint
           'START': VK.SPACE,  // Space (Start/Confirm in FIFA)
-          'SELECT': VK.ESCAPE // Esc
+          'ENTER': VK.ENTER,  // Enter (Menu Advance)
+          'SELECT': VK.ESCAPE // Esc (Back / Pause)
         }
       },
       racing: {
@@ -89,6 +90,7 @@ export class PcGamepadManager {
           'L2': VK.SHIFT,     // Handbrake
           'R2': VK.W,         // Gas
           'START': VK.ENTER,
+          'ENTER': VK.ENTER,
           'SELECT': VK.ESCAPE
         }
       },
@@ -110,6 +112,7 @@ export class PcGamepadManager {
           'L2': VK.Q,         // Melee
           'R2': VK.F,         // Grenade
           'START': VK.ESCAPE,
+          'ENTER': VK.ENTER,
           'SELECT': VK.TAB
         }
       },
@@ -131,6 +134,7 @@ export class PcGamepadManager {
           'L2': VK.NUM_1,
           'R2': VK.NUM_2,
           'START': VK.ENTER,
+          'ENTER': VK.ENTER,
           'SELECT': VK.ESCAPE
         }
       }

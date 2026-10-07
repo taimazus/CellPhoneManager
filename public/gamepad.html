@@ -2,8 +2,12 @@
 <html lang="fa" dir="rtl" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>گیم‌پد سلطنتی ویندوز | CellPhoneManager</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0a0b10">
+  <title>👑 گیم‌پد سلطنتی ویندوز | CellPhoneManager</title>
   <style>
     * {
       box-sizing: border-box;
@@ -12,76 +16,141 @@
       user-select: none;
       -webkit-user-select: none;
       touch-action: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    html, body {
+      background-color: #07080c;
+      color: #f3f4f6;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      position: fixed;
     }
     body {
-      background-color: #0c0d12;
-      color: #f5f5f5;
-      font-family: system-ui, -apple-system, sans-serif;
-      height: 100vh;
-      width: 100vw;
-      overflow: hidden;
       display: flex;
       flex-direction: column;
     }
+
+    /* Top Bar */
     .header-bar {
       height: 48px;
-      background: #14151f;
-      border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+      min-height: 48px;
+      background: linear-gradient(180deg, #161824 0%, #0d0e17 100%);
+      border-bottom: 1px solid rgba(245, 158, 11, 0.35);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 16px;
+      padding: 0 12px;
+      gap: 8px;
+      z-index: 50;
+    }
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 800;
       font-size: 13px;
+      color: #f59e0b;
+      white-space: nowrap;
+    }
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .profile-select {
+      background: #1e2030;
+      color: #fcd34d;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: bold;
+      outline: none;
+    }
+    .fullscreen-btn {
+      background: linear-gradient(135deg, #d97706, #b45309);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+    .fullscreen-btn:active {
+      transform: scale(0.94);
+      filter: brightness(1.2);
     }
     .status-badge {
-      padding: 3px 10px;
+      padding: 3px 8px;
       border-radius: 9999px;
       font-size: 10px;
       font-weight: bold;
       background: rgba(16, 185, 129, 0.2);
       color: #34d399;
       border: 1px solid rgba(16, 185, 129, 0.4);
+      white-space: nowrap;
     }
     .status-badge.disconnected {
       background: rgba(239, 68, 68, 0.2);
       color: #f87171;
       border-color: rgba(239, 68, 68, 0.4);
     }
+
+    /* Main Container */
     .gamepad-container {
       flex: 1;
       display: grid;
-      grid-template-columns: 1fr 120px 1fr;
-      padding: 12px;
+      grid-template-columns: 1fr 140px 1fr;
+      grid-template-rows: auto 1fr;
+      padding: 8px 12px 12px 12px;
       gap: 8px;
-      height: calc(100vh - 48px);
+      height: calc(100% - 48px);
     }
-    /* Shoulder Buttons Top */
+
+    /* Shoulder / Trigger Buttons Top */
     .triggers-row {
       grid-column: 1 / -1;
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 8px;
       height: 52px;
     }
     .trigger-btn {
-      flex: 1;
-      background: #181926;
-      border: 1px solid rgba(245, 158, 11, 0.4);
+      background: linear-gradient(180deg, #202234 0%, #131422 100%);
+      border: 1.5px solid rgba(245, 158, 11, 0.4);
       border-radius: 12px;
       color: #fbbf24;
       font-weight: 900;
-      font-size: 14px;
+      font-size: 15px;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-      transition: transform 0.05s, background 0.05s;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      transition: transform 0.04s, background 0.04s, box-shadow 0.04s;
     }
-    .trigger-btn:active {
-      transform: scale(0.96);
-      background: #f59e0b;
-      color: #000;
+    .trigger-btn .sub-label {
+      font-size: 9px;
+      color: #9ca3af;
+      margin-top: 1px;
     }
+    .trigger-btn.active {
+      transform: scale(0.94);
+      background: #f59e0b !important;
+      color: #000 !important;
+      box-shadow: 0 0 16px rgba(245, 158, 11, 0.8) !important;
+    }
+    .trigger-btn.active .sub-label {
+      color: #111 !important;
+    }
+
     /* D-Pad Left Area */
     .dpad-area {
       display: flex;
@@ -90,40 +159,43 @@
       position: relative;
     }
     .dpad-cross {
-      width: 170px;
-      height: 170px;
+      width: 210px;
+      height: 210px;
       position: relative;
     }
     .dpad-btn {
       position: absolute;
-      width: 56px;
-      height: 56px;
-      background: #1c1d2c;
-      border: 1px solid rgba(245, 158, 11, 0.3);
-      border-radius: 12px;
+      width: 68px;
+      height: 68px;
+      background: linear-gradient(145deg, #24263a 0%, #151624 100%);
+      border: 2px solid rgba(245, 158, 11, 0.45);
+      border-radius: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
+      font-size: 26px;
       color: #fcd34d;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      box-shadow: 0 6px 14px rgba(0,0,0,0.6);
+      transition: transform 0.04s, background 0.04s;
     }
-    .dpad-btn:active {
-      background: #f59e0b;
-      color: #0c0d12;
-      transform: scale(0.93);
+    .dpad-btn.active {
+      background: #f59e0b !important;
+      color: #0c0d12 !important;
+      transform: scale(0.92) !important;
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.9) !important;
     }
-    .dpad-up { top: 0; left: 57px; }
-    .dpad-down { bottom: 0; left: 57px; }
-    .dpad-left { top: 57px; left: 0; }
-    .dpad-right { top: 57px; right: 0; }
+    .dpad-up { top: 0; left: 71px; }
+    .dpad-down { bottom: 0; left: 71px; }
+    .dpad-left { top: 71px; left: 0; }
+    .dpad-right { top: 71px; right: 0; }
     .dpad-center {
       position: absolute;
-      top: 57px;
-      left: 57px;
-      width: 56px;
-      height: 56px;
-      background: #141520;
+      top: 71px;
+      left: 71px;
+      width: 68px;
+      height: 68px;
+      background: radial-gradient(circle, #1c1e2f 0%, #10111d 100%);
+      border-radius: 8px;
     }
 
     /* Center Middle Menu */
@@ -132,25 +204,51 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 14px;
+      gap: 10px;
+      padding: 0 4px;
     }
     .menu-btn {
       width: 100%;
-      padding: 10px 4px;
-      background: #1c1d2b;
-      border: 1px solid #374151;
-      border-radius: 10px;
-      color: #9ca3af;
-      font-size: 11px;
-      font-weight: bold;
-      text-align: center;
+      height: 48px;
+      background: linear-gradient(180deg, #222438 0%, #171827 100%);
+      border: 1.5px solid #4b5563;
+      border-radius: 12px;
+      color: #e5e7eb;
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+      transition: transform 0.04s, background 0.04s;
     }
-    .menu-btn:active {
-      background: #f59e0b;
-      color: #000;
+    .menu-btn .sub-label {
+      font-size: 9px;
+      color: #9ca3af;
+      margin-top: 2px;
+    }
+    .menu-btn.start-btn {
+      border-color: rgba(245, 158, 11, 0.7);
+      background: linear-gradient(180deg, #78350f 0%, #451a03 100%);
+      color: #fef08a;
+    }
+    .menu-btn.enter-btn {
+      border-color: rgba(16, 185, 129, 0.6);
+      background: linear-gradient(180deg, #064e3b 0%, #022c22 100%);
+      color: #a7f3d0;
+    }
+    .menu-btn.active {
+      background: #f59e0b !important;
+      color: #000 !important;
+      transform: scale(0.92) !important;
+      box-shadow: 0 0 16px rgba(245, 158, 11, 0.8) !important;
+    }
+    .menu-btn.active .sub-label {
+      color: #111 !important;
     }
 
-    /* ABXY Right Area */
+    /* ABXY Cluster Right */
     .abxy-area {
       display: flex;
       align-items: center;
@@ -158,47 +256,123 @@
       position: relative;
     }
     .abxy-cluster {
-      width: 170px;
-      height: 170px;
+      width: 210px;
+      height: 210px;
       position: relative;
     }
     .action-btn {
       position: absolute;
-      width: 54px;
-      height: 54px;
+      width: 68px;
+      height: 68px;
       border-radius: 50%;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
+      font-size: 24px;
       font-weight: 900;
-      box-shadow: 0 6px 14px rgba(0,0,0,0.6);
-      transition: transform 0.05s;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.6);
+      transition: transform 0.04s, filter 0.04s;
     }
-    .action-btn:active {
-      transform: scale(0.9);
-      filter: brightness(1.3);
+    .action-btn .sub-label {
+      font-size: 9px;
+      font-weight: 700;
+      margin-top: -2px;
     }
-    .btn-y { top: 0; left: 58px; background: #78350f; color: #fde68a; border: 2px solid #f59e0b; }
-    .btn-a { bottom: 0; left: 58px; background: #064e3b; color: #6ee7b7; border: 2px solid #10b981; }
-    .btn-x { top: 58px; left: 0; background: #1e3a8a; color: #93c5fd; border: 2px solid #3b82f6; }
-    .btn-b { top: 58px; right: 0; background: #831843; color: #fbcfe8; border: 2px solid #ec4899; }
+    .action-btn.active {
+      transform: scale(0.9) !important;
+      filter: brightness(1.6) contrast(1.2) !important;
+      box-shadow: 0 0 24px currentColor !important;
+    }
+
+    .btn-y { 
+      top: 0; 
+      left: 71px; 
+      background: radial-gradient(circle at 35% 35%, #b45309, #78350f 70%, #451a03 100%); 
+      color: #fef08a; 
+      border: 2.5px solid #f59e0b; 
+    }
+    .btn-a { 
+      bottom: 0; 
+      left: 71px; 
+      background: radial-gradient(circle at 35% 35%, #059669, #065f46 70%, #022c22 100%); 
+      color: #a7f3d0; 
+      border: 2.5px solid #10b981; 
+    }
+    .btn-x { 
+      top: 71px; 
+      left: 0; 
+      background: radial-gradient(circle at 35% 35%, #2563eb, #1e40af 70%, #172554 100%); 
+      color: #bfdbfe; 
+      border: 2.5px solid #3b82f6; 
+    }
+    .btn-b { 
+      top: 71px; 
+      right: 0; 
+      background: radial-gradient(circle at 35% 35%, #db2777, #9d174d 70%, #500724 100%); 
+      color: #fbcfe8; 
+      border: 2.5px solid #ec4899; 
+    }
+
+    /* Small screens tweak */
+    @media (max-height: 380px) {
+      .header-bar { height: 38px; min-height: 38px; }
+      .gamepad-container { height: calc(100% - 38px); padding: 4px 8px; }
+      .triggers-row { height: 44px; }
+      .dpad-cross, .abxy-cluster { width: 180px; height: 180px; }
+      .dpad-btn, .action-btn { width: 58px; height: 58px; font-size: 20px; }
+      .dpad-up, .btn-y { left: 61px; }
+      .dpad-down, .btn-a { left: 61px; }
+      .dpad-left, .btn-x { top: 61px; }
+      .dpad-right, .btn-b { top: 61px; }
+      .dpad-center { top: 61px; left: 61px; width: 58px; height: 58px; }
+      .menu-btn { height: 40px; font-size: 11px; }
+    }
   </style>
 </head>
 <body>
 
+  <!-- Top Bar -->
   <div class="header-bar">
-    <div style="font-weight: 900; color: #f59e0b;">👑 دسته بازی سلطنتی ویندوز</div>
-    <div id="statusBadge" class="status-badge">در حال اتصال...</div>
+    <div class="header-title">
+      <span>👑 دسته بازی</span>
+      <select id="profileSelect" class="profile-select" onchange="onProfileChange(this.value)">
+        <option value="fifa" selected>⚽ فیفا / FIFA</option>
+        <option value="racing">🏎️ اتومبیل‌رانی / Racing</option>
+        <option value="action">🎯 شوتر / Shooter</option>
+        <option value="retro">🕹️ کلاسیک / Retro</option>
+      </select>
+    </div>
+
+    <div class="header-controls">
+      <button class="fullscreen-btn" onclick="toggleFullscreen()">
+        <span>⛶</span>
+        <span>تمام‌صفحه</span>
+      </button>
+      <div id="statusBadge" class="status-badge">در حال اتصال...</div>
+    </div>
   </div>
 
+  <!-- Gamepad Grid -->
   <div class="gamepad-container">
-    <!-- Top Shoulder Buttons -->
+    <!-- Top Triggers Row -->
     <div class="triggers-row">
-      <div class="trigger-btn" data-btn="L2">L2</div>
-      <div class="trigger-btn" data-btn="L1">L1</div>
-      <div class="trigger-btn" data-btn="R1">R1</div>
-      <div class="trigger-btn" data-btn="R2">R2</div>
+      <div class="trigger-btn" data-btn="L2">
+        <span>L2</span>
+        <span class="sub-label" id="lbl_L2">حفاظت توپ</span>
+      </div>
+      <div class="trigger-btn" data-btn="L1">
+        <span>L1</span>
+        <span class="sub-label" id="lbl_L1">تعویض یار</span>
+      </div>
+      <div class="trigger-btn" data-btn="R1">
+        <span>R1</span>
+        <span class="sub-label" id="lbl_R1">دویدن E</span>
+      </div>
+      <div class="trigger-btn" data-btn="R2">
+        <span>R2</span>
+        <span class="sub-label" id="lbl_R2">سرعت Shift</span>
+      </div>
     </div>
 
     <!-- D-Pad Left -->
@@ -214,17 +388,39 @@
 
     <!-- Center Menu -->
     <div class="center-menu">
-      <div class="menu-btn" data-btn="SELECT">SELECT</div>
-      <div class="menu-btn" data-btn="START">START</div>
+      <div class="menu-btn start-btn" data-btn="START">
+        <span>⏵ START</span>
+        <span class="sub-label">اسپیس Space</span>
+      </div>
+      <div class="menu-btn enter-btn" data-btn="ENTER">
+        <span>↵ ENTER</span>
+        <span class="sub-label">تایید منو</span>
+      </div>
+      <div class="menu-btn" data-btn="SELECT">
+        <span>⏸ SELECT</span>
+        <span class="sub-label">خروج Esc</span>
+      </div>
     </div>
 
     <!-- ABXY Cluster Right -->
     <div class="abxy-area">
       <div class="abxy-cluster">
-        <div class="action-btn btn-y" data-btn="BTN_Y">Y</div>
-        <div class="action-btn btn-a" data-btn="BTN_A">A</div>
-        <div class="action-btn btn-x" data-btn="BTN_X">X</div>
-        <div class="action-btn btn-b" data-btn="BTN_B">B</div>
+        <div class="action-btn btn-y" data-btn="BTN_Y">
+          <span>Y</span>
+          <span class="sub-label" id="lbl_Y">عمقی (W)</span>
+        </div>
+        <div class="action-btn btn-a" data-btn="BTN_A">
+          <span>A</span>
+          <span class="sub-label" id="lbl_A">پاس (S)</span>
+        </div>
+        <div class="action-btn btn-x" data-btn="BTN_X">
+          <span>X</span>
+          <span class="sub-label" id="lbl_X">سانتر (A)</span>
+        </div>
+        <div class="action-btn btn-b" data-btn="BTN_B">
+          <span>B</span>
+          <span class="sub-label" id="lbl_B">شوت (D)</span>
+        </div>
       </div>
     </div>
   </div>
@@ -232,10 +428,93 @@
   <script>
     let ws = null;
     const statusBadge = document.getElementById('statusBadge');
+    const profileLabels = {
+      fifa: {
+        lbl_A: 'پاس (S)',
+        lbl_B: 'شوت (D)',
+        lbl_X: 'سانتر (A)',
+        lbl_Y: 'عمقی (W)',
+        lbl_L1: 'تعویض یار',
+        lbl_R1: 'دویدن E',
+        lbl_L2: 'حفاظت توپ',
+        lbl_R2: 'سرعت Shift'
+      },
+      racing: {
+        lbl_A: 'گاز (W)',
+        lbl_B: 'ترمز (S)',
+        lbl_X: 'نیترو Space',
+        lbl_Y: 'دوربین C',
+        lbl_L1: 'فرمان چپ',
+        lbl_R1: 'فرمان راست',
+        lbl_L2: 'دستی Shift',
+        lbl_R2: 'گاز توربو'
+      },
+      action: {
+        lbl_A: 'پرش Space',
+        lbl_B: 'نشستن C',
+        lbl_X: 'خشاب R',
+        lbl_Y: 'تعامل E',
+        lbl_L1: 'دویدن Shift',
+        lbl_R1: 'شلیک Enter',
+        lbl_L2: 'ضربه Q',
+        lbl_R2: 'نارنجک F'
+      },
+      retro: {
+        lbl_A: 'دکمه Z',
+        lbl_B: 'دکمه X',
+        lbl_X: 'دکمه A',
+        lbl_Y: 'دکمه S',
+        lbl_L1: 'دکمه Q',
+        lbl_R1: 'دکمه E',
+        lbl_L2: 'کلید ۱',
+        lbl_R2: 'کلید ۲'
+      }
+    };
 
-    function vibrate() {
+    function updateLabels(profile) {
+      const p = profileLabels[profile] || profileLabels.fifa;
+      for (const [id, text] of Object.entries(p)) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+      }
+    }
+
+    function onProfileChange(profile) {
+      updateLabels(profile);
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'CHANGE_PROFILE',
+          profile
+        }));
+      }
+    }
+
+    function toggleFullscreen() {
+      vibrate(30);
+      const doc = document.documentElement;
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (doc.requestFullscreen) {
+          doc.requestFullscreen().catch(() => {});
+        } else if (doc.webkitRequestFullscreen) {
+          doc.webkitRequestFullscreen();
+        }
+        if (screen.orientation && screen.orientation.lock) {
+          screen.orientation.lock('landscape').catch(() => {});
+        }
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        }
+      }
+    }
+
+    function vibrate(ms = 22) {
       if (navigator.vibrate) {
-        navigator.vibrate(18);
+        try {
+          navigator.vibrate(ms);
+        } catch {}
       }
     }
 
@@ -247,6 +526,8 @@
       ws.onopen = () => {
         statusBadge.textContent = 'متصل به ویندوز 🟢';
         statusBadge.className = 'status-badge';
+        const activeProfile = document.getElementById('profileSelect').value;
+        onProfileChange(activeProfile);
       };
 
       ws.onclose = () => {
@@ -261,7 +542,9 @@
     }
 
     function sendBtnEvent(button, state) {
-      vibrate();
+      if (state === 'down') {
+        vibrate(22);
+      }
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
           type: 'GAMEPAD_INPUT',
@@ -276,21 +559,25 @@
     document.querySelectorAll('[data-btn]').forEach(el => {
       const btn = el.getAttribute('data-btn');
 
-      el.addEventListener('pointerdown', (e) => {
+      const handleDown = (e) => {
         e.preventDefault();
+        el.classList.add('active');
         sendBtnEvent(btn, 'down');
-      });
+      };
 
-      el.addEventListener('pointerup', (e) => {
+      const handleUp = (e) => {
         e.preventDefault();
+        el.classList.remove('active');
         sendBtnEvent(btn, 'up');
-      });
+      };
 
-      el.addEventListener('pointercancel', (e) => {
-        e.preventDefault();
-        sendBtnEvent(btn, 'up');
-      });
+      el.addEventListener('pointerdown', handleDown, { passive: false });
+      el.addEventListener('pointerup', handleUp, { passive: false });
+      el.addEventListener('pointercancel', handleUp, { passive: false });
     });
+
+    // Initial label setup
+    updateLabels('fifa');
 
     // Start WebSocket
     connectWs();

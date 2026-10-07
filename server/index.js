@@ -54,6 +54,8 @@ wss.on('connection', (ws) => {
         pcGamepadManager.processGamepadEvent(data);
       } else if (data.type === 'MOUSE_INPUT') {
         pcGamepadManager.processMouseMove(data);
+      } else if (data.type === 'CHANGE_PROFILE' && data.profile) {
+        pcGamepadManager.setProfile(data.profile);
       }
     } catch {
       // ignore non-json
