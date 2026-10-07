@@ -205,17 +205,48 @@ export function App() {
     }
   };
 
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem('cpm_sidebar_collapsed') === 'true';
+  });
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
+
+  const handleToggleCollapse = () => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('cpm_sidebar_collapsed', String(next));
+      return next;
+    });
+  };
+
   return (
-    <div className="flex h-screen w-screen bg-[#080d1a] overflow-hidden cyber-grid text-slate-100">
-      {/* Main Navigation Sidebar */}
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        deviceType={selectedDevice?.type} 
-      />
+    <div className="flex h-screen w-screen bg-[#0a0e17] overflow-hidden text-slate-100 antialiased selection:bg-blue-600 selection:text-white">
+      {/* Mobile Sidebar Backdrop Overlay */}
+      {isMobileSidebarOpen && (
+        <div 
+          onClick={() => setIsMobileSidebarOpen(false)}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 md:hidden animate-fadeIn"
+        />
+      )}
+
+      {/* Main Navigation Sidebar (Desktop + Mobile Drawer) */}
+      <div className={`
+        fixed md:relative inset-y-0 right-0 z-50 md:z-auto transition-transform duration-300 ease-in-out flex h-full
+        ${isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
+      `}>
+        <Sidebar 
+          activeTab={activeTab} 
+          setActiveTab={(tab) => {
+            setActiveTab(tab);
+            setIsMobileSidebarOpen(false);
+          }} 
+          deviceType={selectedDevice?.type} 
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={handleToggleCollapse}
+        />
+      </div>
 
       {/* Main Application Area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden bg-[#0a0e17]/80">
         {/* Device Selection & Action Header */}
         <DeviceHeader
           devices={devices}
@@ -226,10 +257,11 @@ export function App() {
           onOpenWirelessModal={() => setIsWirelessModalOpen(true)}
           onOpenGuideModal={handleOpenGuide}
           isRefreshing={isRefreshing}
+          onToggleSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
         />
 
         {/* Viewport Content */}
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-7">
           <div className="max-w-7xl mx-auto pb-12">
             <TabErrorBoundary activeTab={activeTab}>
               {activeTab === 'overview' && (
