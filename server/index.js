@@ -1426,7 +1426,84 @@ app.get('/api/devices/:id/recorder/status', (req, res) => {
 
 app.get('/api/recordings', (req, res) => {
   const recordings = recorderManager.listRecordings();
-  res.json({ recordings });
+  const directory = recorderManager.getRecordingsDir();
+  res.json({ recordings, directory });
+});
+
+app.get('/api/recordings/directory', (req, res) => {
+  res.json({ directory: recorderManager.getRecordingsDir() });
+});
+
+app.post('/api/recordings/directory', (req, res) => {
+  const { directory } = req.body;
+  const result = recorderManager.setRecordingsDir(directory);
+  res.json(result);
+});
+
+app.post('/api/recordings/open-folder', (req, res) => {
+  const { customPath } = req.body || {};
+  const result = recorderManager.openDirectoryInExplorer(customPath);
+  res.json(result);
+});
+
+app.post('/api/recordings/open-file', (req, res) => {
+  const { filename } = req.body;
+  if (!filename) return res.status(400).json({ error: 'نام فایل الزامی است' });
+  const result = recorderManager.openFileInExplorer(filename);
+  res.json(result);
+});
+
+app.delete('/api/recordings/:filename', (req, res) => {
+  const { filename } = req.params;
+  const result = recorderManager.deleteRecording(filename);
+  res.json(result);
+});
+
+app.get('/api/recordings/stream/:filename', (req, res) => {
+  const { filename } = req.params;
+  const safeFilename = path.basename(filename);
+  const filePath = path.join(recorderManager.getRecordingsDir(), safeFilename);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'ویدیو یافت نشد' });
+  }
+
+  const stat = fs.statSync(filePath);
+  const fileSize = stat.size;
+  const range = req.headers.range;
+
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    const chunksize = (end - start) + 1;
+    const file = fs.createReadStream(filePath, { start, end });
+    const head = {
+      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': chunksize,
+      'Content-Type': safeFilename.endsWith('.mkv') ? 'video/x-matroska' : 'video/mp4',
+    };
+    res.writeHead(206, head);
+    file.pipe(res);
+  } else {
+    const head = {
+      'Content-Length': fileSize,
+      'Content-Type': safeFilename.endsWith('.mkv') ? 'video/x-matroska' : 'video/mp4',
+    };
+    res.writeHead(200, head);
+    fs.createReadStream(filePath).pipe(res);
+  }
+});
+
+app.get('/api/recordings/download/:filename', (req, res) => {
+  const { filename } = req.params;
+  const safeFilename = path.basename(filename);
+  const filePath = path.join(recorderManager.getRecordingsDir(), safeFilename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'ویدیو یافت نشد' });
+  }
+  res.download(filePath, safeFilename);
 });
 
 // -------------------------------------------------------------
