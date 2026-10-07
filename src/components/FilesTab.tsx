@@ -69,6 +69,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
   const [gridZoom, setGridZoom] = useState<'sm' | 'md' | 'lg' | 'xl'>('md');
   const [pageSize, setPageSize] = useState<number | 'all'>(48);
   const [currentPage, setCurrentPage] = useState(1);
+  const [typeFilter, setTypeFilter] = useState<'all' | 'video' | 'image' | 'audio' | 'text' | 'pdf' | 'folder'>('all');
   const [isUploading, setIsUploading] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -420,8 +421,51 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
     return `/api/devices/${device.id}/files/preview?remotePath=${encodeURIComponent(fullPath)}`;
   };
 
+  const matchSearch = (fileName: string, isDir: boolean, query: string): boolean => {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    const name = fileName.toLowerCase();
+
+    // 1. Direct substring match
+    if (name.includes(q)) return true;
+
+    // 2. Wildcard pattern support (e.g. *.mp4, vid*.mp4, *2026*, photo_??.jpg)
+    if (q.includes('*') || q.includes('?')) {
+      try {
+        const regexStr = '^' + q
+          .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+          .replace(/\*/g, '.*')
+          .replace(/\?/g, '.') + '$';
+        const reg = new RegExp(regexStr, 'i');
+        if (reg.test(name)) return true;
+      } catch (_) {}
+    }
+
+    // 3. Extension match (e.g. user typed ".mp4" or "mp4")
+    const ext = name.split('.').pop()?.toLowerCase() || '';
+    if (q.startsWith('.') && ('.' + ext) === q) return true;
+    if (ext === q) return true;
+
+    // 4. Multi-token match (e.g. "vid 2026")
+    const tokens = q.split(/\s+/).filter(Boolean);
+    if (tokens.length > 1 && tokens.every(t => name.includes(t))) {
+      return true;
+    }
+
+    return false;
+  };
+
   const filteredItems = items
-    .filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
+    .filter(i => {
+      // Type Filter
+      if (typeFilter === 'folder' && !i.isDir) return false;
+      if (typeFilter !== 'all' && typeFilter !== 'folder') {
+        if (i.isDir) return false;
+        if (getFileCategory(i.name) !== typeFilter) return false;
+      }
+      // Search matching (with wildcards, extensions, substrings)
+      return matchSearch(i.name, i.isDir, search);
+    })
     .sort((a, b) => {
       // Always keep directories on top
       if (a.isDir && !b.isDir) return -1;
@@ -436,10 +480,10 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
       return 0;
     });
 
-  // Reset page when search, sort, path or pageSize changes
+  // Reset page when search, sort, path, typeFilter or pageSize changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [currentPath, search, sortBy, pageSize]);
+  }, [currentPath, search, sortBy, typeFilter, pageSize]);
 
   // Pagination calculations
   const totalItems = filteredItems.length;
@@ -668,16 +712,56 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
 
       {/* Filter, Search & View Controls */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        {/* Search */}
-        <div className="relative flex-1 w-full">
-          <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-          <input
-            type="text"
-            placeholder="جستجو در نام فایل‌ها و پوشه‌ها..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pr-10 pl-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
-          />
+        {/* Search & Type Badges */}
+        <div className="relative flex-1 w-full space-y-2">
+          <div className="relative">
+            <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <input
+              type="text"
+              placeholder="جستجو بر اساس نام، الگو (مانند mp4.* یا vid*.*) یا پسوندها..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pr-10 pl-10 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute left-3 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                title="پاک کردن جستجو"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Quick Type Filter Chips */}
+          <div className="flex items-center gap-1.5 overflow-x-auto text-[11px] pb-0.5 scrollbar-thin">
+            <span className="text-slate-500 font-medium whitespace-nowrap pl-1 text-[10px]">فیلتر نوع:</span>
+            {[
+              { id: 'all', label: 'همه فایل‌ها' },
+              { id: 'video', label: 'ویدیوها 🎬' },
+              { id: 'image', label: 'عکس‌ها 🖼️' },
+              { id: 'audio', label: 'موزیک 🎵' },
+              { id: 'text', label: 'اسناد و کد 📄' },
+              { id: 'pdf', label: 'PDF 📑' },
+              { id: 'folder', label: 'پوشه‌ها 📁' }
+            ].map(tf => {
+              const active = typeFilter === tf.id;
+              return (
+                <button
+                  key={tf.id}
+                  onClick={() => setTypeFilter(tf.id as any)}
+                  className={`px-2.5 py-1 rounded-lg font-medium transition-all whitespace-nowrap border ${
+                    active 
+                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-sm font-bold' 
+                      : 'bg-slate-900/60 text-slate-400 border-slate-800/80 hover:text-slate-200 hover:bg-slate-800'
+                  }`}
+                >
+                  {tf.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Multi-Select & Sort & View Controls */}
