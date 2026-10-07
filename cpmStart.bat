@@ -1,10 +1,10 @@
 @echo off
 chcp 65001 >nul
-title CellPhoneManager - مرکز جامع مدیریت و عیب‌یابی موبایل (راهکار الکترونیک سهند)
+title CellPhoneManager Suite - Sahand Electronic Solutions
 color 0B
 cls
 
-:: 0. Resolve Project Root Directory (Supports running from PATH, C:\Windows, or anywhere)
+:: 0. Resolve Project Root Directory
 set "PROJECT_DIR=%~dp0"
 if not exist "%PROJECT_DIR%package.json" (
     if defined CPM_HOME (
@@ -16,24 +16,14 @@ if not exist "%PROJECT_DIR%package.json" (
 )
 
 if not exist "%PROJECT_DIR%package.json" (
-    echo ❌ پوشه اصلی پروژه CellPhoneManager یافت نشد!
-    echo لطفاً متغیر محیطی CPM_HOME را روی مسیر پوشه پروژه تنظیم کنید یا این فایل را از پوشه اصلی اجرا نمایید.
+    echo Error: CellPhoneManager project directory was not found!
+    echo Please set CPM_HOME environment variable to the project path.
     pause
     exit /b 1
 )
 
-:: Switch working directory to project root
 cd /d "%PROJECT_DIR%"
 
-echo ===============================================================================
-echo   📱  CellPhoneManager Desktop Suite v3.0 (cpmStart)
-echo   توسعه داده شده برای شرکت راهکار الکترونیک سهند (https://irres.ir)
-echo   مرکز جامع کنترل، روت، فلش، عیب‌یابی، پشتیبان‌گیری و اتصال هوشمند
-echo ===============================================================================
-echo 📂 مسیر کاری پروژه: %cd%
-echo.
-
-:: Argument handler for registering PATH, Stopping or Restarting
 if /i "%~1"=="--stop" goto :stop_app
 if /i "%~1"=="-stop" goto :stop_app
 if /i "%~1"=="stop" goto :stop_app
@@ -45,100 +35,83 @@ if /i "%~1"=="--register" goto :add_path
 goto :start_app
 
 :stop_app
-call "%~dp0cpmStop.bat"
+node server/stop.js
 exit /b 0
 
 :restart_app
-call "%~dp0cpmRestart.bat"
+node server/stop.js
+ping 127.0.0.1 -n 3 >nul
+call "%PROJECT_DIR%cpmStart.bat"
 exit /b 0
 
 :add_path
-echo ⚙️ در حال ثبت مسیر CellPhoneManager در متغیر محیطی PATH ویندوز...
+echo Registering CellPhoneManager in Windows PATH...
 setx CPM_HOME "%cd%" >nul
-for /f "tokens=2*" %%a in ('reg query HKCU\Environment /v PATH 2^>nul') do set "USER_PATH=%%b"
-echo %USER_PATH% | find /i "%cd%" >nul
-if %errorlevel% neq 0 (
-    setx PATH "%USER_PATH%;%cd%" >nul
-    echo 🟢 مسیر %cd% با موفقیت به PATH ویندوز اضافه شد!
-    echo اکنون در هر پنجره ترمینال یا Run با نوشتن cpmstart برنامه اجرا خواهد شد.
-) else (
-    echo ℹ️ این مسیر قبلاً در PATH ثبت شده است.
-)
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = [Environment]::GetEnvironmentVariable('PATH', 'User'); if ($p -notlike '*%cd%*') { [Environment]::SetEnvironmentVariable('PATH', $p + ';%cd%', 'User'); Write-Host 'Path added successfully!' } else { Write-Host 'Path already registered.' }"
 echo.
 pause
 exit /b 0
 
 :start_app
+echo ===============================================================================
+echo   CellPhoneManager Desktop Suite v3.0 [cpmStart]
+echo   Sahand Electronic Solutions - https://irres.ir
+echo   Complete Phone Management, Diagnostics, ROM, Root and Rescue Suite
+echo ===============================================================================
+echo Project Location: %cd%
+echo.
+
 :: 1. Check Node.js Runtime
-echo [1/4] 🔍 بررسی وجود موتور اجرایی Node.js در سیستم...
+echo [1/4] Checking Node.js runtime...
 where node >nul 2>nul
 if %errorlevel% neq 0 (
-    echo.
-    echo ⚠️ اخطار: موتور Node.js روی سیستم شما نصب نیست یا در PATH قرار ندارد.
-    echo ⏳ تلاش برای نصب خودکار آخرین نسخه پایدار Node.js LTS از طریق Windows Package Manager...
-    echo.
+    echo Node.js not detected on system.
+    echo Attempting automatic installation via winget...
     winget install OpenJS.NodeJS.LTS --silent --accept-package-agreements --accept-source-agreements
     if %errorlevel% neq 0 (
-        echo.
-        echo ❌ نصب خودکار با موفقیت انجام نشد.
-        echo 📌 لطفاً به وب‌سایت رسمی زیر مراجعه کرده و نسخه LTS را نصب کنید:
-        echo    https://nodejs.org/
-        echo.
+        echo Automatic installation failed. Please download Node.js from https://nodejs.org/
         start https://nodejs.org/
-        echo پس از اتمام نصب Node.js، این فایل را مجدداً اجرا نمایید.
         pause
         exit /b 1
     ) else (
-        echo 🟢 موتور Node.js با موفقیت روی سیستم نصب گردید. لطفاً یک بار پنجره را ببندید و دوباره اجرا کنید.
+        echo Node.js installed successfully. Please restart this window.
         pause
         exit /b 0
     )
 ) else (
-    for /f "tokens=*" %%v in ('node -v') do set NODE_VER=%%v
-    echo    🟢 موتور Node.js با موفقیت شناسایی شد: %NODE_VER%
+    echo    Node.js runtime found.
 )
 
-:: 2. Check and Install NPM Dependencies
+:: 2. Check Dependencies
 echo.
-echo [2/4] 📦 بررسی پکیج‌ها و وابستگی‌های نرم‌افزار (Dependencies)...
+echo [2/4] Checking software dependencies...
 if not exist node_modules (
-    echo    ⏳ در حال دانلود و نصب خودکار وابستگی‌ها (ممکن است چند لحظه طول بکشد)...
-    call npm install > setup_install.log 2>&1
+    echo    Downloading packages, please wait...
+    call npm install
     if %errorlevel% neq 0 (
-        echo    ❌ خطا در نصب وابستگی‌های npm!
-        echo    🔍 گزارش کامل خطا در فایل زیر ذخیره شد:
-        echo       %cd%\setup_install.log
-        echo.
-        echo    💡 راهکارهای رفع مشکل:
-        echo       ۱. اتصال اینترنت یا تحریم‌شکن خود را بررسی کنید.
-        echo       ۲. دستور npm cache clean --force را در ترمینال اجرا کنید.
-        echo.
+        echo Error installing dependencies.
         pause
         exit /b 1
-    ) else (
-        echo    🟢 تمام پکیج‌های مورد نیاز با موفقیت نصب شدند.
     )
 ) else (
-    echo    🟢 پکیج‌های نرم‌افزار آماده استفاده هستند.
+    echo    Packages verified and ready.
 )
 
 :: 3. Run Preflight Diagnostics
 echo.
-echo [3/4] 🛠️ اجرای بررسی‌های پیش‌پرواز و راه‌اندازی درایورها و ابزارهای واسط...
+echo [3/4] Running preflight system checks...
 node server/preflight.js
 
 :: 4. Launch Application
 echo.
-echo [4/4] 🚀 در حال راه‌اندازی سرور Backend و رابط کاربری وب...
-echo 🌐 آدرس برنامه: http://localhost:5173
-echo 💡 مرورگر اینترنت به صورت خودکار تا چند لحظه دیگر باز خواهد شد.
+echo [4/4] Starting backend server and web interface...
+echo Application URL: http://localhost:5173
+echo.
 echo ===============================================================================
-echo برای خروج از برنامه، کلیدهای Ctrl + C را در این پنجره فشار دهید.
+echo Press Ctrl + C to exit or run cpmStop.bat to terminate.
 echo ===============================================================================
 echo.
 
-:: Open Browser after a slight delay
 start "" http://localhost:5173
 
-:: Start App
 npm run dev

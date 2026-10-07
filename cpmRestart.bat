@@ -1,20 +1,29 @@
 @echo off
 chcp 65001 >nul
-title CellPhoneManager - راه‌اندازی مجدد سرویس‌ها (cpmRestart)
-color 0E
+title CellPhoneManager Restart Service
 cls
 
+set "PROJECT_DIR=%~dp0"
+if not exist "%PROJECT_DIR%package.json" (
+    if defined CPM_HOME (
+        if exist "%CPM_HOME%\package.json" set "PROJECT_DIR=%CPM_HOME%\"
+    )
+)
+if not exist "%PROJECT_DIR%package.json" (
+    if exist "%USERPROFILE%\Desktop\CellPhoneManager\package.json" set "PROJECT_DIR=%USERPROFILE%\Desktop\CellPhoneManager\"
+)
+
+cd /d "%PROJECT_DIR%"
+
 echo ===============================================================================
-echo   🔄 CellPhoneManager - راه‌اندازی مجدد (Restart)...
+echo   CellPhoneManager - Restarting Services
 echo ===============================================================================
 echo.
 
-:: 1. Run stop routine
-call "%~dp0cpmStop.bat" --no-wait
+node server/stop.js
 
 echo.
-echo ⏳ در حال شروع مجدد سرویس‌ها تا ۳ ثانیه دیگر...
-timeout /t 2 >nul
+echo Restarting application in 2 seconds...
+ping 127.0.0.1 -n 3 >nul
 
-:: 2. Launch Start
-call "%~dp0cpmStart.bat"
+call "%PROJECT_DIR%cpmStart.bat"
