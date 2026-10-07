@@ -170,6 +170,16 @@ export class ToolManager {
         }
       }
 
+      if (toolId === 'googleDriver' || toolId === 'usbDriver') {
+        logCallback('در حال نصب درایورهای رسمی Universal Android USB...');
+        const localZip = path.join(this.binDir, 'drivers', 'google_usb_driver.zip');
+        if (fs.existsSync(localZip)) {
+          logCallback('استفاده از پکیج آفلاین google_usb_driver.zip...');
+          await execAsync(`powershell -NoProfile -Command "Expand-Archive -Path '${localZip}' -DestinationPath '$env:TEMP\\cpm_usb_driver' -Force; Start-Process pnputil.exe -ArgumentList '/add-driver \\\"$env:TEMP\\cpm_usb_driver\\usb_driver\\*.inf\\\" /install' -Verb RunAs -Wait"`);
+          return { success: true, message: 'درایورهای USB با موفقیت در مخزن درایور ویندوز ثبت شدند' };
+        }
+      }
+
       if (toolId === 'vbcable') {
         logCallback('در حال نصب درایور کابل مجازی صدا (VB-Audio Virtual Cable)...');
         const localZip = path.join(this.binDir, 'drivers', 'vbcable.zip');
