@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Device } from '../types';
 import { TabGuideCard } from './TabGuideCard';
+import { safeFetchJson } from '../utils/api';
 
 interface AiAssistantTabProps {
   device: Device | null;
@@ -90,27 +91,27 @@ export const AiAssistantTab: React.FC<AiAssistantTabProps> = ({ device }) => {
     setLoading(true);
 
     try {
-      const res = await fetch(`/api/devices/${device.id}/ai/ask`, {
+      const data = await safeFetchJson(`/api/devices/${device.id}/ai/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: queryText, deviceDetails: device })
       });
-      const data = await res.json();
-      if (data.success) {
+      
+      if (data && data.success) {
         const aiMsg: ChatMessage = {
           id: String(Date.now() + 1),
           sender: 'ai',
           text: data.answer,
           actionExecuted: data.actionExecuted,
           recommendations: data.recommendations,
-          timestamp: data.timestamp
+          timestamp: data.timestamp || new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })
         };
         setMessages(prev => [...prev, aiMsg]);
       } else {
         const errAiMsg: ChatMessage = {
           id: String(Date.now() + 1),
           sender: 'ai',
-          text: `⚠️ خطا در پاسخگویی و اجرای عملیات: ${data.error || 'خطای سرور'}`,
+          text: `⚠️ خطا در پاسخگویی و اجرای عملیات: ${data?.error || 'خطای سرور'}`,
           timestamp: new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })
         };
         setMessages(prev => [...prev, errAiMsg]);

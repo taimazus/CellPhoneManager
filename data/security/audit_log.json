@@ -1,5 +1,50 @@
 [
   {
+    "id": "sec_1791384895279_4jg89",
+    "timestamp": "2026-10-07T14:54:55.279Z",
+    "action": "TEST_ACTION",
+    "status": "SUCCESS",
+    "targetDevice": "mock-phone-1",
+    "details": "Audit logging unit test",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "sec_1791384895270_7urfh",
+    "timestamp": "2026-10-07T14:54:55.270Z",
+    "action": "LOGIN_FAILURE",
+    "status": "FAILED",
+    "targetDevice": null,
+    "details": "تلاش ناموفق برای ورود با کلید API نامعتبر",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "sec_1791384895263_ax04c",
+    "timestamp": "2026-10-07T14:54:55.263Z",
+    "action": "LOGIN_SUCCESS",
+    "status": "SUCCESS",
+    "targetDevice": null,
+    "details": "ورود موفق مدیر سیستم",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "sec_1791384895259_tjz8q",
+    "timestamp": "2026-10-07T14:54:55.259Z",
+    "action": "SESSION_CREATE",
+    "status": "SUCCESS",
+    "targetDevice": null,
+    "details": "نشست جدید امنیتی ایجاد شد",
+    "ip": "127.0.0.1"
+  },
+  {
+    "id": "sec_1791384895255_2lo38",
+    "timestamp": "2026-10-07T14:54:55.255Z",
+    "action": "SESSION_CREATE",
+    "status": "SUCCESS",
+    "targetDevice": null,
+    "details": "نشست جدید امنیتی ایجاد شد",
+    "ip": "127.0.0.1"
+  },
+  {
     "id": "sec_1791384732260_ikchp",
     "timestamp": "2026-10-07T14:52:12.260Z",
     "action": "TEST_ACTION",

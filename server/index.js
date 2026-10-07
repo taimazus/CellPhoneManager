@@ -2839,6 +2839,24 @@ app.post('/api/devices/:id/capabilities/evaluate', async (req, res) => {
 });
 
 // -------------------------------------------------------------
+// 39. AI Device Assistant & Operational Executor APIs
+// -------------------------------------------------------------
+app.post('/api/devices/:id/ai/ask', async (req, res) => {
+  const { id } = req.params;
+  const { query, deviceDetails } = req.body;
+  try {
+    const result = await aiManager.askDeviceAssistant({
+      serial: id,
+      query,
+      deviceDetails: deviceDetails || { id, serial: id }
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// -------------------------------------------------------------
 // 39. Security, Authentication & Audit Trail APIs
 // -------------------------------------------------------------
 app.get('/api/security/auth/status', (req, res) => {
