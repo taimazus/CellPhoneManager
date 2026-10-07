@@ -143,9 +143,11 @@ export class AdbManager {
       const packageName = clean.substring(lastIndex + 1);
       const isSystem = apkPath.startsWith('/system') || apkPath.startsWith('/product') || apkPath.startsWith('/vendor');
 
+      const appDisplayName = packageName.split('.').pop() || packageName;
       apps.push({
         packageName,
-        appName: packageName.split('.').pop() || packageName,
+        name: appDisplayName,
+        appName: appDisplayName,
         isSystem,
         apkPath,
         enabled: true,

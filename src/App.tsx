@@ -37,6 +37,62 @@ import { WirelessModal } from './components/WirelessModal';
 import { UserGuideModal } from './components/UserGuideModal';
 import { Device } from './types';
 
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+  activeTab: string;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class TabErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('TabErrorBoundary caught error:', error, errorInfo);
+  }
+
+  componentDidUpdate(prevProps: ErrorBoundaryProps) {
+    if (prevProps.activeTab !== this.props.activeTab && this.state.hasError) {
+      this.setState({ hasError: false, error: null });
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 rounded-3xl glass-panel border border-rose-500/30 text-right space-y-4 max-w-xl mx-auto my-12" dir="rtl">
+          <div className="flex items-center gap-3 text-rose-400">
+            <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 font-bold">⚠️</div>
+            <div>
+              <h3 className="text-base font-bold text-white">خطا در بارگذاری این بخش</h3>
+              <p className="text-xs text-rose-300 font-mono mt-0.5">{this.state.error?.message || 'خطای رندر رخ داد'}</p>
+            </div>
+          </div>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            سیستم به صورت خودکار خطا را ایزوله کرد تا سایر بخش‌های برنامه بدون مشکل به کار خود ادامه دهند.
+          </p>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-400 hover:to-amber-400 text-slate-950 font-bold text-xs shadow-lg transition-all"
+          >
+            تلاش مجدد
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export function App() {
   const [activeTab, setActiveTab] = useState<string>('overview');
@@ -175,116 +231,117 @@ export function App() {
         {/* Viewport Content */}
         <main className="flex-1 overflow-y-auto p-6 md:p-8">
           <div className="max-w-7xl mx-auto pb-12">
-            {activeTab === 'overview' && (
-              <OverviewTab 
-                device={selectedDevice} 
-                onNavigateTab={setActiveTab} 
-                onQuickAction={handleQuickAction} 
-              />
-            )}
-            {activeTab === 'ai' && (
-              <AiAssistantTab device={selectedDevice} />
-            )}
-            {activeTab === 'mirror' && (
-              <MirrorControlTab
-                device={selectedDevice}
-                onSendKey={handleSendKey}
-                onSendTap={handleSendTap}
-                onScreenshot={() => handleQuickAction('screenshot')}
-              />
-            )}
-            {activeTab === 'gamepad' && (
-              <RemoteControllerTab device={selectedDevice} />
-            )}
-            {activeTab === 'notifications' && (
-              <NotificationsTab device={selectedDevice} />
-            )}
-            {activeTab === 'network' && (
-              <NetworkVpnTab device={selectedDevice} />
-            )}
-            {activeTab === 'automation' && (
-              <AutomationTab device={selectedDevice} />
-            )}
-            {activeTab === 'gps' && (
-              <GpsSimulatorTab device={selectedDevice} />
-            )}
-            {activeTab === 'recorder' && (
-              <ScreenRecorderTab device={selectedDevice} />
-            )}
-            {activeTab === 'ocr' && (
-              <ScreenOcrTab device={selectedDevice} />
-            )}
-            {activeTab === 'camera' && (
-              <CameraTab device={selectedDevice} />
-            )}
-            {activeTab === 'microphone' && (
-              <MicrophoneTab device={selectedDevice} />
-            )}
-            {activeTab === 'audiofx' && (
-              <AudioFxTab device={selectedDevice} />
-            )}
-            {activeTab === 'messages' && (
-              <MessagesTab device={selectedDevice} />
-            )}
-            {activeTab === 'battery' && (
-              <BatteryHealthTab device={selectedDevice} />
-            )}
-            {activeTab === 'migration' && (
-              <MigrationTab devices={devices} selectedDevice={selectedDevice} />
-            )}
-            {activeTab === 'cloner' && (
-              <AppClonerTab device={selectedDevice} />
-            )}
-            {activeTab === 'debloater' && (
-              <DebloaterTab device={selectedDevice} />
-            )}
-            {activeTab === 'rescue' && (
-              <LockscreenRescueTab device={selectedDevice} />
-            )}
-            {activeTab === 'passwords' && (
-              <PasswordVaultTab device={selectedDevice} />
-            )}
-            {activeTab === 'multidevice' && (
-              <MultiDeviceTab 
-                devices={devices} 
-                selectedDevice={selectedDevice} 
-                onSelectDevice={setSelectedDevice} 
-              />
-            )}
-            {activeTab === 'inspector' && (
-              <ApkInspectorTab device={selectedDevice} />
-            )}
-            {activeTab === 'apps' && (
-              <AppsTab device={selectedDevice} />
-            )}
-            {activeTab === 'files' && (
-              <FilesTab device={selectedDevice} />
-            )}
-            {activeTab === 'backup' && (
-              <BackupTab device={selectedDevice} />
-            )}
-            {activeTab === 'root' && (
-              <RootToolkitTab device={selectedDevice} />
-            )}
-            {activeTab === 'rom' && (
-              <RomFlasherTab device={selectedDevice} />
-            )}
-            {activeTab === 'fastboot' && (
-              <FastbootTab device={selectedDevice} />
-            )}
-            {activeTab === 'hardware' && (
-              <HardwareLabTab device={selectedDevice} />
-            )}
-            {activeTab === 'tweaks' && (
-              <TweaksTab device={selectedDevice} />
-            )}
-            {activeTab === 'diagnostics' && (
-              <DiagnosticsTab device={selectedDevice} />
-            )}
-            {activeTab === 'doctor' && (
-              <DoctorTab device={selectedDevice} />
-            )}
-
+            <TabErrorBoundary activeTab={activeTab}>
+              {activeTab === 'overview' && (
+                <OverviewTab 
+                  device={selectedDevice} 
+                  onNavigateTab={setActiveTab} 
+                  onQuickAction={handleQuickAction} 
+                />
+              )}
+              {activeTab === 'ai' && (
+                <AiAssistantTab device={selectedDevice} />
+              )}
+              {activeTab === 'mirror' && (
+                <MirrorControlTab
+                  device={selectedDevice}
+                  onSendKey={handleSendKey}
+                  onSendTap={handleSendTap}
+                  onScreenshot={() => handleQuickAction('screenshot')}
+                />
+              )}
+              {activeTab === 'gamepad' && (
+                <RemoteControllerTab device={selectedDevice} />
+              )}
+              {activeTab === 'notifications' && (
+                <NotificationsTab device={selectedDevice} />
+              )}
+              {activeTab === 'network' && (
+                <NetworkVpnTab device={selectedDevice} />
+              )}
+              {activeTab === 'automation' && (
+                <AutomationTab device={selectedDevice} />
+              )}
+              {activeTab === 'gps' && (
+                <GpsSimulatorTab device={selectedDevice} />
+              )}
+              {activeTab === 'recorder' && (
+                <ScreenRecorderTab device={selectedDevice} />
+              )}
+              {activeTab === 'ocr' && (
+                <ScreenOcrTab device={selectedDevice} />
+              )}
+              {activeTab === 'camera' && (
+                <CameraTab device={selectedDevice} />
+              )}
+              {activeTab === 'microphone' && (
+                <MicrophoneTab device={selectedDevice} />
+              )}
+              {activeTab === 'audiofx' && (
+                <AudioFxTab device={selectedDevice} />
+              )}
+              {activeTab === 'messages' && (
+                <MessagesTab device={selectedDevice} />
+              )}
+              {activeTab === 'battery' && (
+                <BatteryHealthTab device={selectedDevice} />
+              )}
+              {activeTab === 'migration' && (
+                <MigrationTab devices={devices} selectedDevice={selectedDevice} />
+              )}
+              {activeTab === 'cloner' && (
+                <AppClonerTab device={selectedDevice} />
+              )}
+              {activeTab === 'debloater' && (
+                <DebloaterTab device={selectedDevice} />
+              )}
+              {activeTab === 'rescue' && (
+                <LockscreenRescueTab device={selectedDevice} />
+              )}
+              {activeTab === 'passwords' && (
+                <PasswordVaultTab device={selectedDevice} />
+              )}
+              {activeTab === 'multidevice' && (
+                <MultiDeviceTab 
+                  devices={devices} 
+                  selectedDevice={selectedDevice} 
+                  onSelectDevice={setSelectedDevice} 
+                />
+              )}
+              {activeTab === 'inspector' && (
+                <ApkInspectorTab device={selectedDevice} />
+              )}
+              {activeTab === 'apps' && (
+                <AppsTab device={selectedDevice} />
+              )}
+              {activeTab === 'files' && (
+                <FilesTab device={selectedDevice} />
+              )}
+              {activeTab === 'backup' && (
+                <BackupTab device={selectedDevice} />
+              )}
+              {activeTab === 'root' && (
+                <RootToolkitTab device={selectedDevice} />
+              )}
+              {activeTab === 'rom' && (
+                <RomFlasherTab device={selectedDevice} />
+              )}
+              {activeTab === 'fastboot' && (
+                <FastbootTab device={selectedDevice} />
+              )}
+              {activeTab === 'hardware' && (
+                <HardwareLabTab device={selectedDevice} />
+              )}
+              {activeTab === 'tweaks' && (
+                <TweaksTab device={selectedDevice} />
+              )}
+              {activeTab === 'diagnostics' && (
+                <DiagnosticsTab device={selectedDevice} />
+              )}
+              {activeTab === 'doctor' && (
+                <DoctorTab device={selectedDevice} />
+              )}
+            </TabErrorBoundary>
           </div>
         </main>
       </div>

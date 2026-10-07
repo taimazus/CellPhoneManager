@@ -311,10 +311,22 @@ export const BackupTab: React.FC<BackupTabProps> = ({ device }) => {
     }
   };
 
-  const filteredApps = apps.filter(app => 
-    app.name.toLowerCase().includes(search.toLowerCase()) || 
-    app.packageName.toLowerCase().includes(search.toLowerCase())
-  );
+  const formatPersianDate = (dateStr?: string) => {
+    if (!dateStr) return 'نامشخص';
+    try {
+      const d = new Date(dateStr);
+      return isNaN(d.getTime()) ? 'نامشخص' : d.toLocaleString('fa-IR');
+    } catch {
+      return 'نامشخص';
+    }
+  };
+
+  const filteredApps = (apps || []).filter(app => {
+    const name = (app?.name || (app as any)?.appName || app?.packageName || '');
+    const pkg = (app?.packageName || '');
+    return name.toLowerCase().includes(search.toLowerCase()) || 
+           pkg.toLowerCase().includes(search.toLowerCase());
+  });
 
   return (
     <div className="space-y-6 animate-fadeIn font-sans text-right" dir="rtl">
@@ -652,7 +664,7 @@ export const BackupTab: React.FC<BackupTabProps> = ({ device }) => {
 
                         <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
                           <Clock className="w-3.5 h-3.5 text-slate-500" />
-                          <span>{new Date(bak.createdAt).toLocaleString('fa-IR')}</span>
+                          <span>{formatPersianDate(bak.createdAt)}</span>
                         </div>
                       </div>
 
@@ -829,29 +841,32 @@ export const BackupTab: React.FC<BackupTabProps> = ({ device }) => {
             ) : filteredApps.length === 0 ? (
               <div className="col-span-3 p-8 text-center text-xs text-slate-400">برنامه‌ای یافت نشد.</div>
             ) : (
-              filteredApps.map((app) => (
-                <div
-                  key={app.packageName}
-                  className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 flex items-center justify-between gap-3 transition-all"
-                >
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    <AppIcon icon={app.icon} name={app.name} className="w-9 h-9 shrink-0" />
-                    <div className="overflow-hidden">
-                      <p className="text-xs font-bold text-white truncate">{app.name}</p>
-                      <p className="text-[10px] text-slate-400 font-mono truncate">{app.packageName}</p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleExtractApk(app.packageName)}
-                    disabled={extractingPkg === app.packageName}
-                    className="p-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 transition-all shrink-0 active:scale-95 disabled:opacity-50"
-                    title={`استخراج ${pkgFormat}`}
+              filteredApps.map((app) => {
+                const displayName = app?.name || (app as any)?.appName || app?.packageName || 'برنامه';
+                return (
+                  <div
+                    key={app.packageName}
+                    className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 flex items-center justify-between gap-3 transition-all"
                   >
-                    <Download className={`w-4 h-4 ${extractingPkg === app.packageName ? 'animate-bounce' : ''}`} />
-                  </button>
-                </div>
-              ))
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <AppIcon icon={app.icon} name={displayName} className="w-9 h-9 shrink-0" />
+                      <div className="overflow-hidden">
+                        <p className="text-xs font-bold text-white truncate">{displayName}</p>
+                        <p className="text-[10px] text-slate-400 font-mono truncate">{app.packageName}</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleExtractApk(app.packageName)}
+                      disabled={extractingPkg === app.packageName}
+                      className="p-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 transition-all shrink-0 active:scale-95 disabled:opacity-50"
+                      title={`استخراج ${pkgFormat}`}
+                    >
+                      <Download className={`w-4 h-4 ${extractingPkg === app.packageName ? 'animate-bounce' : ''}`} />
+                    </button>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
