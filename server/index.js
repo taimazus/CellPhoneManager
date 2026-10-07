@@ -87,10 +87,11 @@ app.get('/api/devices', async (req, res) => {
   try {
     const androidDevices = await adbManager.listDevices();
     const iosDevices = await iosManager.listDevices();
+    const realDevices = [...androidDevices, ...iosDevices];
     const mockDevices = mockDeviceManager.getDevices();
 
-    // Combine real devices; if none connected, include mock devices for demonstration
-    const devices = [...androidDevices, ...iosDevices, ...mockDevices];
+    // Prioritize real connected devices; show mock devices only when no physical device is detected
+    const devices = realDevices.length > 0 ? realDevices : mockDevices;
     res.json({ devices });
   } catch (err) {
     res.status(500).json({ error: err.message });
