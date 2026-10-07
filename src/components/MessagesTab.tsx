@@ -37,6 +37,7 @@ import {
   ArrowUpDown
 } from 'lucide-react';
 import { Device } from '../types';
+import { safeFetchJson } from '../utils/api';
 
 interface MessagesTabProps {
   device: Device | null;
@@ -120,11 +121,55 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
   const [contactSort, setContactSort] = useState<'name_asc' | 'name_desc' | 'phone_asc'>('name_asc');
   const [smsSort, setSmsSort] = useState<'date_desc' | 'date_asc'>('date_desc');
 
+  // --- Dual SIM & USSD State ---
+  const [preferredSim, setPreferredSim] = useState<number>(() => {
+    if (!device) return 0;
+    const saved = localStorage.getItem(`cpm_sim_pref_${device.id}`);
+    return saved !== null ? parseInt(saved, 10) : 0; // 0 = SIM 1, 1 = SIM 2, -1 = System Default
+  });
+  const [ussdCode, setUssdCode] = useState<string>('');
+
   const timerRef = useRef<any>(null);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToast({ text, type });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  const handleSetPreferredSim = async (slot: number) => {
+    setPreferredSim(slot);
+    if (device) {
+      localStorage.setItem(`cpm_sim_pref_${device.id}`, String(slot));
+      await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/telephony/default-sim`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voiceSlot: slot, smsSlot: slot })
+      });
+      showToast(slot === -1 ? 'سیم‌کارت پیش‌فرض بر روی حالت خودکار سیستم قرار گرفت' : `سیم‌کارت ${slot + 1} به عنوان سیم‌کارت پیش‌فرض این گوشی ذخیره شد`, 'success');
+    }
+  };
+
+  const handleRunUssd = async (codeToRun?: string) => {
+    if (!device) return;
+    const code = codeToRun || ussdCode;
+    if (!code || !code.trim()) {
+      showToast('لطفاً کد دستوری USSD را وارد کنید (مثلاً *100# یا *555#)', 'error');
+      return;
+    }
+    try {
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/ussd/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code.trim(), simSlot: preferredSim })
+      });
+      if (data.success) {
+        showToast(data.message || `کد دستوری ${code} با موفقیت ارسال شد`, 'success');
+      } else {
+        showToast(`خطا: ${data.error || 'خطای ناشناخته'}`, 'error');
+      }
+    } catch (err: any) {
+      showToast(`خطا: ${err.message}`, 'error');
+    }
   };
 
   // --- 0. Poll Call State (Every 2.5 seconds) ---
@@ -353,7 +398,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       const res = await fetch(`/api/devices/${device.id}/calls/make`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number: numberToCall, name })
+        body: JSON.stringify({ number: numberToCall, name, simSlot: preferredSim })
       });
       const data = await res.json();
       if (data.success) {
@@ -477,7 +522,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       const res = await fetch(`/api/devices/${device.id}/sms/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number: recipient, body: messageText })
+        body: JSON.stringify({ number: recipient, body: messageText, simSlot: preferredSim })
       });
       const data = await res.json();
       if (data.success) {
@@ -812,20 +857,72 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       {subTab === 'calls' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Dialpad Card */}
-          <div className="rounded-2xl glass-panel p-6 border border-slate-800 space-y-4 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-3">
+          {/* Dialpad & Quick USSD Card */}
+          <div className="rounded-2xl glass-panel p-6 border border-slate-800 space-y-5 flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <Phone className="w-4 h-4 text-cyan-400" />
-                  <span>شماره‌گیر مستقیم (Phone Dialer)</span>
+                  <span>شماره‌گیر مستقیم و کدهای دستوری</span>
                 </h3>
               </div>
 
+              {/* SIM Card Preference Selector */}
+              <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800/80 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 font-semibold flex items-center gap-1.5">
+                    <Smartphone className="w-3.5 h-3.5 text-cyan-400" />
+                    سیم‌کارت پیش‌فرض تماس و پیامک:
+                  </span>
+                  <span className="text-[10px] text-cyan-400 font-mono">
+                    {preferredSim === -1 ? 'خودکار سیستم' : `سیم‌کارت ${preferredSim + 1}`}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleSetPreferredSim(-1)}
+                    className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                      preferredSim === -1
+                        ? 'bg-cyan-500 text-slate-950 shadow-sm shadow-cyan-500/30'
+                        : 'bg-slate-950/60 text-slate-400 hover:text-slate-200 border border-slate-800'
+                    }`}
+                  >
+                    خودکار (Auto)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetPreferredSim(0)}
+                    className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                      preferredSim === 0
+                        ? 'bg-cyan-500 text-slate-950 shadow-sm shadow-cyan-500/30'
+                        : 'bg-slate-950/60 text-slate-400 hover:text-slate-200 border border-slate-800'
+                    }`}
+                  >
+                    سیم ۱ (SIM 1)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetPreferredSim(1)}
+                    className={`py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
+                      preferredSim === 1
+                        ? 'bg-cyan-500 text-slate-950 shadow-sm shadow-cyan-500/30'
+                        : 'bg-slate-950/60 text-slate-400 hover:text-slate-200 border border-slate-800'
+                    }`}
+                  >
+                    سیم ۲ (SIM 2)
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-500 leading-tight">
+                  انتخاب سیم‌کارت به صورت پیش‌فرض برای این گوشی ذخیره می‌شود تا هنگام تماس یا ارسال پیامک سوال مجدد پرسیده نشود.
+                </p>
+              </div>
+
               {/* Number Input Screen */}
-              <div className="relative mb-4">
+              <div className="relative">
                 <input
                   type="text"
-                  placeholder="شماره تماس..."
+                  placeholder="شماره تماس یا کد دستوری..."
                   value={dialNumber}
                   onChange={(e) => setDialNumber(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleMakeCall(dialNumber)}
@@ -853,7 +950,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                         setDialNumber(prev => prev + k);
                       }
                     }}
-                    className="h-12 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 text-lg font-mono font-bold text-slate-200 transition-all active:scale-95"
+                    className="h-11 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/40 text-lg font-mono font-bold text-slate-200 transition-all active:scale-95"
                   >
                     {k}
                   </button>
@@ -862,14 +959,63 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
             </div>
 
             {/* Call Action Button */}
-            <button
-              onClick={() => handleMakeCall(dialNumber)}
-              disabled={!dialNumber.trim()}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-slate-950 font-bold text-sm shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50"
-            >
-              <PhoneCall className="w-5 h-5" />
-              <span>برقراری تماس با گوشی</span>
-            </button>
+            <div className="space-y-3 pt-2">
+              <button
+                onClick={() => handleMakeCall(dialNumber)}
+                disabled={!dialNumber.trim()}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-slate-950 font-bold text-sm shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50"
+              >
+                <PhoneCall className="w-5 h-5" />
+                <span>برقراری تماس با گوشی</span>
+              </button>
+
+              {/* Quick USSD Section */}
+              <div className="pt-2 border-t border-slate-800/80 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-400 font-semibold flex items-center gap-1">
+                    <Hash className="w-3.5 h-3.5 text-cyan-400" />
+                    کدهای دستوری و شارژ سریع (USSD):
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    placeholder="*100# یا *555#..."
+                    value={ussdCode}
+                    onChange={(e) => setUssdCode(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleRunUssd()}
+                    className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-500"
+                  />
+                  <button
+                    onClick={() => handleRunUssd()}
+                    className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-slate-950 text-xs font-bold transition-all border border-cyan-500/30"
+                  >
+                    ارسال USSD
+                  </button>
+                </div>
+
+                {/* Preset USSD Chips */}
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[
+                    { label: 'شارژ ایرانسل', code: '*140*11#' },
+                    { label: 'اینترنت همراه اول', code: '*100#' },
+                    { label: 'منوی ایرانسل', code: '*555#' },
+                    { label: 'آپ (۷۳۳)', code: '*733#' },
+                    { label: 'هفت هشتاد', code: '*788#' },
+                    { label: 'سیمکارت رایتل', code: '*140#' }
+                  ].map((chip) => (
+                    <button
+                      key={chip.code}
+                      onClick={() => handleRunUssd(chip.code)}
+                      className="px-2 py-1 rounded-lg bg-slate-900/90 hover:bg-cyan-500/10 text-[11px] font-mono text-slate-300 hover:text-cyan-300 border border-slate-800 transition-all flex items-center gap-1"
+                    >
+                      <span className="text-cyan-400">{chip.code}</span>
+                      <span className="text-slate-500">({chip.label})</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Call Logs List Card */}

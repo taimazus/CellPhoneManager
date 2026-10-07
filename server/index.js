@@ -917,7 +917,7 @@ app.get('/api/devices/:id/calls', async (req, res) => {
 
 app.post('/api/devices/:id/calls/make', async (req, res) => {
   const { id } = req.params;
-  const { number, name = 'تماس جدید' } = req.body;
+  const { number, name = 'تماس جدید', simSlot } = req.body;
   if (!number) return res.status(400).json({ error: 'شماره تماس الزامی است' });
 
   try {
@@ -925,7 +925,37 @@ app.post('/api/devices/:id/calls/make', async (req, res) => {
       mockDeviceManager.addCallLog(id, { name, number, type: 'outgoing', duration: '1m 05s' });
       return res.json({ success: true, message: `تماس با شماره ${number} برقرار شد` });
     }
-    const result = await adbManager.makeCall(id, number);
+    const result = await adbManager.makeCall(id, number, { simSlot });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/ussd/run', async (req, res) => {
+  const { id } = req.params;
+  const { code, simSlot } = req.body;
+  if (!code) return res.status(400).json({ error: 'کد دستوری USSD الزامی است' });
+
+  try {
+    if (id.startsWith('mock-')) {
+      return res.json({ success: true, message: `کد دستوری ${code} با موفقیت اجرا شد (شبیه‌ساز)` });
+    }
+    const result = await adbManager.sendUssd(id, code, { simSlot });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/telephony/default-sim', async (req, res) => {
+  const { id } = req.params;
+  const { voiceSlot, smsSlot, dataSlot } = req.body;
+  try {
+    if (id.startsWith('mock-')) {
+      return res.json({ success: true, message: 'سیم‌کارت پیش‌فرض با موفقیت تنظیم شد (شبیه‌ساز)' });
+    }
+    const result = await adbManager.setDefaultSim(id, { voiceSlot, smsSlot, dataSlot });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1027,7 +1057,7 @@ app.get('/api/devices/:id/sms', async (req, res) => {
 
 app.post('/api/devices/:id/sms/send', async (req, res) => {
   const { id } = req.params;
-  const { number, body } = req.body;
+  const { number, body, simSlot } = req.body;
   if (!number || !body) return res.status(400).json({ error: 'شماره مقصد و متن پیامک الزامی است' });
 
   try {
@@ -1035,7 +1065,7 @@ app.post('/api/devices/:id/sms/send', async (req, res) => {
       const sent = mockDeviceManager.sendSms(id, { number, body });
       return res.json({ success: true, message: 'پیامک با موفقیت ارسال شد', data: sent });
     }
-    const result = await adbManager.sendSms(id, { number, body });
+    const result = await adbManager.sendSms(id, { number, body, simSlot });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

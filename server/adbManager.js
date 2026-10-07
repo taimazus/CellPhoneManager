@@ -632,9 +632,37 @@ export class AdbManager {
     }
   }
 
-  async makeCall(serial, number) {
+  async makeCall(serial, number, options = {}) {
     const cleanNum = number.replace(/[^\d+*#]/g, '');
-    return await this.runAdb(`shell am start -a android.intent.action.CALL -d tel:${cleanNum}`, serial);
+    const encodedNum = cleanNum.replace(/#/g, '%23');
+    let extraArgs = '';
+    if (options.simSlot !== undefined && options.simSlot !== null && options.simSlot !== -1 && options.simSlot !== '') {
+      const slot = Number(options.simSlot);
+      extraArgs = ` --ei com.android.phone.extra.slot ${slot} --ei simSlot ${slot} --ei Phone.SLOT_KEY ${slot} --ei subscription ${slot}`;
+    }
+    return await this.runAdb(`shell am start -a android.intent.action.CALL -d "tel:${encodedNum}"${extraArgs}`, serial);
+  }
+
+  async sendUssd(serial, code, options = {}) {
+    return await this.makeCall(serial, code, options);
+  }
+
+  async setDefaultSim(serial, { voiceSlot, smsSlot, dataSlot }) {
+    try {
+      if (voiceSlot !== undefined && voiceSlot !== -1) {
+        await this.runAdb(`shell settings put global multi_sim_voice_call ${voiceSlot}`, serial);
+        await this.runAdb(`shell settings put global user_preferred_sub ${voiceSlot}`, serial);
+      }
+      if (smsSlot !== undefined && smsSlot !== -1) {
+        await this.runAdb(`shell settings put global multi_sim_sms ${smsSlot}`, serial);
+      }
+      if (dataSlot !== undefined && dataSlot !== -1) {
+        await this.runAdb(`shell settings put global multi_sim_data_call ${dataSlot}`, serial);
+      }
+      return { success: true, message: 'سیم‌کارت پیش‌فرض با موفقیت روی گوشی تنظیم شد' };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   }
 
   async deleteCallLog(serial, id) {
@@ -731,9 +759,14 @@ export class AdbManager {
     }
   }
 
-  async sendSms(serial, { number, body }) {
-    const escaped = body.replace(/([\\"'`$!#&*()|;<>\s])/g, '\\$1');
-    return await this.runAdb(`shell am start -a android.intent.action.SENDTO -d sms:${number} --es sms_body "${escaped}"`, serial);
+  async sendSms(serial, { number, body, simSlot }) {
+    const escaped = (body || '').replace(/([\\"'`$!#&*()|;<>\s])/g, '\\$1');
+    let extraArgs = '';
+    if (simSlot !== undefined && simSlot !== null && simSlot !== -1 && simSlot !== '') {
+      const slot = Number(simSlot);
+      extraArgs = ` --ei com.android.phone.extra.slot ${slot} --ei simSlot ${slot} --ei subscription ${slot}`;
+    }
+    return await this.runAdb(`shell am start -a android.intent.action.SENDTO -d "sms:${number}" --es sms_body "${escaped}"${extraArgs}`, serial);
   }
 
   async deleteSms(serial, id) {
