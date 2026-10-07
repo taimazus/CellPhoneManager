@@ -39,6 +39,7 @@ import { telemetryManager } from './telemetryManager.js';
 import { profileManager } from './profileManager.js';
 import { firmwareGuardManager } from './firmwareGuardManager.js';
 import { automationManager } from './automationManager.js';
+import { capabilityManager } from './capabilityManager.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -2789,6 +2790,31 @@ app.get('/api/automation/history', (req, res) => {
 app.post('/api/devices/:id/automation/trigger', async (req, res) => {
   const { triggerType = 'DEVICE_CONNECT' } = req.body;
   res.json(await automationManager.triggerAutomations(triggerType, { id: req.params.id }));
+});
+
+// -------------------------------------------------------------
+// 38. Device Capability Detection & Policy Enforcement APIs
+// -------------------------------------------------------------
+app.get('/api/capabilities/definitions', (req, res) => {
+  res.json({ success: true, definitions: capabilityManager.getCapabilityDefinitions() });
+});
+
+app.get('/api/devices/:id/capabilities', async (req, res) => {
+  const { id } = req.params;
+  const cached = capabilityManager.getCached(id);
+  if (cached) {
+    return res.json(cached);
+  }
+  // If not cached, evaluate on the fly
+  const result = await capabilityManager.evaluateDevice({ id, serial: id });
+  res.json(result);
+});
+
+app.post('/api/devices/:id/capabilities/evaluate', async (req, res) => {
+  const { id } = req.params;
+  const device = req.body || { id, serial: id };
+  const result = await capabilityManager.evaluateDevice({ ...device, id, serial: id });
+  res.json(result);
 });
 
 // API 404 Handler - Never return HTML for /api/* requests
