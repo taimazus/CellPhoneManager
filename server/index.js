@@ -29,6 +29,7 @@ import { rootManager } from './rootManager.js';
 import { romManager } from './romManager.js';
 import { universalBackupManager } from './universalBackupManager.js';
 import { passwordManager } from './passwordManager.js';
+import { audioRecorderManager } from './audioRecorderManager.js';
 
 
 const app = express();
@@ -485,7 +486,7 @@ app.post('/api/devices/:id/mic/start', async (req, res) => {
       return res.json({ success: true, message: 'استریم میکروفون شبیه‌سازی شد' });
     }
 
-    const result = await mirrorManager.startMicStream(id, options);
+    const result = await audioRecorderManager.startMicStream(id, options);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -494,8 +495,103 @@ app.post('/api/devices/:id/mic/start', async (req, res) => {
 
 app.post('/api/devices/:id/mic/stop', (req, res) => {
   const { id } = req.params;
-  const result = mirrorManager.stopScrcpy(id);
+  const result = audioRecorderManager.stopMicStream(id);
   res.json(result);
+});
+
+app.get('/api/devices/:id/mic/status', (req, res) => {
+  const { id } = req.params;
+  const status = audioRecorderManager.getStatus(id);
+  res.json(status);
+});
+
+// Audio Recordings & File Management APIs
+app.get('/api/audio-recordings', (req, res) => {
+  const recordings = audioRecorderManager.listAudioRecordings();
+  const directory = audioRecorderManager.getAudioDir();
+  res.json({ recordings, directory });
+});
+
+app.get('/api/audio-recordings/directory', (req, res) => {
+  res.json({ directory: audioRecorderManager.getAudioDir() });
+});
+
+app.post('/api/audio-recordings/directory', (req, res) => {
+  const { directory } = req.body;
+  const result = audioRecorderManager.setAudioDir(directory);
+  res.json(result);
+});
+
+app.post('/api/audio-recordings/open-folder', (req, res) => {
+  const { customPath } = req.body || {};
+  const result = audioRecorderManager.openDirectoryInExplorer(customPath);
+  res.json(result);
+});
+
+app.post('/api/audio-recordings/open-file', (req, res) => {
+  const { filename } = req.body;
+  if (!filename) return res.status(400).json({ error: 'نام فایل صوتی الزامی است' });
+  const result = audioRecorderManager.openFileInExplorer(filename);
+  res.json(result);
+});
+
+app.delete('/api/audio-recordings/:filename', (req, res) => {
+  const { filename } = req.params;
+  const result = audioRecorderManager.deleteAudio(filename);
+  res.json(result);
+});
+
+app.get('/api/audio-recordings/stream/:filename', (req, res) => {
+  const { filename } = req.params;
+  const safeFilename = path.basename(filename);
+  const filePath = path.join(audioRecorderManager.getAudioDir(), safeFilename);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'فایل صوتی یافت نشد' });
+  }
+
+  const stat = fs.statSync(filePath);
+  const fileSize = stat.size;
+  const range = req.headers.range;
+
+  let contentType = 'audio/ogg';
+  if (safeFilename.endsWith('.aac') || safeFilename.endsWith('.m4a')) contentType = 'audio/mp4';
+  else if (safeFilename.endsWith('.mp3')) contentType = 'audio/mpeg';
+  else if (safeFilename.endsWith('.wav')) contentType = 'audio/wav';
+  else if (safeFilename.endsWith('.opus')) contentType = 'audio/opus';
+
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    const chunksize = (end - start) + 1;
+    const file = fs.createReadStream(filePath, { start, end });
+    const head = {
+      'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': chunksize,
+      'Content-Type': contentType,
+    };
+    res.writeHead(206, head);
+    file.pipe(res);
+  } else {
+    const head = {
+      'Content-Length': fileSize,
+      'Content-Type': contentType,
+    };
+    res.writeHead(200, head);
+    fs.createReadStream(filePath).pipe(res);
+  }
+});
+
+app.get('/api/audio-recordings/download/:filename', (req, res) => {
+  const { filename } = req.params;
+  const safeFilename = path.basename(filename);
+  const filePath = path.join(audioRecorderManager.getAudioDir(), safeFilename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'فایل صوتی یافت نشد' });
+  }
+  res.download(filePath, safeFilename);
 });
 
 // Live in-browser screencap endpoint
