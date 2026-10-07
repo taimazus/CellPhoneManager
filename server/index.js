@@ -867,18 +867,34 @@ app.post('/api/devices/:id/files/mkdir', async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// 7. APK Extractor & Remote Typing APIs
+// 7. App Package Extractor (Android APK & iOS IPA/App) & Remote Typing APIs
 // -------------------------------------------------------------
 app.get('/api/devices/:id/apps/extract', async (req, res) => {
   const { id } = req.params;
   const packageName = req.query.packageName;
-  if (!packageName) return res.status(400).json({ error: 'نام پکیج الزامی است' });
+  const type = req.query.type || 'android';
+  if (!packageName) return res.status(400).json({ error: 'نام پکیج / Bundle ID الزامی است' });
 
-  const localDest = path.join(uploadsDir, `${packageName}.apk`);
+  const ext = type === 'ios' ? 'ipa' : 'apk';
+  const localDest = path.join(uploadsDir, `${packageName}.${ext}`);
   try {
     if (id.startsWith('mock-')) {
-      return res.json({ success: true, message: `استخراج ${packageName}.apk در حالت شبیه‌ساز انجام شد.` });
+      return res.json({ success: true, message: `استخراج ${packageName}.${ext} در حالت شبیه‌ساز انجام شد.` });
     }
+
+    if (type === 'ios') {
+      const result = await iosManager.extractApp(id, packageName, localDest);
+      if (fs.existsSync(localDest)) {
+        res.download(localDest, `${packageName}.${ext}`, () => {
+          if (fs.existsSync(localDest)) fs.unlinkSync(localDest);
+        });
+      } else {
+        res.status(500).json({ error: result.error || 'خطا در استخراج برنامه iOS' });
+      }
+      return;
+    }
+
+    // Android APK Extraction
     const result = await adbManager.extractApk(id, packageName, localDest);
     if (fs.existsSync(localDest)) {
       res.download(localDest, `${packageName}.apk`, () => {

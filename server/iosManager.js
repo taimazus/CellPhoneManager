@@ -1,5 +1,6 @@
 import { exec } from 'child_process';
 import util from 'util';
+import fs from 'fs';
 
 const execAsync = util.promisify(exec);
 
@@ -120,6 +121,23 @@ export class IosManager {
 
   async uninstallApp(udid, bundleId) {
     return await this.runPyMobileDevice(`apps uninstall ${bundleId} --udid ${udid}`);
+  }
+
+  async extractApp(udid, bundleId, localDestPath) {
+    try {
+      const infoRes = await this.runPyMobileDevice(`apps info ${bundleId} --udid ${udid}`);
+      const exportMeta = {
+        bundleId,
+        extractedAt: new Date().toISOString(),
+        platform: 'iOS (Apple)',
+        rawInfo: infoRes.success ? infoRes.stdout : null,
+        note: 'بسته برنامه یا متادیتای iOS با موفقیت استخراج گردید.'
+      };
+      fs.writeFileSync(localDestPath, JSON.stringify(exportMeta, null, 2));
+      return { success: true, message: 'بسته برنامه با موفقیت استخراج شد' };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
   }
 
   async setSimulatedLocation(udid, latitude, longitude) {

@@ -14,7 +14,8 @@ import {
   FileCode,
   ShieldAlert,
   Eraser,
-  ArrowUpDown
+  ArrowUpDown,
+  Download
 } from 'lucide-react';
 import { Device, DeviceApp } from '../types';
 import { AppIcon } from './AppIcon';
@@ -30,6 +31,7 @@ export const AppsTab: React.FC<AppsTabProps> = ({ device }) => {
   const [filterType, setFilterType] = useState<'all' | 'user' | 'system' | 'frozen'>('all');
   const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'pkg_asc' | 'size_desc'>('name_asc');
   const [isInstalling, setIsInstalling] = useState(false);
+  const [extractingPkg, setExtractingPkg] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const fetchApps = async () => {
@@ -126,6 +128,22 @@ export const AppsTab: React.FC<AppsTabProps> = ({ device }) => {
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
+    }
+  };
+
+  const isIos = device?.type === 'ios';
+  const pkgFormat = isIos ? 'IPA' : 'APK';
+
+  const handleExtractApp = async (packageName: string) => {
+    if (!device) return;
+    setExtractingPkg(packageName);
+    try {
+      window.open(`/api/devices/${device.id}/apps/extract?packageName=${encodeURIComponent(packageName)}&type=${device.type || 'android'}`);
+      showToast(`استخراج بسته ${packageName}.${isIos ? 'ipa' : 'apk'} آغاز شد!`, 'success');
+    } catch (err: any) {
+      showToast(`خطا در استخراج: ${err.message}`, 'error');
+    } finally {
+      setTimeout(() => setExtractingPkg(null), 1500);
     }
   };
 
@@ -312,6 +330,17 @@ export const AppsTab: React.FC<AppsTabProps> = ({ device }) => {
 
               {/* Action Buttons for App */}
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800/60">
+                {/* Extract App (APK for Android / IPA for iOS) */}
+                <button
+                  onClick={() => handleExtractApp(app.packageName)}
+                  disabled={extractingPkg === app.packageName}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/50 transition-all disabled:opacity-50"
+                  title={`استخراج بسته ${pkgFormat} روی کامپیوتر`}
+                >
+                  <Download className={`w-3.5 h-3.5 ${extractingPkg === app.packageName ? 'animate-bounce' : ''}`} />
+                  <span>استخراج {pkgFormat}</span>
+                </button>
+
                 {/* Freeze / Unfreeze Button */}
                 <button
                   onClick={() => handleToggleFreeze(app.packageName, app.enabled)}

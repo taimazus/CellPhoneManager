@@ -188,12 +188,15 @@ export const BackupTab: React.FC<BackupTabProps> = ({ device }) => {
     }
   };
 
+  const isIos = device?.type === 'ios';
+  const pkgFormat = isIos ? 'IPA' : 'APK';
+
   const handleExtractApk = async (packageName: string) => {
     if (!device) return;
     setExtractingPkg(packageName);
     try {
-      window.open(`/api/devices/${device.id}/apps/extract?packageName=${encodeURIComponent(packageName)}`);
-      showToast(`استخراج ${packageName}.apk شروع شد!`, 'success');
+      window.open(`/api/devices/${device.id}/apps/extract?packageName=${encodeURIComponent(packageName)}&type=${device.type || 'android'}`);
+      showToast(`استخراج بسته ${packageName}.${isIos ? 'ipa' : 'apk'} شروع شد!`, 'success');
     } catch (err: any) {
       showToast(`خطا در استخراج: ${err.message}`, 'error');
     } finally {
@@ -509,7 +512,7 @@ export const BackupTab: React.FC<BackupTabProps> = ({ device }) => {
                     onClick={() => handleExtractApk(app.packageName)}
                     disabled={extractingPkg === app.packageName}
                     className="p-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 transition-all shrink-0 active:scale-95 disabled:opacity-50"
-                    title="استخراج APK"
+                    title={`استخراج ${pkgFormat}`}
                   >
                     <Download className={`w-4 h-4 ${extractingPkg === app.packageName ? 'animate-bounce' : ''}`} />
                   </button>
