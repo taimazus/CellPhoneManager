@@ -23,21 +23,18 @@ export const VK = {
   SHIFT: 0x10, // 16
   CONTROL: 0x11, // 17
   ALT: 0x12,   // 18
-  // Letters
-  W: 0x57,     // 87
-  A: 0x41,     // 65
-  S: 0x53,     // 83
-  D: 0x44,     // 68
-  Q: 0x51,     // 81
-  E: 0x45,     // 69
-  R: 0x52,     // 82
-  C: 0x43,     // 67
-  F: 0x46,     // 70
-  Z: 0x5A,     // 90
-  X: 0x58,     // 88
-  // Digits
-  NUM_1: 0x31, // 49
-  NUM_2: 0x32  // 50
+  // Letters A-Z
+  A: 0x41, B: 0x42, C: 0x43, D: 0x44, E: 0x45, F: 0x46, G: 0x47,
+  H: 0x48, I: 0x49, J: 0x4A, K: 0x4B, L: 0x4C, M: 0x4D, N: 0x4E,
+  O: 0x4F, P: 0x50, Q: 0x51, R: 0x52, S: 0x53, T: 0x54, U: 0x55,
+  V: 0x56, W: 0x57, X: 0x58, Y: 0x59, Z: 0x5A,
+  // Numpad Keys
+  NUMPAD_0: 0x60, NUMPAD_1: 0x61, NUMPAD_2: 0x62, NUMPAD_3: 0x63,
+  NUMPAD_4: 0x64, NUMPAD_5: 0x65, NUMPAD_6: 0x66, NUMPAD_7: 0x67,
+  NUMPAD_8: 0x68, NUMPAD_9: 0x69,
+  // Digits 0-9
+  NUM_0: 0x30, NUM_1: 0x31, NUM_2: 0x32, NUM_3: 0x33, NUM_4: 0x34,
+  NUM_5: 0x35, NUM_6: 0x36, NUM_7: 0x37, NUM_8: 0x38, NUM_9: 0x39
 };
 
 export class PcGamepadManager {
@@ -53,8 +50,9 @@ export class PcGamepadManager {
       fifa: {
         id: 'fifa',
         name: '⚽ فوتبال فیفا و پی‌اس (FIFA / PES)',
-        desc: 'پاس کوتاه با S، شوت با D، پاس در عمق با W، سانتر با A، دویدن سریع با Shift/E، شروع با Space/Enter',
+        desc: 'پاس کوتاه با S، شوت با D، پاس در عمق با W، سانتر با A، دویدن با Shift/E، شروع با Space/Enter',
         mappings: {
+          // Player 1 mappings
           'DPAD_UP': VK.UP,
           'DPAD_DOWN': VK.DOWN,
           'DPAD_LEFT': VK.LEFT,
@@ -70,6 +68,24 @@ export class PcGamepadManager {
           'START': VK.SPACE,  // Space (Start/Confirm in FIFA)
           'ENTER': VK.ENTER,  // Enter (Menu Advance)
           'SELECT': VK.ESCAPE // Esc (Back / Pause)
+        },
+        player2Mappings: {
+          // Player 2 mappings (I/J/K/L + B/N/V/G)
+          'DPAD_UP': VK.I,
+          'DPAD_DOWN': VK.K,
+          'DPAD_LEFT': VK.J,
+          'DPAD_RIGHT': VK.L,
+          'BTN_A': VK.B,      // Short Pass
+          'BTN_B': VK.N,      // Shoot
+          'BTN_X': VK.V,      // Cross
+          'BTN_Y': VK.G,      // Through Ball
+          'L1': VK.T,         // Player Switch
+          'R1': VK.Y,         // Sprint
+          'L2': VK.H,         // Shield Ball
+          'R2': VK.U,         // Sprint
+          'START': VK.P,      // Player 2 Start
+          'ENTER': VK.ENTER,
+          'SELECT': VK.ESCAPE
         }
       },
       racing: {
@@ -89,6 +105,23 @@ export class PcGamepadManager {
           'R1': VK.RIGHT,
           'L2': VK.SHIFT,     // Handbrake
           'R2': VK.W,         // Gas
+          'START': VK.ENTER,
+          'ENTER': VK.ENTER,
+          'SELECT': VK.ESCAPE
+        },
+        player2Mappings: {
+          'DPAD_UP': VK.I,
+          'DPAD_DOWN': VK.K,
+          'DPAD_LEFT': VK.J,
+          'DPAD_RIGHT': VK.L,
+          'BTN_A': VK.I,
+          'BTN_B': VK.K,
+          'BTN_X': VK.P,
+          'BTN_Y': VK.O,
+          'L1': VK.J,
+          'R1': VK.L,
+          'L2': VK.U,
+          'R2': VK.I,
           'START': VK.ENTER,
           'ENTER': VK.ENTER,
           'SELECT': VK.ESCAPE
@@ -114,6 +147,23 @@ export class PcGamepadManager {
           'START': VK.ESCAPE,
           'ENTER': VK.ENTER,
           'SELECT': VK.TAB
+        },
+        player2Mappings: {
+          'DPAD_UP': VK.I,
+          'DPAD_DOWN': VK.K,
+          'DPAD_LEFT': VK.J,
+          'DPAD_RIGHT': VK.L,
+          'BTN_A': VK.P,
+          'BTN_B': VK.H,
+          'BTN_X': VK.U,
+          'BTN_Y': VK.Y,
+          'L1': VK.O,
+          'R1': VK.ENTER,
+          'L2': VK.T,
+          'R2': VK.G,
+          'START': VK.ESCAPE,
+          'ENTER': VK.ENTER,
+          'SELECT': VK.TAB
         }
       },
       retro: {
@@ -133,6 +183,23 @@ export class PcGamepadManager {
           'R1': VK.E,
           'L2': VK.NUM_1,
           'R2': VK.NUM_2,
+          'START': VK.ENTER,
+          'ENTER': VK.ENTER,
+          'SELECT': VK.ESCAPE
+        },
+        player2Mappings: {
+          'DPAD_UP': VK.I,
+          'DPAD_DOWN': VK.K,
+          'DPAD_LEFT': VK.J,
+          'DPAD_RIGHT': VK.L,
+          'BTN_A': VK.B,
+          'BTN_B': VK.N,
+          'BTN_X': VK.V,
+          'BTN_Y': VK.G,
+          'L1': VK.T,
+          'R1': VK.Y,
+          'L2': VK.NUM_3,
+          'R2': VK.NUM_4,
           'START': VK.ENTER,
           'ENTER': VK.ENTER,
           'SELECT': VK.ESCAPE
@@ -288,10 +355,11 @@ export class PcGamepadManager {
   }
 
   processGamepadEvent(event) {
-    const { button, state, axisX, axisY } = event;
+    const { button, state, player = 1, axisX, axisY } = event;
     this.latestInputs = {
       button,
       state,
+      player,
       axisX: axisX !== undefined ? Math.round(axisX * 100) / 100 : 0,
       axisY: axisY !== undefined ? Math.round(axisY * 100) / 100 : 0,
       timestamp: Date.now()
@@ -299,9 +367,10 @@ export class PcGamepadManager {
 
     if (!this.isInputSimulationActive) return;
 
-    // Map button to Windows VK code
+    // Select Player 1 or Player 2 mapping
     const profile = this.profiles[this.activeProfile] || this.profiles.fifa;
-    const vkCode = profile.mappings[button];
+    const mappings = player === 2 && profile.player2Mappings ? profile.player2Mappings : profile.mappings;
+    const vkCode = mappings[button];
 
     if (vkCode !== undefined) {
       this.sendWindowsKey(vkCode, state || 'down');

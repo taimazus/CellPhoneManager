@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0a0b10">
-  <title>👑 گیم‌پد سلطنتی ویندوز | CellPhoneManager</title>
+  <title>👑 گیم‌پد سلطنتی ویندوز | دو نفره</title>
   <style>
     * {
       box-sizing: border-box;
@@ -41,40 +41,54 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 12px;
-      gap: 8px;
+      padding: 0 10px;
+      gap: 6px;
       z-index: 50;
     }
-    .header-title {
+    .header-left {
       display: flex;
       align-items: center;
       gap: 6px;
-      font-weight: 800;
-      font-size: 13px;
-      color: #f59e0b;
-      white-space: nowrap;
     }
-    .header-controls {
+    .header-right {
       display: flex;
       align-items: center;
       gap: 6px;
+    }
+    .player-toggle-btn {
+      background: #1e2030;
+      color: #38bdf8;
+      border: 1.5px solid #0284c7;
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .player-toggle-btn.p2 {
+      color: #f472b6;
+      border-color: #db2777;
     }
     .profile-select {
       background: #1e2030;
       color: #fcd34d;
       border: 1px solid rgba(245, 158, 11, 0.4);
       border-radius: 8px;
-      padding: 4px 8px;
+      padding: 4px 6px;
       font-size: 11px;
       font-weight: bold;
       outline: none;
+      max-width: 110px;
     }
     .fullscreen-btn {
       background: linear-gradient(135deg, #d97706, #b45309);
       color: #fff;
       border: none;
       border-radius: 8px;
-      padding: 5px 10px;
+      padding: 5px 9px;
       font-size: 11px;
       font-weight: bold;
       display: flex;
@@ -88,9 +102,9 @@
       filter: brightness(1.2);
     }
     .status-badge {
-      padding: 3px 8px;
+      padding: 3px 6px;
       border-radius: 9999px;
-      font-size: 10px;
+      font-size: 9px;
       font-weight: bold;
       background: rgba(16, 185, 129, 0.2);
       color: #34d399;
@@ -334,22 +348,25 @@
 
   <!-- Top Bar -->
   <div class="header-bar">
-    <div class="header-title">
-      <span>👑 دسته بازی</span>
+    <div class="header-left">
+      <button id="playerToggleBtn" class="player-toggle-btn" onclick="togglePlayer()">
+        <span id="playerIcon">🎮</span>
+        <span id="playerText">بازیکن ۱</span>
+      </button>
       <select id="profileSelect" class="profile-select" onchange="onProfileChange(this.value)">
-        <option value="fifa" selected>⚽ فیفا / FIFA</option>
-        <option value="racing">🏎️ اتومبیل‌رانی / Racing</option>
-        <option value="action">🎯 شوتر / Shooter</option>
-        <option value="retro">🕹️ کلاسیک / Retro</option>
+        <option value="fifa" selected>⚽ فیفا</option>
+        <option value="racing">🏎️ ماشین</option>
+        <option value="action">🎯 شوتر</option>
+        <option value="retro">🕹️ رترو</option>
       </select>
     </div>
 
-    <div class="header-controls">
+    <div class="header-right">
       <button class="fullscreen-btn" onclick="toggleFullscreen()">
         <span>⛶</span>
         <span>تمام‌صفحه</span>
       </button>
-      <div id="statusBadge" class="status-badge">در حال اتصال...</div>
+      <div id="statusBadge" class="status-badge">درحال اتصال...</div>
     </div>
   </div>
 
@@ -390,7 +407,7 @@
     <div class="center-menu">
       <div class="menu-btn start-btn" data-btn="START">
         <span>⏵ START</span>
-        <span class="sub-label">اسپیس Space</span>
+        <span class="sub-label" id="lbl_START">شروع Space</span>
       </div>
       <div class="menu-btn enter-btn" data-btn="ENTER">
         <span>↵ ENTER</span>
@@ -427,52 +444,131 @@
 
   <script>
     let ws = null;
+    let currentPlayer = parseInt(localStorage.getItem('cpm_gamepad_player') || '1', 10);
     const statusBadge = document.getElementById('statusBadge');
+    const playerToggleBtn = document.getElementById('playerToggleBtn');
+    const playerText = document.getElementById('playerText');
+
     const profileLabels = {
       fifa: {
-        lbl_A: 'پاس (S)',
-        lbl_B: 'شوت (D)',
-        lbl_X: 'سانتر (A)',
-        lbl_Y: 'عمقی (W)',
-        lbl_L1: 'تعویض یار',
-        lbl_R1: 'دویدن E',
-        lbl_L2: 'حفاظت توپ',
-        lbl_R2: 'سرعت Shift'
+        1: {
+          lbl_A: 'پاس (S)',
+          lbl_B: 'شوت (D)',
+          lbl_X: 'سانتر (A)',
+          lbl_Y: 'عمقی (W)',
+          lbl_L1: 'تعویض یار',
+          lbl_R1: 'دویدن E',
+          lbl_L2: 'حفاظت توپ',
+          lbl_R2: 'سرعت Shift',
+          lbl_START: 'شروع Space'
+        },
+        2: {
+          lbl_A: 'پاس (B)',
+          lbl_B: 'شوت (N)',
+          lbl_X: 'سانتر (V)',
+          lbl_Y: 'عمقی (G)',
+          lbl_L1: 'تعویض یار T',
+          lbl_R1: 'دویدن Y',
+          lbl_L2: 'حفاظت H',
+          lbl_R2: 'سرعت U',
+          lbl_START: 'شروع P'
+        }
       },
       racing: {
-        lbl_A: 'گاز (W)',
-        lbl_B: 'ترمز (S)',
-        lbl_X: 'نیترو Space',
-        lbl_Y: 'دوربین C',
-        lbl_L1: 'فرمان چپ',
-        lbl_R1: 'فرمان راست',
-        lbl_L2: 'دستی Shift',
-        lbl_R2: 'گاز توربو'
+        1: {
+          lbl_A: 'گاز (W)',
+          lbl_B: 'ترمز (S)',
+          lbl_X: 'نیترو Space',
+          lbl_Y: 'دوربین C',
+          lbl_L1: 'فرمان چپ',
+          lbl_R1: 'فرمان راست',
+          lbl_L2: 'دستی Shift',
+          lbl_R2: 'گاز توربو',
+          lbl_START: 'استارت Enter'
+        },
+        2: {
+          lbl_A: 'گاز (I)',
+          lbl_B: 'ترمز (K)',
+          lbl_X: 'نیترو P',
+          lbl_Y: 'دوربین O',
+          lbl_L1: 'فرمان چپ J',
+          lbl_R1: 'فرمان راست L',
+          lbl_L2: 'دستی U',
+          lbl_R2: 'گاز توربو I',
+          lbl_START: 'استارت Enter'
+        }
       },
       action: {
-        lbl_A: 'پرش Space',
-        lbl_B: 'نشستن C',
-        lbl_X: 'خشاب R',
-        lbl_Y: 'تعامل E',
-        lbl_L1: 'دویدن Shift',
-        lbl_R1: 'شلیک Enter',
-        lbl_L2: 'ضربه Q',
-        lbl_R2: 'نارنجک F'
+        1: {
+          lbl_A: 'پرش Space',
+          lbl_B: 'نشستن C',
+          lbl_X: 'خشاب R',
+          lbl_Y: 'تعامل E',
+          lbl_L1: 'دویدن Shift',
+          lbl_R1: 'شلیک Enter',
+          lbl_L2: 'ضربه Q',
+          lbl_R2: 'نارنجک F',
+          lbl_START: 'منو Esc'
+        },
+        2: {
+          lbl_A: 'پرش P',
+          lbl_B: 'نشستن H',
+          lbl_X: 'خشاب U',
+          lbl_Y: 'تعامل Y',
+          lbl_L1: 'دویدن O',
+          lbl_R1: 'شلیک Enter',
+          lbl_L2: 'ضربه T',
+          lbl_R2: 'نارنجک G',
+          lbl_START: 'منو Esc'
+        }
       },
       retro: {
-        lbl_A: 'دکمه Z',
-        lbl_B: 'دکمه X',
-        lbl_X: 'دکمه A',
-        lbl_Y: 'دکمه S',
-        lbl_L1: 'دکمه Q',
-        lbl_R1: 'دکمه E',
-        lbl_L2: 'کلید ۱',
-        lbl_R2: 'کلید ۲'
+        1: {
+          lbl_A: 'دکمه Z',
+          lbl_B: 'دکمه X',
+          lbl_X: 'دکمه A',
+          lbl_Y: 'دکمه S',
+          lbl_L1: 'دکمه Q',
+          lbl_R1: 'دکمه E',
+          lbl_L2: 'کلید ۱',
+          lbl_R2: 'کلید ۲',
+          lbl_START: 'استارت Enter'
+        },
+        2: {
+          lbl_A: 'دکمه B',
+          lbl_B: 'دکمه N',
+          lbl_X: 'دکمه V',
+          lbl_Y: 'دکمه G',
+          lbl_L1: 'دکمه T',
+          lbl_R1: 'دکمه Y',
+          lbl_L2: 'کلید ۳',
+          lbl_R2: 'کلید ۴',
+          lbl_START: 'استارت Enter'
+        }
       }
     };
 
+    function updatePlayerUI() {
+      if (currentPlayer === 2) {
+        playerText.textContent = 'بازیکن ۲';
+        playerToggleBtn.className = 'player-toggle-btn p2';
+      } else {
+        playerText.textContent = 'بازیکن ۱';
+        playerToggleBtn.className = 'player-toggle-btn';
+      }
+      const activeProfile = document.getElementById('profileSelect').value;
+      updateLabels(activeProfile);
+    }
+
+    function togglePlayer() {
+      vibrate(30);
+      currentPlayer = currentPlayer === 1 ? 2 : 1;
+      localStorage.setItem('cpm_gamepad_player', currentPlayer.toString());
+      updatePlayerUI();
+    }
+
     function updateLabels(profile) {
-      const p = profileLabels[profile] || profileLabels.fifa;
+      const p = profileLabels[profile]?.[currentPlayer] || profileLabels.fifa[1];
       for (const [id, text] of Object.entries(p)) {
         const el = document.getElementById(id);
         if (el) el.textContent = text;
@@ -524,14 +620,14 @@
       ws = new WebSocket(`${proto}//${host}`);
 
       ws.onopen = () => {
-        statusBadge.textContent = 'متصل به ویندوز 🟢';
+        statusBadge.textContent = 'متصل 🟢';
         statusBadge.className = 'status-badge';
         const activeProfile = document.getElementById('profileSelect').value;
         onProfileChange(activeProfile);
       };
 
       ws.onclose = () => {
-        statusBadge.textContent = 'قطع اتصال 🔴';
+        statusBadge.textContent = 'قطع 🔴';
         statusBadge.className = 'status-badge disconnected';
         setTimeout(connectWs, 2000);
       };
@@ -548,6 +644,7 @@
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({
           type: 'GAMEPAD_INPUT',
+          player: currentPlayer,
           button,
           state,
           timestamp: Date.now()
@@ -576,10 +673,8 @@
       el.addEventListener('pointercancel', handleUp, { passive: false });
     });
 
-    // Initial label setup
-    updateLabels('fifa');
-
-    // Start WebSocket
+    // Initialize
+    updatePlayerUI();
     connectWs();
   </script>
 </body>
