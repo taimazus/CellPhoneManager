@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Sliders, 
   Tv, 
@@ -25,6 +25,7 @@ import {
   Gauge
 } from 'lucide-react';
 import { Device } from '../types';
+import { TabGuideCard } from './TabGuideCard';
 
 interface TweaksTabProps {
   device: Device | null;
@@ -66,17 +67,42 @@ export const TweaksTab: React.FC<TweaksTabProps> = ({ device }) => {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  // Load real device tweaks on mount
+  useEffect(() => {
+    if (!device) return;
+    const fetchCurrentTweaks = async () => {
+      try {
+        const res = await fetch(`/api/devices/${device.id}/tweaks`);
+        const data = await res.json();
+        if (data.success && data.tweaks) {
+          const t = data.tweaks;
+          if (t.dpi) setDpi(t.dpi);
+          if (t.animScale !== undefined) setAnimScale(t.animScale);
+          if (t.privateDns) setSelectedDns(t.privateDns);
+          if (t.showTouches !== undefined) setShowTouches(t.showTouches);
+          if (t.pointerLocation !== undefined) setPointerLocation(t.pointerLocation);
+          if (t.showFps !== undefined) setShowFps(t.showFps);
+          if (t.stayAwake !== undefined) setStayAwake(t.stayAwake);
+          if (t.clockSeconds !== undefined) setClockSeconds(t.clockSeconds);
+        }
+      } catch (e) {
+        console.error('Error fetching current tweaks:', e);
+      }
+    };
+    fetchCurrentTweaks();
+  }, [device?.id]);
+
   const applyTweak = async (action: string, value: any) => {
     if (!device) return;
     try {
       const res = await fetch(`/api/devices/${device.id}/tweaks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, value, type: device.type })
+        body: JSON.stringify({ action, value, type: device.type || 'android' })
       });
       const data = await res.json();
       if (data.success) {
-        showToast('تنظیم با موفقیت روی دستگاه اعمال شد!', 'success');
+        showToast(data.message || 'تنظیم با موفقیت روی دستگاه اعمال شد!', 'success');
       } else {
         showToast(`خطا: ${data.error || 'عدم دسترسی'}`, 'error');
       }
@@ -93,7 +119,7 @@ export const TweaksTab: React.FC<TweaksTabProps> = ({ device }) => {
       const res = await fetch(`/api/devices/${device.id}/tweaks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'shell', value: customCmd, type: device.type })
+        body: JSON.stringify({ action: 'shell', value: customCmd, type: device.type || 'android' })
       });
       const data = await res.json();
       if (data.success || data.stdout) {
@@ -141,6 +167,22 @@ export const TweaksTab: React.FC<TweaksTabProps> = ({ device }) => {
           </p>
         </div>
       </div>
+
+      {/* Guidance Card */}
+      <TabGuideCard
+        title="راهنمای تنظیمات مخفی و بهینه‌سازی سیستمی"
+        description="نحوه قفل رفرش‌ریت، فعال‌سازی دی‌ان‌اس ضدتحریم و ضدتبلیغ، خواب عمیق باتری و سوئیچ‌های توسعه‌دهنده"
+        steps={[
+          'دی‌ان‌اس خصوصی (Private DNS): با انتخاب Shecan یا AdGuard، کل سیستم‌عامل و همه برنامه‌ها بدون نیاز به فیلترشکن از اینترنت ضدتحریم یا ضدتبلیغ استفاده می‌کنند.',
+          'خواب عمیق باتری (Doze Mode): گوشی را فوراً به حالت Deep Idle می‌برد تا در شب و ساعات بی‌کاری مصرف باتری به حداقل برسد.',
+          'کلیدهای توسعه‌دهنده: گزینه‌هایی مثل نمایش نقطه لمس (Show Touches)، خط‌کش مختصات تاچ (Pointer Location) و نمایشگر فریم بلافاصله روی نمایشگر گوشی پدیدار می‌شوند.',
+          'سرعت انیمیشن و DPI: با تنظیم مقیاس انیمیشن روی 0.5x یا 0x سرعت پاسخگویی و جابجایی بین منوها تا دو برابر سریع‌تر حس می‌شود.'
+        ]}
+        tips={[
+          'وضعیت فعلی تنظیمات گوشی به صورت خودکار هنگام ورود به این تب بارگذاری و همگام‌سازی می‌شود.',
+          'هرگونه تغییر بلافاصله با فرمان‌های بهینه ADB روی سیستم‌عامل ثبت شده و نیازی به ریستارت گوشی ندارد.'
+        ]}
+      />
 
       {/* Category Pills Navigation */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1">

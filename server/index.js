@@ -279,9 +279,20 @@ app.post('/api/devices/:id/apps/toggle-freeze', async (req, res) => {
 // -------------------------------------------------------------
 // 4. Hidden Settings & System Tweaks APIs
 // -------------------------------------------------------------
+app.get('/api/devices/:id/tweaks', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const tweaks = await adbManager.getCurrentTweaks(id);
+    res.json({ success: true, tweaks });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/devices/:id/tweaks', async (req, res) => {
   const { id } = req.params;
   const { action, value, type } = req.body;
+  const devType = type || (id.startsWith('mock-') ? 'mock' : 'android');
 
   try {
     if (id.startsWith('mock-')) {
@@ -289,22 +300,22 @@ app.post('/api/devices/:id/tweaks', async (req, res) => {
       return res.json({ success: true, message: 'تنظیمات با موفقیت اعمال گردید' });
     }
 
-    if (type === 'android') {
+    if (devType === 'android' || !devType) {
       if (action === 'density') {
         const result = value === 'reset' ? await adbManager.resetDisplayDensity(id) : await adbManager.setDisplayDensity(id, value);
-        return res.json(result);
+        return res.json({ success: true, message: value === 'reset' ? 'تراکم صفحه به حالت پیش‌فرض بازگشت' : `تراکم صفحه روی ${value} DPI تنظیم شد`, ...result });
       }
       if (action === 'animation') {
         const result = await adbManager.setAnimationScale(id, value);
-        return res.json(result);
+        return res.json({ success: true, message: `سرعت انیمیشن رابط کاربری روی ${value}x تنظیم گردید`, ...result });
       }
       if (action === 'demo_mode') {
         const result = await adbManager.setDemoMode(id, value);
-        return res.json(result);
+        return res.json({ success: true, message: value ? 'حالت دمو استاتوس‌بار فعال شد' : 'حالت دمو غیرفعال شد', ...result });
       }
       if (action === 'simulate_location') {
         const result = value ? await adbManager.setSimulatedLocation(id, value.lat, value.lng) : await adbManager.clearSimulatedLocation(id);
-        return res.json(result);
+        return res.json({ success: true, message: 'موقعیت مکانی شبیه‌سازی شد', ...result });
       }
       if (action === 'refresh_rate') {
         const result = await adbManager.setRefreshRate(id, value);
@@ -354,15 +365,14 @@ app.post('/api/devices/:id/tweaks', async (req, res) => {
         const result = await adbManager.runAdb(`shell ${value}`, id);
         return res.json(result);
       }
-    } else if (type === 'ios') {
+    } else if (devType === 'ios') {
       if (action === 'simulate_location') {
         const result = value ? await iosManager.setSimulatedLocation(id, value.lat, value.lng) : await iosManager.clearSimulatedLocation(id);
         return res.json(result);
       }
     }
 
-    res.status(400).json({ error: `اقدام '${action}' برای این نوع دستگاه (${type}) پشتیبانی نمی‌شود` });
-
+    res.status(400).json({ error: `اقدام '${action}' برای این نوع دستگاه (${devType}) پشتیبانی نمی‌شود` });
 
   } catch (err) {
     res.status(500).json({ error: err.message });

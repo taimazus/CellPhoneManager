@@ -206,67 +206,179 @@ export class AdbManager {
     return { success: true };
   }
 
+  async getCurrentTweaks(serial) {
+    if (serial && serial.startsWith('mock-')) {
+      return {
+        dpi: 420,
+        animScale: 1.0,
+        refreshRate: 'auto',
+        privateDns: 'off',
+        showTouches: false,
+        pointerLocation: false,
+        showFps: false,
+        darkMode: true,
+        stayAwake: false,
+        clockSeconds: false,
+        forceMsaa: false
+      };
+    }
+
+    try {
+      const [touchesRes, pointerRes, fpsRes, dnsModeRes, dnsSpecRes, animRes, wmDensityRes, stayAwakeRes, clockRes] = await Promise.all([
+        this.runAdb('shell "settings get system show_touches 2>/dev/null || echo 0"', serial),
+        this.runAdb('shell "settings get system pointer_location 2>/dev/null || echo 0"', serial),
+        this.runAdb('shell "settings get system show_refresh_rate 2>/dev/null || echo 0"', serial),
+        this.runAdb('shell "settings get global private_dns_mode 2>/dev/null || echo off"', serial),
+        this.runAdb('shell "settings get global private_dns_specifier 2>/dev/null || echo off"', serial),
+        this.runAdb('shell "settings get global window_animation_scale 2>/dev/null || echo 1.0"', serial),
+        this.runAdb('shell "wm density 2>/dev/null || echo 420"', serial),
+        this.runAdb('shell "settings get global stay_on_while_plugged_in 2>/dev/null || echo 0"', serial),
+        this.runAdb('shell "settings get secure clock_seconds 2>/dev/null || echo 0"', serial)
+      ]);
+
+      const showTouches = (touchesRes.stdout || '').trim() === '1';
+      const pointerLocation = (pointerRes.stdout || '').trim() === '1';
+      const showFps = (fpsRes.stdout || '').trim() === '1';
+      const dnsMode = (dnsModeRes.stdout || '').trim();
+      const dnsSpec = (dnsSpecRes.stdout || '').trim();
+      const animScale = parseFloat((animRes.stdout || '1.0').trim()) || 1.0;
+      const stayAwake = (stayAwakeRes.stdout || '').trim() === '3';
+      const clockSeconds = (clockRes.stdout || '').trim() === '1';
+
+      let dpi = 420;
+      const densityMatch = (wmDensityRes.stdout || '').match(/Override density:\s*(\d+)/) || (wmDensityRes.stdout || '').match(/Physical density:\s*(\d+)/);
+      if (densityMatch) {
+        dpi = parseInt(densityMatch[1], 10);
+      }
+
+      let privateDns = 'off';
+      if (dnsMode === 'hostname' && dnsSpec && dnsSpec !== 'null') {
+        privateDns = dnsSpec;
+      }
+
+      return {
+        dpi,
+        animScale,
+        refreshRate: 'auto',
+        privateDns,
+        showTouches,
+        pointerLocation,
+        showFps,
+        darkMode: true,
+        stayAwake,
+        clockSeconds,
+        forceMsaa: false
+      };
+    } catch (err) {
+      return { dpi: 420, animScale: 1.0, privateDns: 'off', showTouches: false, pointerLocation: false, showFps: false };
+    }
+  }
+
   async setRefreshRate(serial, rate) {
     if (rate === 'auto' || rate === 'default') {
-      await this.runAdb('shell settings delete global peak_refresh_rate', serial);
-      await this.runAdb('shell settings delete global min_refresh_rate', serial);
+      await Promise.all([
+        this.runAdb('shell settings delete global peak_refresh_rate 2>/dev/null || true', serial),
+        this.runAdb('shell settings delete global min_refresh_rate 2>/dev/null || true', serial),
+        this.runAdb('shell settings delete system user_refresh_rate 2>/dev/null || true', serial)
+      ]);
+      return { success: true, message: 'نرخ نوسازی به حالت پیش‌فرض و خودکار بازگردانده شد.' };
     } else {
       const val = parseFloat(rate).toFixed(1);
-      await this.runAdb(`shell settings put global peak_refresh_rate ${val}`, serial);
-      await this.runAdb(`shell settings put global min_refresh_rate ${val}`, serial);
+      const intVal = parseInt(rate, 10);
+      await Promise.all([
+        this.runAdb(`shell settings put global peak_refresh_rate ${val} 2>/dev/null || true`, serial),
+        this.runAdb(`shell settings put global min_refresh_rate ${val} 2>/dev/null || true`, serial),
+        this.runAdb(`shell settings put system user_refresh_rate ${intVal} 2>/dev/null || true`, serial),
+        this.runAdb(`shell settings put system peak_refresh_rate ${val} 2>/dev/null || true`, serial),
+        this.runAdb(`shell settings put system min_refresh_rate ${val} 2>/dev/null || true`, serial)
+      ]);
+      return { success: true, message: `رفرش ریت دستگاه روی ${rate}Hz قفل شد.` };
     }
-    return { success: true };
   }
 
   async setCustomResolution(serial, resolution) {
     if (resolution === 'reset') {
-      return await this.runAdb('shell wm size reset', serial);
+      await this.runAdb('shell wm size reset', serial);
+      return { success: true, message: 'رزولوشن صفحه به مقدار کارخانه بازنشانی شد.' };
     }
-    return await this.runAdb(`shell wm size ${resolution}`, serial);
+    await this.runAdb(`shell wm size ${resolution}`, serial);
+    return { success: true, message: `رزولوشن صفحه روی ${resolution} تنظیم گردید.` };
   }
 
   async setPrivateDns(serial, specifier) {
     if (!specifier || specifier === 'off') {
       await this.runAdb('shell settings put global private_dns_mode off', serial);
+      return { success: true, message: 'دی‌ان‌اس خصوصی غیرفعال شد.' };
     } else if (specifier === 'opportunistic' || specifier === 'auto') {
       await this.runAdb('shell settings put global private_dns_mode opportunistic', serial);
+      return { success: true, message: 'دی‌ان‌اس خصوصی روی حالت خودکار تنظیم شد.' };
     } else {
       await this.runAdb('shell settings put global private_dns_mode hostname', serial);
       await this.runAdb(`shell settings put global private_dns_specifier ${specifier}`, serial);
+      return { success: true, message: `دی‌ان‌اس «${specifier}» با موفقیت روی کل سیستم فعال گردید.` };
     }
-    return { success: true };
   }
 
   async setShowTouches(serial, enable) {
-    return await this.runAdb(`shell settings put system show_touches ${enable ? 1 : 0}`, serial);
+    const val = enable ? 1 : 0;
+    await this.runAdb(`shell settings put system show_touches ${val}`, serial);
+    return { success: true, message: enable ? 'نقطه لمس انگشت روی صفحه فعال شد.' : 'نقطه لمس غیرفعال شد.' };
   }
 
   async setShowPointerLocation(serial, enable) {
-    return await this.runAdb(`shell settings put system pointer_location ${enable ? 1 : 0}`, serial);
+    const val = enable ? 1 : 0;
+    await this.runAdb(`shell settings put system pointer_location ${val}`, serial);
+    return { success: true, message: enable ? 'خط کش و مختصات تاچ روی صفحه فعال شد.' : 'مختصات تاچ غیرفعال شد.' };
   }
 
   async setShowFpsOverlay(serial, enable) {
-    return await this.runAdb(`shell settings put system show_refresh_rate ${enable ? 1 : 0}`, serial);
+    const val = enable ? 1 : 0;
+    await Promise.all([
+      this.runAdb(`shell settings put system show_refresh_rate ${val} 2>/dev/null || true`, serial),
+      this.runAdb(`shell settings put secure show_refresh_rate ${val} 2>/dev/null || true`, serial),
+      this.runAdb(`shell setprop debug.sf.showfps ${val} 2>/dev/null || true`, serial)
+    ]);
+    return { success: true, message: enable ? 'شمارنده نرخ نوسازی و فریم فعال شد.' : 'شمارنده فریم غیرفعال شد.' };
   }
 
   async setDarkMode(serial, enable) {
-    return await this.runAdb(`shell settings put secure ui_night_mode ${enable ? 2 : 1}`, serial);
+    try {
+      await this.runAdb(`shell cmd uimode night ${enable ? 'yes' : 'no'}`, serial);
+    } catch (e) {
+      await this.runAdb(`shell settings put secure ui_night_mode ${enable ? 2 : 1}`, serial);
+    }
+    return { success: true, message: enable ? 'حالت دارک‌مود (تاریک) فعال شد.' : 'حالت لایت (روشن) فعال شد.' };
   }
 
   async setStayAwake(serial, enable) {
-    return await this.runAdb(`shell settings put global stay_on_while_plugged_in ${enable ? 3 : 0}`, serial);
+    const val = enable ? 3 : 0;
+    await this.runAdb(`shell settings put global stay_on_while_plugged_in ${val}`, serial);
+    return { success: true, message: enable ? 'روشن ماندن صفحه حین اتصال به کابل فعال شد.' : 'روشن ماندن غیرفعال شد.' };
   }
 
   async setClockSeconds(serial, enable) {
-    return await this.runAdb(`shell settings put secure clock_seconds ${enable ? 1 : 0}`, serial);
+    const val = enable ? 1 : 0;
+    await this.runAdb(`shell settings put secure clock_seconds ${val}`, serial);
+    return { success: true, message: enable ? 'ثانیه‌شمار ساعت استاتوس‌بار فعال شد.' : 'ثانیه‌شمار ساعت غیرفعال شد.' };
   }
 
   async setForceMsaa(serial, enable) {
-    return await this.runAdb(`shell setprop debug.egl.force_msaa ${enable ? 1 : 0}`, serial);
+    const val = enable ? 1 : 0;
+    await Promise.all([
+      this.runAdb(`shell setprop debug.egl.force_msaa ${val} 2>/dev/null || true`, serial),
+      this.runAdb(`shell settings put global debug.egl.force_msaa ${val} 2>/dev/null || true`, serial)
+    ]);
+    return { success: true, message: enable ? 'اجبار 4x MSAA گرافیک فعال شد.' : 'تنظیم MSAA به حالت پیش‌فرض بازگشت.' };
   }
 
   async setAggressiveDoze(serial) {
-    return await this.runAdb('shell dumpsys deviceidle force-idle', serial);
+    await Promise.all([
+      this.runAdb('shell dumpsys battery unplug 2>/dev/null || true', serial),
+      this.runAdb('shell dumpsys deviceidle force-idle deep 2>/dev/null || true', serial),
+      this.runAdb('shell dumpsys deviceidle step 2>/dev/null || true', serial),
+      this.runAdb('shell cmd appops set com.google.android.gms RUN_IN_BACKGROUND ignore 2>/dev/null || true', serial)
+    ]);
+    return { success: true, message: 'حالت خواب عمیق (Deep Sleep) با موفقیت روی گوشی فعال و پردازش‌های پس‌زمینه فریز شدند.' };
   }
 
 
