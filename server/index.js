@@ -455,6 +455,24 @@ app.post('/api/devices/:id/camera/launch', async (req, res) => {
   }
 });
 
+app.get('/api/devices/:id/screencap.png', async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (id.startsWith('mock-')) {
+      const svg = '<svg width="1280" height="720" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#050c1e"/><circle cx="640" cy="360" r="120" fill="#06b6d4" opacity="0.3"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#00f0ff" font-size="28" font-family="sans-serif">منظره‌یاب زنده دوربین (پیش‌نمایش)</text></svg>';
+      res.setHeader('Content-Type', 'image/svg+xml');
+      return res.send(svg);
+    }
+    const adbPath = await toolManager.getAdbPath();
+    const child = spawn(adbPath, ['-s', id, 'exec-out', 'screencap', '-p']);
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    child.stdout.pipe(res);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // Microphone & Audio Streaming APIs
 app.post('/api/devices/:id/mic/start', async (req, res) => {
