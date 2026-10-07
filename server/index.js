@@ -1019,6 +1019,48 @@ app.post('/api/devices/:id/files/mkdir', async (req, res) => {
   }
 });
 
+app.post('/api/devices/:id/files/rename', async (req, res) => {
+  const { id } = req.params;
+  const { oldPath, newPath } = req.body;
+  if (!oldPath || !newPath) {
+    return res.status(400).json({ error: 'مسیر قبلی و نام جدید الزامی است.' });
+  }
+  try {
+    const result = await fileManager.renameFile(id, oldPath, newPath);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/files/move', async (req, res) => {
+  const { id } = req.params;
+  const { srcPath, destDirPath } = req.body;
+  if (!srcPath || !destDirPath) {
+    return res.status(400).json({ error: 'مسیر مبدا و پوشه مقصد الزامی است.' });
+  }
+  try {
+    const result = await fileManager.moveFile(id, srcPath, destDirPath);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/files/copy', async (req, res) => {
+  const { id } = req.params;
+  const { srcPath, destDirPath } = req.body;
+  if (!srcPath || !destDirPath) {
+    return res.status(400).json({ error: 'مسیر مبدا و پوشه مقصد الزامی است.' });
+  }
+  try {
+    const result = await fileManager.copyFile(id, srcPath, destDirPath);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // -------------------------------------------------------------
 // 7. App Package Extractor (Android APK & iOS IPA/App) & Remote Typing APIs
 // -------------------------------------------------------------

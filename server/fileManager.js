@@ -1,7 +1,5 @@
-import { exec, spawn } from 'child_process';
+import { exec } from 'child_process';
 import util from 'util';
-import path from 'path';
-import fs from 'fs';
 import { toolManager } from './toolManager.js';
 import { adbManager } from './adbManager.js';
 
@@ -87,7 +85,7 @@ export class FileManager {
 
   async deleteFile(serial, remotePath) {
     if (!serial || serial.startsWith('mock-')) {
-      return { success: true, message: 'فایل با موفقیت حذف شد' };
+      return { success: true, message: 'فایل یا پوشه با موفقیت حذف شد' };
     }
     return await adbManager.runAdb(`shell rm -rf "${remotePath}"`, serial);
   }
@@ -97,6 +95,29 @@ export class FileManager {
       return { success: true, message: 'پوشه ایجاد شد' };
     }
     return await adbManager.runAdb(`shell mkdir -p "${remoteDirPath}"`, serial);
+  }
+
+  async renameFile(serial, oldRemotePath, newRemotePath) {
+    if (!serial || serial.startsWith('mock-')) {
+      return { success: true, message: 'تغییر نام با موفقیت انجام شد (شبیه‌ساز)' };
+    }
+    return await adbManager.runAdb(`shell mv "${oldRemotePath}" "${newRemotePath}"`, serial);
+  }
+
+  async moveFile(serial, srcRemotePath, destDirPath) {
+    if (!serial || serial.startsWith('mock-')) {
+      return { success: true, message: 'انتقال با موفقیت انجام شد (شبیه‌ساز)' };
+    }
+    const safeDest = destDirPath.endsWith('/') ? destDirPath : destDirPath + '/';
+    return await adbManager.runAdb(`shell mv "${srcRemotePath}" "${safeDest}"`, serial);
+  }
+
+  async copyFile(serial, srcRemotePath, destDirPath) {
+    if (!serial || serial.startsWith('mock-')) {
+      return { success: true, message: 'کپی با موفقیت انجام شد (شبیه‌ساز)' };
+    }
+    const safeDest = destDirPath.endsWith('/') ? destDirPath : destDirPath + '/';
+    return await adbManager.runAdb(`shell cp -r "${srcRemotePath}" "${safeDest}"`, serial);
   }
 }
 

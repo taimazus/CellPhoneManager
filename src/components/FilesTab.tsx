@@ -22,15 +22,19 @@ import {
   RotateCw,
   ZoomIn,
   ZoomOut,
-  Maximize2,
-  Volume2,
-  Play,
   FileCode,
   LayoutGrid,
   List,
-  ArrowUpDown,
   ChevronRight,
-  ChevronLeft
+  ChevronLeft,
+  Edit2,
+  Move,
+  Copy,
+  Scissors,
+  Clipboard,
+  CheckSquare,
+  Square,
+  CornerDownLeft
 } from 'lucide-react';
 import { Device } from '../types';
 
@@ -54,9 +58,24 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
   const [sortBy, setSortBy] = useState<'name_asc' | 'name_desc' | 'size_desc' | 'size_asc' | 'date_desc' | 'date_asc'>('name_asc');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [isUploading, setIsUploading] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
-  const [showNewFolderModal, setShowNewFolderModal] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  // Modals State
+  const [showNewFolderModal, setShowNewFolderModal] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+
+  const [renameItem, setRenameItem] = useState<FileItem | null>(null);
+  const [renameInput, setRenameInput] = useState('');
+
+  const [moveItem, setMoveItem] = useState<FileItem | null>(null);
+  const [targetMoveDir, setTargetMoveDir] = useState('/sdcard/');
+
+  // Clipboard (Cut / Copy & Paste)
+  const [clipboard, setClipboard] = useState<{ mode: 'cut' | 'copy'; item: FileItem; srcDir: string } | null>(null);
+
+  // Multi-select
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
   // Preview Modal State
   const [previewFile, setPreviewFile] = useState<{ name: string; url: string; ext: string } | null>(null);
@@ -73,6 +92,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
   const fetchFiles = async (targetPath = currentPath) => {
     if (!device) return;
     setLoading(true);
+    setSelectedItems(new Set());
     try {
       const res = await fetch(`/api/devices/${device.id}/files?path=${encodeURIComponent(targetPath)}`);
       const data = await res.json();
@@ -106,46 +126,61 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
     fetchFiles(parentPath || '/sdcard/');
   };
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !device) return;
+  const handleBreadcrumbClick = (index: number, parts: string[]) => {
+    const target = '/' + parts.slice(0, index + 1).join('/') + '/';
+    fetchFiles(target);
+  };
+
+  // Upload Multiple Files
+  const handleUploadFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0 || !device) return;
 
     setIsUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('targetDir', currentPath);
+    let successCount = 0;
 
-    try {
-      const res = await fetch(`/api/devices/${device.id}/files/upload`, {
-        method: 'POST',
-        body: formData
-      });
-      const data = await res.json();
-      if (data.success) {
-        showToast(`فایل ${file.name} با موفقیت به گوشی منتقل شد.`, 'success');
-        fetchFiles(currentPath);
-      } else {
-        showToast(`خطا در انتقال: ${data.error}`, 'error');
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('targetDir', currentPath);
+
+      try {
+        const res = await fetch(`/api/devices/${device.id}/files/upload`, {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+          successCount++;
+        }
+      } catch (err: any) {
+        console.error('Upload error:', err);
       }
-    } catch (err: any) {
-      showToast(`خطا: ${err.message}`, 'error');
-    } finally {
-      setIsUploading(false);
-      e.target.value = '';
+    }
+
+    setIsUploading(false);
+    if (successCount > 0) {
+      showToast(`${successCount} فایل با موفقیت به این پوشه منتقل شد.`, 'success');
+      fetchFiles(currentPath);
+    } else {
+      showToast('خطا در ارسال فایل‌ها.', 'error');
     }
   };
 
+  // Download File
   const handleDownload = (fileName: string) => {
     if (!device) return;
     const fullPath = currentPath.endsWith('/') ? `${currentPath}${fileName}` : `${currentPath}/${fileName}`;
     window.open(`/api/devices/${device.id}/files/download?remotePath=${encodeURIComponent(fullPath)}`);
   };
 
-  const handleDelete = async (fileName: string) => {
+  // Delete Single Item (File or Folder)
+  const handleDelete = async (item: FileItem) => {
     if (!device) return;
-    if (!confirm(`آیا از حذف "${fileName}" اطمینان دارید؟`)) return;
+    const label = item.isDir ? `پوشه "${item.name}" و تمام محتویات آن` : `فایل "${item.name}"`;
+    if (!confirm(`آیا از حذف ${label} اطمینان دارید؟ این عملیات غیرقابل بازگشت است.`)) return;
 
-    const fullPath = currentPath.endsWith('/') ? `${currentPath}${fileName}` : `${currentPath}/${fileName}`;
+    const fullPath = currentPath.endsWith('/') ? `${currentPath}${item.name}` : `${currentPath}/${item.name}`;
     try {
       const res = await fetch(`/api/devices/${device.id}/files/delete`, {
         method: 'POST',
@@ -154,7 +189,125 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
       });
       const data = await res.json();
       if (data.success) {
-        showToast('مورد با موفقیت حذف شد.', 'success');
+        showToast(`${item.name} با موفقیت حذف شد.`, 'success');
+        fetchFiles(currentPath);
+      } else {
+        showToast(`خطا در حذف: ${data.error || 'ناشناخته'}`, 'error');
+      }
+    } catch (err: any) {
+      showToast(`خطا: ${err.message}`, 'error');
+    }
+  };
+
+  // Batch Delete Selected Items
+  const handleBatchDelete = async () => {
+    if (!device || selectedItems.size === 0) return;
+    if (!confirm(`آیا از حذف ${selectedItems.size} مورد انتخاب شده اطمینان دارید؟`)) return;
+
+    let successCount = 0;
+    for (const name of Array.from(selectedItems)) {
+      const fullPath = currentPath.endsWith('/') ? `${currentPath}${name}` : `${currentPath}/${name}`;
+      try {
+        const res = await fetch(`/api/devices/${device.id}/files/delete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ remotePath: fullPath })
+        });
+        const data = await res.json();
+        if (data.success) successCount++;
+      } catch {}
+    }
+
+    showToast(`${successCount} مورد با موفقیت حذف شد.`, 'success');
+    fetchFiles(currentPath);
+  };
+
+  // Create Folder
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim() || !device) return;
+    const newDirPath = currentPath.endsWith('/') ? `${currentPath}${newFolderName.trim()}` : `${currentPath}/${newFolderName.trim()}`;
+    try {
+      const res = await fetch(`/api/devices/${device.id}/files/mkdir`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dirPath: newDirPath })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`پوشه "${newFolderName.trim()}" ایجاد شد.`, 'success');
+        setShowNewFolderModal(false);
+        setNewFolderName('');
+        fetchFiles(currentPath);
+      } else {
+        showToast(`خطا در ایجاد پوشه: ${data.error}`, 'error');
+      }
+    } catch (err: any) {
+      showToast(`خطا: ${err.message}`, 'error');
+    }
+  };
+
+  // Open Rename Modal
+  const handleOpenRename = (item: FileItem) => {
+    setRenameItem(item);
+    setRenameInput(item.name);
+  };
+
+  // Submit Rename
+  const handleRenameSubmit = async () => {
+    if (!renameItem || !renameInput.trim() || !device) return;
+    if (renameInput.trim() === renameItem.name) {
+      setRenameItem(null);
+      return;
+    }
+
+    const oldPath = currentPath.endsWith('/') ? `${currentPath}${renameItem.name}` : `${currentPath}/${renameItem.name}`;
+    const newPath = currentPath.endsWith('/') ? `${currentPath}${renameInput.trim()}` : `${currentPath}/${renameInput.trim()}`;
+
+    try {
+      const res = await fetch(`/api/devices/${device.id}/files/rename`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldPath, newPath })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('نام با موفقیت تغییر کرد.', 'success');
+        setRenameItem(null);
+        fetchFiles(currentPath);
+      } else {
+        showToast(`خطا در تغییر نام: ${data.error}`, 'error');
+      }
+    } catch (err: any) {
+      showToast(`خطا: ${err.message}`, 'error');
+    }
+  };
+
+  // Cut / Move Clipboard Actions
+  const handleCutItem = (item: FileItem) => {
+    setClipboard({ mode: 'cut', item, srcDir: currentPath });
+    showToast(`"${item.name}" برش داده شد. به پوشه مقصد بروید و "جای‌گذاری (Paste)" را بزنید.`);
+  };
+
+  const handleCopyItem = (item: FileItem) => {
+    setClipboard({ mode: 'copy', item, srcDir: currentPath });
+    showToast(`"${item.name}" کپی شد. به پوشه مقصد بروید و "جای‌گذاری (Paste)" را بزنید.`);
+  };
+
+  const handlePasteClipboard = async () => {
+    if (!clipboard || !device) return;
+    const srcPath = clipboard.srcDir.endsWith('/') ? `${clipboard.srcDir}${clipboard.item.name}` : `${clipboard.srcDir}/${clipboard.item.name}`;
+    const endpoint = clipboard.mode === 'cut' ? '/api/devices/${device.id}/files/move' : '/api/devices/${device.id}/files/copy';
+
+    try {
+      const res = await fetch(endpoint.replace('${device.id}', device.id), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ srcPath, destDirPath: currentPath })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(clipboard.mode === 'cut' ? 'انتقال با موفقیت انجام شد.' : 'کپی با موفقیت انجام شد.', 'success');
+        setClipboard(null);
         fetchFiles(currentPath);
       } else {
         showToast(`خطا: ${data.error}`, 'error');
@@ -164,26 +317,48 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
     }
   };
 
-  const handleCreateFolder = async () => {
-    if (!newFolderName.trim() || !device) return;
-    const newDirPath = currentPath.endsWith('/') ? `${currentPath}${newFolderName}` : `${currentPath}/${newFolderName}`;
+  // Open Direct Move Modal
+  const handleOpenMoveModal = (item: FileItem) => {
+    setMoveItem(item);
+    setTargetMoveDir(currentPath);
+  };
+
+  const handleDirectMoveSubmit = async () => {
+    if (!moveItem || !targetMoveDir.trim() || !device) return;
+    const srcPath = currentPath.endsWith('/') ? `${currentPath}${moveItem.name}` : `${currentPath}/${moveItem.name}`;
     try {
-      const res = await fetch(`/api/devices/${device.id}/files/mkdir`, {
+      const res = await fetch(`/api/devices/${device.id}/files/move`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dirPath: newDirPath })
+        body: JSON.stringify({ srcPath, destDirPath: targetMoveDir.trim() })
       });
       const data = await res.json();
       if (data.success) {
-        showToast('پوشه جدید ایجاد شد.', 'success');
-        setShowNewFolderModal(false);
-        setNewFolderName('');
+        showToast(`"${moveItem.name}" به پوشه مقصد منتقل شد.`, 'success');
+        setMoveItem(null);
         fetchFiles(currentPath);
       } else {
-        showToast(`خطا: ${data.error}`, 'error');
+        showToast(`خطا در انتقال: ${data.error}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
+    }
+  };
+
+  // Toggle Item Selection
+  const toggleSelect = (name: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = new Set(selectedItems);
+    if (next.has(name)) next.delete(name);
+    else next.add(name);
+    setSelectedItems(next);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedItems.size === filteredItems.length) {
+      setSelectedItems(new Set());
+    } else {
+      setSelectedItems(new Set(filteredItems.map(i => i.name)));
     }
   };
 
@@ -265,7 +440,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
     }
   };
 
-  // Keyboard navigation for preview modal (Left/Right arrow and Escape)
+  // Keyboard navigation for preview modal
   useEffect(() => {
     if (!previewFile) return;
 
@@ -292,8 +467,20 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [previewFile, currentFileIndex, previewableFiles, hasPrev, hasNext]);
 
+  // Clean breadcrumb parts
+  const breadcrumbParts = currentPath.split('/').filter(Boolean);
+
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div 
+      className="space-y-6 animate-fadeIn"
+      onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+      onDragLeave={() => setIsDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        handleUploadFiles(e.dataTransfer.files);
+      }}
+    >
       {/* Toast Notification */}
       {toast && (
         <div className={`fixed bottom-6 left-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-2xl text-sm font-semibold transition-all ${
@@ -304,23 +491,26 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
         </div>
       )}
 
-      {/* Header & Quick Paths */}
+      {/* Header & Quick Action Bar */}
       <div className="rounded-2xl glass-panel p-6 border border-cyan-500/20 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="space-y-1 text-right">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <HardDrive className="w-6 h-6 text-cyan-400" />
-            <span>مدیریت فایل و پیش‌نمایش چندرسانه‌ای (File & Media Explorer)</span>
+            <span>مدیریت فایل و چندرسانه‌ای گوشی (File Explorer & Studio)</span>
           </h2>
           <p className="text-xs text-slate-400">
-            مشاهده بندانگشتی (Thumbnail) و زنده تصاویر، پخش ویدیوها و آهنگ‌ها، خواندن اسناد و انتقال دوطرفه فایل‌ها
+            حذف، تغییر نام، انتقال به پوشه‌ها، دانلود، آپلود دسته‌جمعی، ساخت و حذف پوشه، و پیش‌نمایش زنده تصاویر و موزیک
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        {/* Global Toolbar Buttons */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Upload Button */}
           <input
             type="file"
             id="fileUploadInput"
-            onChange={handleUpload}
+            multiple
+            onChange={(e) => handleUploadFiles(e.target.files)}
             disabled={isUploading}
             className="hidden"
           />
@@ -329,72 +519,179 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all shadow-md ${
               isUploading
                 ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                : 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-cyan-500/20'
+                : 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 shadow-cyan-500/20'
             }`}
           >
             <Upload className={`w-4 h-4 ${isUploading ? 'animate-bounce' : ''}`} />
-            <span>{isUploading ? 'در حال ارسال...' : 'ارسال فایل به این پوشه'}</span>
+            <span>{isUploading ? 'در حال ارسال...' : 'آپلود فایل به این پوشه'}</span>
           </label>
 
+          {/* New Folder Button */}
           <button
             onClick={() => setShowNewFolderModal(true)}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs font-semibold transition-all"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-bold transition-all shadow-sm"
           >
             <FolderPlus className="w-4 h-4 text-amber-400" />
             <span>پوشه جدید</span>
           </button>
+
+          {/* Clipboard Paste Button */}
+          {clipboard && (
+            <button
+              onClick={handlePasteClipboard}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black transition-all shadow-lg animate-pulse"
+              title={`جای‌گذاری "${clipboard.item.name}" در این پوشه`}
+            >
+              <Clipboard className="w-4 h-4" />
+              <span>جای‌گذاری ({clipboard.mode === 'cut' ? 'انتقال' : 'کپی'})</span>
+            </button>
+          )}
+
+          {/* Refresh Button */}
+          <button
+            onClick={() => fetchFiles(currentPath)}
+            className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-700 transition-all shadow-sm"
+            title="بروزرسانی لیست"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-cyan-400' : ''}`} />
+          </button>
         </div>
       </div>
 
-      {/* Quick Jump Shortcuts Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        {[
-          { label: 'حافظه اصلی (/sdcard/)', path: '/sdcard/' },
-          { label: 'دانلودها (Downloads)', path: '/sdcard/Download/' },
-          { label: 'دوربین و عکس‌ها (DCIM)', path: '/sdcard/DCIM/' },
-          { label: 'تصاویر (Pictures)', path: '/sdcard/Pictures/' },
-          { label: 'موزیک (Music)', path: '/sdcard/Music/' },
-          { label: 'اسناد (Documents)', path: '/sdcard/Documents/' }
-        ].map((q) => (
-          <button
-            key={q.path}
-            onClick={() => fetchFiles(q.path)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
-              currentPath === q.path 
-                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50' 
-                : 'bg-slate-900/80 text-slate-400 border-slate-800 hover:text-slate-200'
-            }`}
-          >
-            {q.label}
-          </button>
-        ))}
-      </div>
+      {/* Drag & Drop Overlay Indicator */}
+      {isDragOver && (
+        <div className="p-8 border-2 border-dashed border-cyan-400 rounded-3xl bg-cyan-500/10 text-center animate-pulse">
+          <Upload className="w-12 h-12 text-cyan-400 mx-auto mb-2" />
+          <h3 className="text-base font-bold text-white">فایل‌ها را همین‌جا رها کنید تا در این پوشه آپلود شوند</h3>
+          <p className="text-xs text-cyan-300 font-mono mt-1">{currentPath}</p>
+        </div>
+      )}
 
-      {/* Breadcrumb Path, Search Bar & View Mode Toggle */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-slate-900/90 rounded-2xl border border-slate-800">
-        <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto font-mono text-xs text-cyan-300">
+      {/* Navigation Path & Quick Folder Shortcuts */}
+      <div className="rounded-2xl glass-panel p-4 border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
+        {/* Breadcrumb Path */}
+        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto text-xs py-1">
           <button
             onClick={handleGoUp}
-            disabled={currentPath === '/sdcard/' || currentPath === '/'}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
-            title="پوشه بالاتر (Up)"
+            disabled={currentPath === '/' || currentPath === '/sdcard/'}
+            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-30 disabled:pointer-events-none transition-all flex-shrink-0"
+            title="پوشه بالا (Up)"
           >
             <ArrowUp className="w-4 h-4" />
           </button>
-          <span className="px-2 py-1 bg-[#050914] rounded-lg border border-slate-800/80">
-            {currentPath}
-          </span>
+
+          <button
+            onClick={() => fetchFiles('/sdcard/')}
+            className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-700 font-mono font-bold flex items-center gap-1.5 flex-shrink-0"
+          >
+            <HardDrive className="w-3.5 h-3.5" />
+            <span>حافظه اصلی</span>
+          </button>
+
+          {breadcrumbParts.map((part, idx) => (
+            <React.Fragment key={idx}>
+              <span className="text-slate-600 font-mono">/</span>
+              <button
+                onClick={() => handleBreadcrumbClick(idx, breadcrumbParts)}
+                className={`px-2.5 py-1 rounded-lg font-mono transition-all flex-shrink-0 ${
+                  idx === breadcrumbParts.length - 1 
+                    ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30' 
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                {part}
+              </button>
+            </React.Fragment>
+          ))}
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        {/* Quick Shortcut Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1">
+          {[
+            { name: 'دانلودها', path: '/sdcard/Download/' },
+            { name: 'دوربین و عکس', path: '/sdcard/DCIM/' },
+            { name: 'تصاویر', path: '/sdcard/Pictures/' },
+            { name: 'موزیک', path: '/sdcard/Music/' },
+            { name: 'اسناد', path: '/sdcard/Documents/' }
+          ].map(shortcut => (
+            <button
+              key={shortcut.path}
+              onClick={() => fetchFiles(shortcut.path)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
+                currentPath === shortcut.path 
+                  ? 'bg-cyan-500 text-slate-950 border-cyan-400 font-bold shadow-md shadow-cyan-500/20' 
+                  : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white'
+              }`}
+            >
+              {shortcut.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Filter, Search & View Controls */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        {/* Search */}
+        <div className="relative flex-1 w-full">
+          <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <input
+            type="text"
+            placeholder="جستجو در نام فایل‌ها و پوشه‌ها..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pr-10 pl-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
+          />
+        </div>
+
+        {/* Multi-Select & Sort & View Controls */}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          {/* Select All Toggle */}
+          <button
+            onClick={toggleSelectAll}
+            className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 text-xs font-semibold flex items-center gap-1.5"
+            title="انتخاب همه موارد"
+          >
+            {selectedItems.size === filteredItems.length && filteredItems.length > 0 ? (
+              <CheckSquare className="w-4 h-4 text-cyan-400" />
+            ) : (
+              <Square className="w-4 h-4 text-slate-500" />
+            )}
+            <span className="hidden sm:inline">انتخاب همه ({selectedItems.size})</span>
+          </button>
+
+          {/* Batch Delete */}
+          {selectedItems.size > 0 && (
+            <button
+              onClick={handleBatchDelete}
+              className="px-3 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-bold flex items-center gap-1.5 animate-scaleIn"
+            >
+              <Trash2 className="w-4 h-4 text-rose-400" />
+              <span>حذف ({selectedItems.size})</span>
+            </button>
+          )}
+
+          {/* Sort Dropdown */}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300 font-semibold focus:outline-none focus:border-cyan-500"
+          >
+            <option value="name_asc">نام (الف - ی)</option>
+            <option value="name_desc">نام (ی - الف)</option>
+            <option value="size_desc">حجم (بیشترین)</option>
+            <option value="size_asc">حجم (کمترین)</option>
+            <option value="date_desc">تاریخ (جدیدترین)</option>
+            <option value="date_asc">تاریخ (قدیمی‌ترین)</option>
+          </select>
+
           {/* View Mode Toggle */}
-          <div className="flex items-center bg-[#050914] p-1 rounded-xl border border-slate-800">
+          <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800">
             <button
               onClick={() => setViewMode('list')}
               className={`p-1.5 rounded-lg transition-all ${
                 viewMode === 'list' ? 'bg-cyan-500/20 text-cyan-400' : 'text-slate-500 hover:text-slate-300'
               }`}
-              title="نمای لیستی"
+              title="نمایش لیستی"
             >
               <List className="w-4 h-4" />
             </button>
@@ -403,177 +700,156 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
               className={`p-1.5 rounded-lg transition-all ${
                 viewMode === 'grid' ? 'bg-cyan-500/20 text-cyan-400' : 'text-slate-500 hover:text-slate-300'
               }`}
-              title="نمای گالری و شبکه‌ای (پیش‌نمایش بزرگ)"
+              title="نمایش شبکه‌ای"
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
           </div>
-
-          {/* Sorting */}
-          <div className="flex items-center gap-1 bg-[#050914] px-2 py-1.5 rounded-xl border border-slate-800 text-xs">
-            <ArrowUpDown className="w-3.5 h-3.5 text-cyan-400" />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="bg-transparent text-slate-300 focus:outline-none cursor-pointer pr-1 text-xs"
-            >
-              <option value="name_asc" className="bg-slate-900 text-slate-200">نام (الف - ی)</option>
-              <option value="name_desc" className="bg-slate-900 text-slate-200">نام (ی - الف)</option>
-              <option value="size_desc" className="bg-slate-900 text-slate-200">بزرگترین حجم</option>
-              <option value="size_asc" className="bg-slate-900 text-slate-200">کوچکترین حجم</option>
-              <option value="date_desc" className="bg-slate-900 text-slate-200">جدیدترین</option>
-              <option value="date_asc" className="bg-slate-900 text-slate-200">قدیمی‌ترین</option>
-            </select>
-          </div>
-
-          <div className="relative w-full sm:w-52">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              placeholder="جستجو در نام فایل‌ها..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-[#050914] border border-slate-800 rounded-xl pr-9 pl-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500/50"
-            />
-          </div>
-
-          <button
-            onClick={() => fetchFiles(currentPath)}
-            disabled={loading}
-            className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:text-cyan-400"
-            title="تازه سازی"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-cyan-400' : ''}`} />
-          </button>
         </div>
       </div>
 
-      {/* Files Display Container (List or Grid View) */}
+      {/* Files Display (List or Grid) */}
       {loading ? (
-        <div className="p-16 rounded-2xl glass-panel border border-slate-800 flex flex-col items-center justify-center text-slate-400">
-          <RefreshCw className="w-8 h-8 animate-spin text-cyan-400 mb-2" />
-          <span className="text-xs">در حال بارگذاری محتوای پوشه...</span>
+        <div className="p-20 text-center text-slate-400 space-y-3">
+          <RefreshCw className="w-10 h-10 animate-spin text-cyan-400 mx-auto" />
+          <p className="text-sm font-semibold">در حال بارگذاری فایل‌های پوشه...</p>
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="p-16 rounded-2xl glass-panel border border-slate-800 text-center text-slate-500 text-sm">
-          این پوشه خالی است یا فایلی با این نام پیدا نشد.
+        <div className="p-20 text-center text-slate-500 space-y-3 glass-panel rounded-3xl border border-slate-800">
+          <Folder className="w-12 h-12 text-slate-600 mx-auto" />
+          <p className="text-sm font-semibold">این پوشه خالی است یا فایلی با این نام یافت نشد.</p>
         </div>
       ) : viewMode === 'grid' ? (
-        /* GRID / GALLERY VIEW WITH PROMINENT THUMBNAILS */
+        /* GRID VIEW */
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
           {filteredItems.map((item) => {
             const cat = getFileCategory(item.name);
             const isImage = !item.isDir && cat === 'image';
             const isVideo = !item.isDir && cat === 'video';
+            const isSelected = selectedItems.has(item.name);
 
             return (
               <div
                 key={item.name}
-                onClick={() => {
-                  if (item.isDir) {
-                    handleNavigate(item.name);
-                  } else {
-                    handleOpenPreview(item);
-                  }
-                }}
-                className="group relative rounded-2xl p-3 bg-slate-900/70 border border-slate-800 hover:border-cyan-500/50 transition-all flex flex-col justify-between cursor-pointer hover:shadow-xl hover:shadow-cyan-950/40 select-none overflow-hidden"
+                onClick={() => item.isDir ? handleNavigate(item.name) : handleOpenPreview(item)}
+                className={`relative group rounded-2xl p-3 border transition-all cursor-pointer flex flex-col items-center text-center space-y-2 select-none ${
+                  isSelected 
+                    ? 'bg-cyan-950/40 border-cyan-400 shadow-lg shadow-cyan-950/80' 
+                    : 'bg-slate-900/80 hover:bg-slate-800/80 border-slate-800 hover:border-cyan-500/40'
+                }`}
               >
-                {/* Thumbnail / Large Preview Area */}
-                <div className="w-full aspect-square rounded-xl bg-slate-950/80 border border-slate-800/80 mb-2.5 overflow-hidden flex items-center justify-center relative">
+                {/* Select Checkbox */}
+                <button
+                  onClick={(e) => toggleSelect(item.name, e)}
+                  className="absolute top-2 right-2 p-1 rounded-lg bg-slate-950/80 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-300 z-10"
+                >
+                  {isSelected ? <CheckSquare className="w-4 h-4 text-cyan-400" /> : <Square className="w-4 h-4" />}
+                </button>
+
+                {/* Thumbnail Icon */}
+                <div className="w-20 h-20 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-md">
                   {item.isDir ? (
-                    <Folder className="w-12 h-12 text-amber-400 fill-amber-400/20 group-hover:scale-110 transition-transform" />
+                    <Folder className="w-10 h-10 text-amber-400 fill-amber-400/20" />
                   ) : isImage ? (
                     <img
                       src={getItemPreviewUrl(item.name)}
                       alt={item.name}
                       loading="lazy"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = 'none';
-                      }}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
+                      onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                     />
                   ) : isVideo ? (
-                    <div className="flex flex-col items-center justify-center text-rose-400">
-                      <Film className="w-10 h-10 mb-1 group-hover:scale-110 transition-transform" />
-                      <span className="text-[10px] font-mono text-rose-300/80 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">Video</span>
-                    </div>
+                    <Film className="w-8 h-8 text-rose-400" />
                   ) : cat === 'audio' ? (
-                    <div className="flex flex-col items-center justify-center text-purple-400">
-                      <Music className="w-10 h-10 mb-1 group-hover:scale-110 transition-transform" />
-                      <span className="text-[10px] font-mono text-purple-300/80 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">Audio</span>
-                    </div>
+                    <Music className="w-8 h-8 text-purple-400" />
                   ) : cat === 'text' ? (
-                    <FileCode className="w-10 h-10 text-emerald-400 group-hover:scale-110 transition-transform" />
+                    <FileCode className="w-8 h-8 text-emerald-400" />
                   ) : (
-                    <FileText className="w-10 h-10 text-slate-400 group-hover:scale-110 transition-transform" />
+                    <FileText className="w-8 h-8 text-slate-400" />
                   )}
-
-                  {/* Quick Action Overlay on Hover */}
-                  <div className="absolute inset-0 bg-slate-950/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenPreview(item);
-                      }}
-                      className="p-2 rounded-xl bg-cyan-500 text-slate-950 font-bold shadow-lg transform hover:scale-110 transition-transform"
-                      title="پیش‌نمایش"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    {!item.isDir && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDownload(item.name);
-                        }}
-                        className="p-2 rounded-xl bg-emerald-500 text-slate-950 font-bold shadow-lg transform hover:scale-110 transition-transform"
-                        title="دانلود"
-                      >
-                        <Download className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
                 </div>
 
-                {/* File Details */}
-                <div className="text-right">
-                  <h4 className="text-xs font-semibold text-slate-200 group-hover:text-cyan-300 truncate" title={item.name}>
+                {/* Name & Meta */}
+                <div className="w-full truncate">
+                  <span className="font-semibold text-xs text-slate-200 group-hover:text-white truncate block" title={item.name}>
                     {item.name}
-                  </h4>
-                  <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-mono block mt-0.5">
                     {item.isDir ? 'پوشه' : item.size}
-                  </p>
+                  </span>
+                </div>
+
+                {/* Quick Action Overlay Buttons */}
+                <div className="flex items-center gap-1 pt-1 opacity-80 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => handleOpenRename(item)}
+                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-300"
+                    title="تغییر نام"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+
+                  <button
+                    onClick={() => handleOpenMoveModal(item)}
+                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300"
+                    title="انتقال به پوشه دیگر"
+                  >
+                    <Move className="w-3.5 h-3.5" />
+                  </button>
+
+                  {!item.isDir && (
+                    <button
+                      onClick={() => handleDownload(item.name)}
+                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-300"
+                      title="دانلود فایل"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => handleDelete(item)}
+                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400"
+                    title="حذف"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             );
           })}
         </div>
       ) : (
-        /* LIST VIEW WITH CRISP INLINE THUMBNAILS */
+        /* LIST VIEW */
         <div className="rounded-2xl glass-panel border border-slate-800 overflow-hidden">
           <div className="divide-y divide-slate-800/60 font-sans text-xs">
             {filteredItems.map((item) => {
               const cat = getFileCategory(item.name);
               const isImage = !item.isDir && cat === 'image';
               const isVideo = !item.isDir && cat === 'video';
+              const isSelected = selectedItems.has(item.name);
 
               return (
                 <div
                   key={item.name}
-                  className="flex items-center justify-between p-3 hover:bg-slate-800/40 transition-colors group select-none"
+                  className={`flex items-center justify-between p-3 transition-colors group select-none ${
+                    isSelected ? 'bg-cyan-950/30' : 'hover:bg-slate-800/40'
+                  }`}
                 >
-                  <div 
-                    onClick={() => {
-                      if (item.isDir) {
-                        handleNavigate(item.name);
-                      } else {
-                        handleOpenPreview(item);
-                      }
-                    }}
-                    className="flex items-center gap-3.5 flex-1 min-w-0 cursor-pointer hover:text-cyan-300"
-                  >
-                    {/* Inline Thumbnail / Icon */}
-                    <div className="w-11 h-11 rounded-xl bg-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center flex-shrink-0 group-hover:border-cyan-500/40 transition-colors shadow-sm">
+                  <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                    {/* Checkbox */}
+                    <button
+                      onClick={(e) => toggleSelect(item.name, e)}
+                      className="p-1 rounded-lg text-slate-500 hover:text-cyan-400 flex-shrink-0"
+                    >
+                      {isSelected ? <CheckSquare className="w-4 h-4 text-cyan-400" /> : <Square className="w-4 h-4" />}
+                    </button>
+
+                    {/* Thumbnail */}
+                    <div 
+                      onClick={() => item.isDir ? handleNavigate(item.name) : handleOpenPreview(item)}
+                      className="w-11 h-11 rounded-xl bg-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center flex-shrink-0 group-hover:border-cyan-500/40 transition-colors shadow-sm cursor-pointer"
+                    >
                       {item.isDir ? (
                         <Folder className="w-6 h-6 text-amber-400 fill-amber-400/20" />
                       ) : isImage ? (
@@ -582,9 +858,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
                           alt={item.name}
                           loading="lazy"
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                          }}
+                          onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                         />
                       ) : isVideo ? (
                         <Film className="w-5 h-5 text-rose-400" />
@@ -598,43 +872,74 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
                     </div>
 
                     {/* File Meta */}
-                    <div className="truncate text-right">
-                      <span className="font-semibold text-slate-200 group-hover:text-white truncate block">
+                    <div 
+                      onClick={() => item.isDir ? handleNavigate(item.name) : handleOpenPreview(item)}
+                      className="truncate text-right flex-1 min-w-0 cursor-pointer"
+                    >
+                      <span className="font-semibold text-slate-200 group-hover:text-cyan-300 truncate block">
                         {item.name}
                       </span>
                       <span className="text-[10px] text-slate-500 font-mono">
-                        {item.modified} • {item.size}
+                        {item.modified} • {item.isDir ? 'پوشه' : item.size}
                       </span>
                     </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
+                  {/* Actions Toolbar on Right */}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {/* Preview Button */}
                     {!item.isDir && (
-                      <>
-                        {/* Preview Button */}
-                        <button
-                          onClick={() => handleOpenPreview(item)}
-                          className="p-2 rounded-xl bg-slate-900 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-300 border border-slate-800 transition-all flex items-center gap-1.5"
-                          title="مشاهده و پخش پیش‌نمایش"
-                        >
-                          <Eye className="w-3.5 h-3.5 text-cyan-400" />
-                          <span className="hidden sm:inline text-[11px] font-semibold text-cyan-400">پیش‌نمایش</span>
-                        </button>
-
-                        {/* Download Button */}
-                        <button
-                          onClick={() => handleDownload(item.name)}
-                          className="p-2 rounded-xl bg-slate-900 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-300 border border-slate-800 transition-all"
-                          title="دانلود فایل روی کامپیوتر"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                        </button>
-                      </>
+                      <button
+                        onClick={() => handleOpenPreview(item)}
+                        className="p-2 rounded-xl bg-slate-900 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-300 border border-slate-800 transition-all flex items-center gap-1.5"
+                        title="پیش‌نمایش"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-cyan-400" />
+                        <span className="hidden sm:inline text-[11px] font-semibold text-cyan-400">نمایش</span>
+                      </button>
                     )}
 
+                    {/* Rename Button */}
                     <button
-                      onClick={() => handleDelete(item.name)}
+                      onClick={() => handleOpenRename(item)}
+                      className="p-2 rounded-xl bg-slate-900 hover:bg-amber-500/20 text-slate-400 hover:text-amber-300 border border-slate-800 transition-all"
+                      title="تغییر نام"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* Move Button */}
+                    <button
+                      onClick={() => handleOpenMoveModal(item)}
+                      className="p-2 rounded-xl bg-slate-900 hover:bg-purple-500/20 text-slate-400 hover:text-purple-300 border border-slate-800 transition-all"
+                      title="انتقال به پوشه دیگر"
+                    >
+                      <Move className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* Cut / Move to Clipboard */}
+                    <button
+                      onClick={() => handleCutItem(item)}
+                      className="p-2 rounded-xl bg-slate-900 hover:bg-blue-500/20 text-slate-400 hover:text-blue-300 border border-slate-800 transition-all"
+                      title="برش و کات (Cut)"
+                    >
+                      <Scissors className="w-3.5 h-3.5" />
+                    </button>
+
+                    {/* Download Button */}
+                    {!item.isDir && (
+                      <button
+                        onClick={() => handleDownload(item.name)}
+                        className="p-2 rounded-xl bg-slate-900 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-300 border border-slate-800 transition-all"
+                        title="دانلود روی کامپیوتر"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
+                    {/* Delete Button */}
+                    <button
+                      onClick={() => handleDelete(item)}
                       className="p-2 rounded-xl bg-slate-900 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-800 transition-all"
                       title="حذف"
                     >
@@ -648,7 +953,161 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
         </div>
       )}
 
-      {/* Media Preview Modal */}
+      {/* RENAME MODAL */}
+      {renameItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-amber-500/40 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Edit2 className="w-5 h-5 text-amber-400" />
+                <span>تغییر نام {renameItem.isDir ? 'پوشه' : 'فایل'}</span>
+              </h3>
+              <button onClick={() => setRenameItem(null)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2 text-right">
+              <label className="text-xs text-slate-400">نام جدید را وارد کنید:</label>
+              <input
+                type="text"
+                value={renameInput}
+                onChange={(e) => setRenameInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleRenameSubmit()}
+                autoFocus
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm focus:outline-none focus:border-amber-500 font-mono"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setRenameItem(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+              >
+                انصراف
+              </button>
+              <button
+                onClick={handleRenameSubmit}
+                className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold shadow-lg shadow-amber-500/20"
+              >
+                تایید و تغییر نام
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MOVE TO FOLDER MODAL */}
+      {moveItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-purple-500/40 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Move className="w-5 h-5 text-purple-400" />
+                <span>انتقال "{moveItem.name}" به پوشه دیگر</span>
+              </h3>
+              <button onClick={() => setMoveItem(null)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-right">
+              <label className="text-xs text-slate-400">مسیر پوشه مقصد در حافظه گوشی:</label>
+              <input
+                type="text"
+                value={targetMoveDir}
+                onChange={(e) => setTargetMoveDir(e.target.value)}
+                placeholder="/sdcard/Download/"
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-cyan-300 text-sm focus:outline-none focus:border-purple-500 font-mono"
+              />
+
+              {/* Quick Destination Folders */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[
+                  '/sdcard/Download/',
+                  '/sdcard/DCIM/Camera/',
+                  '/sdcard/Pictures/',
+                  '/sdcard/Music/',
+                  '/sdcard/Documents/'
+                ].map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setTargetMoveDir(p)}
+                    className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-purple-500/20 text-slate-300 hover:text-purple-300 text-[11px] font-mono border border-slate-700"
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setMoveItem(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+              >
+                انصراف
+              </button>
+              <button
+                onClick={handleDirectMoveSubmit}
+                className="px-5 py-2 rounded-xl bg-purple-500 hover:bg-purple-400 text-white text-xs font-bold shadow-lg shadow-purple-500/20 flex items-center gap-1.5"
+              >
+                <CornerDownLeft className="w-4 h-4" />
+                <span>انتقال به این پوشه</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE NEW FOLDER MODAL */}
+      {showNewFolderModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-slate-900 border border-cyan-500/40 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <FolderPlus className="w-5 h-5 text-amber-400" />
+                <span>ایجاد پوشه جدید</span>
+              </h3>
+              <button onClick={() => setShowNewFolderModal(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2 text-right">
+              <label className="text-xs text-slate-400">نام پوشه را وارد کنید:</label>
+              <input
+                type="text"
+                placeholder="مثلاً: MyMusic یا Backups"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
+                autoFocus
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white text-sm focus:outline-none focus:border-cyan-500 font-mono"
+              />
+              <p className="text-[11px] text-slate-500 font-mono">محل ایجاد: {currentPath}</p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setShowNewFolderModal(false)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+              >
+                انصراف
+              </button>
+              <button
+                onClick={handleCreateFolder}
+                className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold shadow-lg shadow-cyan-500/20"
+              >
+                ایجاد پوشه
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MEDIA PREVIEW MODAL */}
       {previewFile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-lg animate-fadeIn">
           <div className="relative w-full max-w-4xl bg-[#0c142b] border border-cyan-500/40 rounded-3xl overflow-hidden shadow-2xl shadow-cyan-950/90 flex flex-col max-h-[90vh]">
@@ -873,7 +1332,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
                     onClick={() => handleDownload(previewFile.name)}
                     className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-md shadow-cyan-500/20"
                   >
-                    دانلود فایل
+                    دانلود مستقیم
                   </button>
                 </div>
               )}
@@ -881,40 +1340,6 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
           </div>
         </div>
       )}
-
-      {/* New Folder Dialog */}
-      {showNewFolderModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
-          <div className="bg-[#0c142b] border border-cyan-500/30 rounded-3xl p-6 w-full max-w-sm text-right space-y-4 shadow-2xl">
-            <h3 className="text-base font-bold text-white">ایجاد پوشه جدید</h3>
-            <div>
-              <label className="text-[11px] text-slate-400 block mb-1">نام پوشه:</label>
-              <input
-                type="text"
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                placeholder="Folder_Name"
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-500"
-              />
-            </div>
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                onClick={() => setShowNewFolderModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
-              >
-                انصراف
-              </button>
-              <button
-                onClick={handleCreateFolder}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 transition-all"
-              >
-                ایجاد پوشه
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
-
