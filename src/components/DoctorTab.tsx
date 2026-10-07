@@ -315,14 +315,33 @@ export const DoctorTab: React.FC<DoctorTabProps> = ({ device }) => {
           {/* Master Clean Action Bar */}
           <div className="rounded-3xl glass-panel p-6 border border-cyan-500/30 flex flex-col md:flex-row items-center justify-between gap-6 bg-gradient-to-r from-cyan-950/30 via-slate-900/60 to-blue-950/30">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 shadow-xl shadow-cyan-950/50">
-                <Trash2 className="w-8 h-8" />
+              <div className={`w-16 h-16 rounded-2xl border flex items-center justify-center shadow-xl ${
+                junkData?.totalJunkBytes === 0 || junkData?.totalJunkSize?.includes('پاکسازی')
+                  ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 shadow-emerald-950/50'
+                  : 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400 shadow-cyan-950/50'
+              }`}>
+                {junkData?.totalJunkBytes === 0 || junkData?.totalJunkSize?.includes('پاکسازی') ? (
+                  <CheckCircle2 className="w-8 h-8" />
+                ) : (
+                  <Trash2 className="w-8 h-8" />
+                )}
               </div>
               <div>
-                <span className="text-xs text-slate-400">حجم کل فایل‌های اضافی قابل پاکسازی:</span>
-                <h3 className="text-3xl font-black text-cyan-300 font-mono tracking-tight mt-0.5">
-                  {junkData ? junkData.totalJunkSize : '۱.۴۲ GB'}
-                </h3>
+                <span className="text-xs text-slate-400">حجم فایل‌های اضافی قابل پاکسازی:</span>
+                <div className="flex items-center gap-3 mt-0.5">
+                  <h3 className={`text-3xl font-black font-mono tracking-tight ${
+                    junkData?.totalJunkBytes === 0 || junkData?.totalJunkSize?.includes('پاکسازی')
+                      ? 'text-emerald-400'
+                      : 'text-cyan-300'
+                  }`}>
+                    {junkData ? junkData.totalJunkSize : 'در حال محاسبه...'}
+                  </h3>
+                  {junkData && (junkData.totalJunkBytes === 0 || junkData.totalJunkSize?.includes('پاکسازی')) && (
+                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      کاملاً بهینه و تمیز ✨
+                    </span>
+                  )}
+                </div>
                 <p className="text-[11px] text-slate-400 mt-1">
                   شامل کش برنامه‌ها، بندانگشتی‌های گالری، گزارش‌های خرابی و پوشه‌های خالی
                 </p>
@@ -331,6 +350,7 @@ export const DoctorTab: React.FC<DoctorTabProps> = ({ device }) => {
 
             <div className="flex items-center gap-3">
               <button
+                type="button"
                 onClick={scanJunkFiles}
                 disabled={scanningJunk}
                 className="px-4 py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 text-xs font-bold transition-all flex items-center gap-2"
@@ -340,9 +360,10 @@ export const DoctorTab: React.FC<DoctorTabProps> = ({ device }) => {
               </button>
 
               <button
+                type="button"
                 onClick={cleanJunkFiles}
                 disabled={cleaningJunk}
-                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 text-xs font-black transition-all shadow-xl shadow-cyan-500/25 flex items-center gap-2 transform hover:scale-105 active:scale-95"
+                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 text-xs font-black transition-all shadow-xl shadow-cyan-500/25 flex items-center gap-2 transform hover:scale-105 active:scale-95 disabled:opacity-50"
               >
                 <Sparkles className="w-4 h-4 text-slate-950" />
                 <span>{cleaningJunk ? 'در حال پاکسازی...' : 'پاکسازی سریع و آزادسازی حافظه'}</span>
@@ -352,31 +373,47 @@ export const DoctorTab: React.FC<DoctorTabProps> = ({ device }) => {
 
           {/* Junk Categories Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {junkData?.categories.map((cat) => (
-              <div 
-                key={cat.id}
-                className="p-5 rounded-2xl glass-panel border border-slate-800 hover:border-cyan-500/40 transition-all flex flex-col justify-between space-y-3"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="p-2.5 rounded-xl bg-cyan-500/10 text-cyan-400 shrink-0">
-                    {cat.id === 'app_cache' && <Zap className="w-5 h-5" />}
-                    {cat.id === 'thumbnails' && <Eye className="w-5 h-5" />}
-                    {cat.id === 'crash_logs' && <FileText className="w-5 h-5" />}
-                    {cat.id === 'temp_apks' && <Package className="w-5 h-5" />}
-                    {cat.id === 'empty_folders' && <FolderMinus className="w-5 h-5" />}
+            {junkData?.categories.map((cat) => {
+              const isClean = cat.size.includes('پاکسازی') || cat.size.startsWith('0') || cat.size.startsWith('۰');
+              return (
+                <div 
+                  key={cat.id}
+                  className={`p-5 rounded-2xl glass-panel border transition-all flex flex-col justify-between space-y-3 ${
+                    isClean ? 'border-slate-800/80 bg-slate-950/40' : 'border-slate-800 hover:border-cyan-500/40'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className={`p-2.5 rounded-xl shrink-0 ${
+                      isClean ? 'bg-emerald-500/10 text-emerald-400' : 'bg-cyan-500/10 text-cyan-400'
+                    }`}>
+                      {cat.id === 'app_cache' && <Zap className="w-5 h-5" />}
+                      {cat.id === 'thumbnails' && <Eye className="w-5 h-5" />}
+                      {cat.id === 'crash_logs' && <FileText className="w-5 h-5" />}
+                      {cat.id === 'temp_apks' && <Package className="w-5 h-5" />}
+                      {cat.id === 'empty_folders' && <FolderMinus className="w-5 h-5" />}
+                    </div>
+                    <div className="flex-1 min-w-0 text-right">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-bold text-white truncate">{cat.name}</h4>
+                        {isClean && (
+                          <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                            پاک شد
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">{cat.desc}</p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-w-0 text-right">
-                    <h4 className="text-sm font-bold text-white truncate">{cat.name}</h4>
-                    <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">{cat.desc}</p>
-                  </div>
-                </div>
 
-                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs font-mono">
-                  <span className="text-slate-400">{cat.count} مورد</span>
-                  <span className="text-sm font-bold text-cyan-300">{cat.size}</span>
+                  <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs font-mono">
+                    <span className="text-slate-400">{cat.count} مورد</span>
+                    <span className={`text-sm font-bold ${isClean ? 'text-emerald-400' : 'text-cyan-300'}`}>
+                      {cat.size}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

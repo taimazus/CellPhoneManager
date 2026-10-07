@@ -3,9 +3,28 @@ import fs from 'fs';
 import path from 'path';
 
 export class SystemDoctorManager {
-  // 1. Scan Junk & Residual Files
+  constructor() {
+    this.mockCleanedMap = new Map();
+  }
+
+  // 1. Scan Junk & Residual Files (Real-time dynamic measurement)
   async scanJunk(serial) {
     if (serial && serial.startsWith('mock-')) {
+      const isCleaned = this.mockCleanedMap.get(serial);
+      if (isCleaned) {
+        return {
+          success: true,
+          totalJunkSize: '۰ بایت (پاکسازی شده)',
+          totalJunkBytes: 0,
+          categories: [
+            { id: 'app_cache', name: 'کش و حافظه موقت برنامه‌ها', size: '۰ کیلوبایت (پاکسازی شده)', count: 0, icon: 'Zap', desc: 'حافظه موقت و کش اپلیکیشن‌ها کاملاً تخلیه شد' },
+            { id: 'thumbnails', name: 'کش تصاویر بندانگشتی (Thumbnails)', size: '۰ کیلوبایت (پاکسازی شده)', count: 0, icon: 'Eye', desc: 'پیش‌نمایش‌های گالری پاکسازی شدند' },
+            { id: 'crash_logs', name: 'لاگ‌ها و فایل‌های گزارش خرابی', size: '۰ کیلوبایت (پاکسازی شده)', count: 0, icon: 'FileText', desc: 'فایل‌های گزارش کرش و بافر لاگ‌ها تخلیه شدند' },
+            { id: 'temp_apks', name: 'فایل‌های موقت و بسته‌های نصبی معلق', size: '۰ کیلوبایت (پاکسازی شده)', count: 0, icon: 'Package', desc: 'فایل‌های موقت حذف شدند' },
+            { id: 'empty_folders', name: 'پوشه‌های خالی باقیمانده از برنامه‌ها', size: '۰ کیلوبایت (پاکسازی شده)', count: 0, icon: 'FolderMinus', desc: 'پوشه‌های بدون استفاده پاکسازی شدند' }
+          ]
+        };
+      }
       return {
         success: true,
         totalJunkSize: '1.42 GB',
@@ -21,37 +40,108 @@ export class SystemDoctorManager {
     }
 
     try {
-      const [cacheRes, thumbRes, logRes] = await Promise.all([
-        adbManager.runAdb('shell "du -sh /sdcard/Android/data/*/cache 2>/dev/null | head -n 20"', serial),
-        adbManager.runAdb('shell "du -sh /sdcard/DCIM/.thumbnails /sdcard/.thumbnails 2>/dev/null"', serial),
-        adbManager.runAdb('shell "ls -la /data/tombstones /data/anr 2>/dev/null | wc -l"', serial)
+      const [cacheRes, thumbRes, logRes, tempRes, emptyRes] = await Promise.all([
+        adbManager.runAdb('shell "du -sk /sdcard/Android/data/*/cache /sdcard/Android/media/*/cache 2>/dev/null || true"', serial),
+        adbManager.runAdb('shell "du -sk /sdcard/DCIM/.thumbnails /sdcard/.thumbnails 2>/dev/null || true"', serial),
+        adbManager.runAdb('shell "ls -1 /sdcard/log /data/local/tmp 2>/dev/null | wc -l || true"', serial),
+        adbManager.runAdb('shell "find /sdcard/Download -name \'*.tmp\' -o -name \'*.apk.tmp\' 2>/dev/null | wc -l || true"', serial),
+        adbManager.runAdb('shell "find /sdcard/ -maxdepth 2 -type d -empty 2>/dev/null | wc -l || true"', serial)
       ]);
 
-      // Calculate estimations
-      let cacheMB = 650;
-      let thumbMB = 340;
-      let logMB = 85;
-      let tempMB = 60;
-      let emptyCount = 38;
+      // Parse actual KB from du outputs
+      const parseKb = (stdout) => {
+        if (!stdout) return { totalKb: 0, count: 0 };
+        let kbSum = 0;
+        let count = 0;
+        const lines = stdout.split('\n');
+        for (const line of lines) {
+          const parts = line.trim().split(/\s+/);
+          const kb = parseInt(parts[0], 10);
+          if (!isNaN(kb) && kb > 0) {
+            // Ignore trivial placeholder directories (4KB)
+            if (kb > 4) {
+              kbSum += kb;
+              count++;
+            }
+          }
+        }
+        return { totalKb: kbSum, count };
+      };
 
-      if (thumbRes.stdout && thumbRes.stdout.includes('M')) {
-        const m = thumbRes.stdout.match(/(\d+)M/);
-        if (m) thumbMB = parseInt(m[1], 10);
+      const cacheData = parseKb(cacheRes.stdout);
+      const thumbData = parseKb(thumbRes.stdout);
+
+      const logCount = parseInt((logRes.stdout || '0').trim(), 10) || 0;
+      const logKb = logCount > 0 ? logCount * 512 : 0; // ~512KB per log/dump
+
+      const tempCount = parseInt((tempRes.stdout || '0').trim(), 10) || 0;
+      const tempKb = tempCount > 0 ? tempCount * 2048 : 0;
+
+      const emptyCount = parseInt((emptyRes.stdout || '0').trim(), 10) || 0;
+      const emptyKb = emptyCount > 0 ? emptyCount * 4 : 0;
+
+      const formatSizeLabel = (kb, count) => {
+        if (kb <= 0) return '۰ کیلوبایت (پاکسازی شده)';
+        if (kb < 1024) return `${kb} KB`;
+        const mb = kb / 1024;
+        if (mb < 1024) return `${mb.toFixed(1)} MB`;
+        return `${(mb / 1024).toFixed(2)} GB`;
+      };
+
+      const totalKb = cacheData.totalKb + thumbData.totalKb + logKb + tempKb + emptyKb;
+      const totalBytes = totalKb * 1024;
+
+      let totalJunkSize = '۰ بایت (پاکسازی شده)';
+      if (totalBytes > 0) {
+        if (totalKb < 1024) {
+          totalJunkSize = `${totalKb} KB`;
+        } else if (totalKb < 1024 * 1024) {
+          totalJunkSize = `${(totalKb / 1024).toFixed(2)} MB`;
+        } else {
+          totalJunkSize = `${(totalKb / (1024 * 1024)).toFixed(2)} GB`;
+        }
       }
-
-      const totalMB = cacheMB + thumbMB + logMB + tempMB;
-      const totalJunkSize = totalMB > 1024 ? `${(totalMB / 1024).toFixed(2)} GB` : `${totalMB} MB`;
 
       return {
         success: true,
         totalJunkSize,
-        totalJunkBytes: totalMB * 1024 * 1024,
+        totalJunkBytes: totalBytes,
         categories: [
-          { id: 'app_cache', name: 'کش و حافظه موقت برنامه‌ها', size: `${cacheMB} MB`, count: 35, desc: 'داده‌های موقت و فایل‌های کش اپلیکیشن‌های نصب‌شده' },
-          { id: 'thumbnails', name: 'کش تصاویر بندانگشتی (Thumbnails)', size: `${thumbMB} MB`, count: 850, desc: 'فایل‌های پیش‌نمایش گالری و تصاویر پاک‌شده' },
-          { id: 'crash_logs', name: 'لاگ‌ها و فایل‌های گزارش خرابی', size: `${logMB} MB`, count: 42, desc: 'گزارش‌های ANR، Tombstones و لاگ‌های سیستمی قدیمی' },
-          { id: 'temp_apks', name: 'فایل‌های موقت و بسته‌های نصبی معلق', size: `${tempMB} MB`, count: 12, desc: 'فایل‌های دانلود ناقص و پکیج‌های موقت' },
-          { id: 'empty_folders', name: 'پوشه‌های خالی باقیمانده از برنامه‌ها', size: '30 MB', count: emptyCount, desc: 'پوشه‌های رهاشده توسط برنامه‌های حذف‌شده' }
+          {
+            id: 'app_cache',
+            name: 'کش و حافظه موقت برنامه‌ها',
+            size: formatSizeLabel(cacheData.totalKb, cacheData.count),
+            count: cacheData.count,
+            desc: cacheData.totalKb === 0 ? 'حافظه موقت و کش برنامه‌ها پاکسازی شد' : 'داده‌های موقت و فایل‌های کش اپلیکیشن‌های نصب‌شده'
+          },
+          {
+            id: 'thumbnails',
+            name: 'کش تصاویر بندانگشتی (Thumbnails)',
+            size: formatSizeLabel(thumbData.totalKb, thumbData.count),
+            count: thumbData.count,
+            desc: thumbData.totalKb === 0 ? 'پیش‌نمایش‌های گالری پاکسازی شدند' : 'فایل‌های پیش‌نمایش گالری و تصاویر پاک‌شده'
+          },
+          {
+            id: 'crash_logs',
+            name: 'لاگ‌ها و فایل‌های گزارش خرابی',
+            size: formatSizeLabel(logKb, logCount),
+            count: logCount,
+            desc: logCount === 0 ? 'لاگ‌ها و گزارش‌های خرابی تخلیه شدند' : 'گزارش‌های ANR، Tombstones و لاگ‌های سیستمی قدیمی'
+          },
+          {
+            id: 'temp_apks',
+            name: 'فایل‌های موقت و بسته‌های نصبی معلق',
+            size: formatSizeLabel(tempKb, tempCount),
+            count: tempCount,
+            desc: tempCount === 0 ? 'فایل‌های نصبی معلق پاکسازی شدند' : 'فایل‌های دانلود ناقص و پکیج‌های موقت'
+          },
+          {
+            id: 'empty_folders',
+            name: 'پوشه‌های خالی باقیمانده از برنامه‌ها',
+            size: formatSizeLabel(emptyKb, emptyCount),
+            count: emptyCount,
+            desc: emptyCount === 0 ? 'پوشه‌های خالی پاکسازی شدند' : 'پوشه‌های رهاشده توسط برنامه‌های حذف‌شده'
+          }
         ]
       };
     } catch (err) {
@@ -62,6 +152,7 @@ export class SystemDoctorManager {
   // 2. Clean Junk Categories
   async cleanJunk(serial, categoryIds = ['all']) {
     if (serial && serial.startsWith('mock-')) {
+      this.mockCleanedMap.set(serial, true);
       return {
         success: true,
         freedSize: '1.42 GB',
@@ -72,39 +163,42 @@ export class SystemDoctorManager {
     try {
       const logs = [];
 
-      // 1. App Cache Trim & RAM kill
+      // 1. Direct App Cache Purge & Trim
       if (categoryIds.includes('all') || categoryIds.includes('app_cache')) {
-        await adbManager.runAdb('shell "pm trim-caches 10240M && am kill-all"', serial);
-        logs.push('کش برنامه‌ها با موفقیت تخلیه شد');
+        await Promise.all([
+          adbManager.runAdb('shell "rm -rf /sdcard/Android/data/*/cache/* /sdcard/Android/media/*/cache/* 2>/dev/null || true"', serial),
+          adbManager.runAdb('shell "pm trim-caches 10240M 2>/dev/null; am kill-all 2>/dev/null || true"', serial)
+        ]);
+        logs.push('کش و داده‌های موقت کلیه اپلیکیشن‌ها با موفقیت تخلیه شد');
       }
 
       // 2. Thumbnails & Gallery Cache Purge
       if (categoryIds.includes('all') || categoryIds.includes('thumbnails')) {
-        await adbManager.runAdb('shell "rm -rf /sdcard/DCIM/.thumbnails/* /sdcard/.thumbnails/* 2>/dev/null"', serial);
-        logs.push('کش بندانگشتی گالری پاکسازی شد');
+        await adbManager.runAdb('shell "rm -rf /sdcard/DCIM/.thumbnails/* /sdcard/.thumbnails/* 2>/dev/null || true"', serial);
+        logs.push('کش بندانگشتی و پیش‌نمایش‌های گالری پاکسازی شد');
       }
 
       // 3. Crash logs & logcat purge
       if (categoryIds.includes('all') || categoryIds.includes('crash_logs')) {
-        await adbManager.runAdb('shell "logcat -c 2>/dev/null; rm -rf /sdcard/log/* /data/local/tmp/* 2>/dev/null"', serial);
-        logs.push('فایل‌های گزارش خرابی و لاگ‌ها پاکسازی شدند');
+        await adbManager.runAdb('shell "logcat -c 2>/dev/null; rm -rf /sdcard/log/* /data/local/tmp/* 2>/dev/null || true"', serial);
+        logs.push('فایل‌های گزارش خرابی، ANR و بافر لاگ‌ها تخلیه شدند');
       }
 
       // 4. Temporary APKs & Stale downloads
       if (categoryIds.includes('all') || categoryIds.includes('temp_apks')) {
-        await adbManager.runAdb('shell "rm -f /sdcard/Download/*.tmp /sdcard/*.apk.tmp 2>/dev/null"', serial);
-        logs.push('فایل‌های نصبی معلق و موقت حذف شدند');
+        await adbManager.runAdb('shell "rm -f /sdcard/Download/*.tmp /sdcard/Download/*.apk.tmp /sdcard/*.tmp /sdcard/*.apk.tmp 2>/dev/null || true"', serial);
+        logs.push('فایل‌های نصبی معلق و دانلودهای موقت حذف شدند');
       }
 
       // 5. Empty Folders Purge
       if (categoryIds.includes('all') || categoryIds.includes('empty_folders')) {
-        await adbManager.runAdb('shell "find /sdcard/ -type d -empty -delete 2>/dev/null"', serial);
-        logs.push('پوشه‌های خالی با موفقیت حذف شدند');
+        await adbManager.runAdb('shell "find /sdcard/ -maxdepth 3 -type d -empty -delete 2>/dev/null || true"', serial);
+        logs.push('پوشه‌های خالی باقیمانده با موفقیت حذف شدند');
       }
 
       return {
         success: true,
-        freedSize: 'بیش از ۱ گیگابایت حافظه آزاد شد',
+        freedSize: 'حافظه موقت با موفقیت آزاد شد',
         logs,
         message: 'عملیات پاکسازی با موفقیت تکمیل شد و حافظه گوشی سبک گردید.'
       };
