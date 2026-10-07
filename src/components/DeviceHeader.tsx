@@ -8,7 +8,7 @@ import {
   Battery, 
   Wifi, 
   Usb, 
-  ChevronDown,
+  ChevronDown, 
   RefreshCw,
   SlidersHorizontal,
   Bot,
@@ -17,7 +17,8 @@ import {
   Menu,
   Shield,
   Activity,
-  Crown
+  Crown,
+  ExternalLink
 } from 'lucide-react';
 import { Device } from '../types';
 
@@ -180,6 +181,20 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
 
       {/* Telemetry Badges & Quick Action Tools */}
       <div className="flex items-center gap-2 sm:gap-2.5">
+        {/* Company Branding & Website Link */}
+        <a
+          href="https://irres.ir"
+          target="_blank"
+          rel="noreferrer"
+          className="hidden 2xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-600/15 text-yellow-300 border border-amber-500/30 text-xs font-bold transition-all hover:border-amber-500/60 shadow-sm group"
+          title="شرکت راهکار الکترونیک سهند (https://irres.ir)"
+        >
+          <Crown className="w-3.5 h-3.5 text-yellow-400" />
+          <span>راهکار الکترونیک سهند</span>
+          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-yellow-200 border border-amber-500/30">v3.2.0</span>
+          <ExternalLink className="w-3 h-3 opacity-70 group-hover:opacity-100" />
+        </a>
+
         {selectedDevice?.battery && (
           <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#14151b] border border-amber-500/20 text-xs text-stone-200">
             {selectedDevice.battery.status === 'Charging' ? (
@@ -193,6 +208,7 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
             <span className="text-stone-500 text-[10px] hidden md:inline">| {selectedDevice.battery.temperature}°C</span>
           </div>
         )}
+
 
         {/* User Guide Button */}
         <button

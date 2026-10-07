@@ -411,27 +411,29 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose,
             </div>
 
             {/* Bottom Support Footer */}
-            <div className="pt-4 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+            <div className="pt-4 border-t border-amber-500/20 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-400">
               <div className="flex items-center gap-2">
-                <Info className="w-4 h-4 text-cyan-400" />
-                <span>نیاز به پشتیبانی بیشتر دارید؟ وبسایت سهند:</span>
+                <Info className="w-4 h-4 text-yellow-400" />
+                <span>طراحی و پشتیبانی: <strong>شرکت راهکار الکترونیک سهند</strong></span>
+                <span>•</span>
                 <a 
                   href="https://irres.ir" 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="text-cyan-400 hover:underline font-mono"
+                  className="text-yellow-400 hover:text-yellow-300 hover:underline font-mono font-bold"
                 >
-                  irres.ir
+                  https://irres.ir
                 </a>
               </div>
 
               <button
                 onClick={onClose}
-                className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-md transition-all active:scale-95"
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-stone-950 font-black text-xs shadow-md shadow-amber-500/20 transition-all active:scale-95"
               >
                 متوجه شدم، بستن راهنما
               </button>
             </div>
+
           </div>
 
         </div>

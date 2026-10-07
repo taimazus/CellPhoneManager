@@ -1,8 +1,8 @@
 {
   "name": "cell-phone-manager",
-  "version": "3.1.0",
-  "description": "نرم‌افزار جامع مدیریت، عیب‌یابی، روت، فلش و کنترل پیشرفته گوشی‌های هوشمند - توسعه داده شده برای شرکت راهکار الکترونیک سهند (https://irres.ir)",
-  "author": "راهکار الکترونیک سهند (Sahand Electronic Solutions) <https://irres.ir>",
+  "version": "3.2.0",
+  "description": "نرم‌افزار جامع و سلطنتی مدیریت، عیب‌یابی، روت، فلش، استریم صوتی و کنترل پیشرفته گوشی‌های هوشمند - طراحی و توسعه اختصاصی توسط شرکت راهکار الکترونیک سهند (https://irres.ir)",
+  "author": "شرکت راهکار الکترونیک سهند (Sahand Electronic Solutions Co.) <https://irres.ir>",
   "homepage": "https://irres.ir",
   "repository": {
     "type": "git",

@@ -39,7 +39,8 @@ import {
   Compass,
   Radio,
   FolderLock,
-  Crown
+  Crown,
+  ExternalLink
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -147,12 +148,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     CellPhone<span className="text-yellow-400">Manager</span>
                   </h1>
                   <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-amber-500/20 text-yellow-300 font-mono font-bold border border-amber-500/40">
-                    ROYAL
+                    v3.2.0
                   </span>
                 </div>
-                <span className="text-[10px] text-amber-200/60 font-medium truncate block mt-0.5">
-                  استودیوی سلطنتی مدیریت موبایل
-                </span>
+                <a
+                  href="https://irres.ir"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[10px] text-amber-200/70 hover:text-yellow-300 transition-colors font-medium truncate flex items-center gap-1 mt-0.5 group"
+                  title="شرکت راهکار الکترونیک سهند"
+                >
+                  <span>راهکار الکترونیک سهند</span>
+                  <ExternalLink className="w-2.5 h-2.5 opacity-60 group-hover:opacity-100" />
+                </a>
               </div>
             )}
           </div>
@@ -167,6 +175,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           )}
         </div>
+
 
         {/* Quick Search in Sidebar */}
         {!isCollapsed && (
@@ -223,28 +232,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      {/* Target Status Footer */}
-      <div className="mt-3 p-2 rounded-xl bg-[#121318] border border-amber-500/20 text-[11px] text-stone-400 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2 overflow-hidden">
-          {deviceType === 'ios' ? (
-            <Apple className="w-3.5 h-3.5 text-stone-300" />
-          ) : (
-            <Bot className="w-3.5 h-3.5 text-amber-400" />
-          )}
+      {/* Target Status & Company Credit Footer */}
+      <div className="mt-3 space-y-2 shrink-0">
+        <div className="p-2 rounded-xl bg-[#121318] border border-amber-500/20 text-[11px] text-stone-400 flex items-center justify-between">
+          <div className="flex items-center gap-2 overflow-hidden">
+            {deviceType === 'ios' ? (
+              <Apple className="w-3.5 h-3.5 text-stone-300" />
+            ) : (
+              <Bot className="w-3.5 h-3.5 text-amber-400" />
+            )}
+            {!isCollapsed && (
+              <span className="font-mono text-stone-300 text-[10px] truncate">
+                {deviceType === 'ios' ? 'Apple iOS' : 'Android ADB'}
+              </span>
+            )}
+          </div>
           {!isCollapsed && (
-            <span className="font-mono text-stone-300 text-[10px] truncate">
-              {deviceType === 'ios' ? 'Apple iOS' : 'Android ADB'}
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/15 text-yellow-300 border border-amber-500/30">
+              آماده به‌کار
             </span>
           )}
         </div>
+
         {!isCollapsed && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/15 text-yellow-300 border border-amber-500/30">
-            آماده به‌کار
-          </span>
+          <a
+            href="https://irres.ir"
+            target="_blank"
+            rel="noreferrer"
+            className="block p-2 rounded-xl bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-amber-600/10 border border-amber-500/20 hover:border-amber-500/40 text-center transition-all group"
+          >
+            <div className="text-[10px] font-bold text-amber-200 group-hover:text-yellow-300 flex items-center justify-center gap-1">
+              <span>توسعه: راهکار الکترونیک سهند</span>
+              <ExternalLink className="w-2.5 h-2.5 opacity-70 group-hover:opacity-100" />
+            </div>
+            <div className="text-[9px] font-mono text-stone-400 mt-0.5">
+              https://irres.ir • v3.2.0 Royal
+            </div>
+          </a>
         )}
       </div>
     </aside>
   );
+
 
   function renderNavItem(item: NavItem) {
     const Icon = item.icon;
