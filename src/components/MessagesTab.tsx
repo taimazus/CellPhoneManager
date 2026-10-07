@@ -663,15 +663,64 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     showToast('پشتیبان‌گیری پیامک‌ها با موفقیت دانلود شد', 'success');
   };
 
+  // Helper to extract numeric epoch ms from various call/sms date representations
+  const getCallTimeValue = (c: any): number => {
+    if (c.rawDate && !isNaN(Number(c.rawDate))) return Number(c.rawDate);
+    if (c.isoDate) {
+      const t = new Date(c.isoDate).getTime();
+      if (!isNaN(t)) return t;
+    }
+    if (c.date) {
+      const t = new Date(c.date).getTime();
+      if (!isNaN(t)) return t;
+    }
+    // If date is localized string with time (e.g. timestamp "12:12")
+    if (c.timestamp && typeof c.timestamp === 'string') {
+      const parts = c.timestamp.split(':');
+      if (parts.length >= 2) {
+        const h = parseInt(parts[0].replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString()), 10);
+        const m = parseInt(parts[1].replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString()), 10);
+        if (!isNaN(h) && !isNaN(m)) return (h * 60 + m) * 60 * 1000;
+      }
+    }
+    if (c.id && !isNaN(Number(c.id))) return Number(c.id);
+    return 0;
+  };
+
+  const getCallDurationSec = (c: any): number => {
+    if (c.rawDuration !== undefined && !isNaN(Number(c.rawDuration))) return Number(c.rawDuration);
+    if (c.duration && typeof c.duration === 'string') {
+      const clean = c.duration.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d).toString());
+      const mMatch = clean.match(/(\d+)\s*m/);
+      const sMatch = clean.match(/(\d+)\s*s/);
+      const m = mMatch ? parseInt(mMatch[1], 10) : 0;
+      const s = sMatch ? parseInt(sMatch[1], 10) : 0;
+      return m * 60 + s;
+    }
+    return 0;
+  };
+
   // Filters & Sorting
   const filteredCalls = callLogs.filter(c => {
     if (callFilter === 'all') return true;
     return c.type === callFilter;
   }).sort((a, b) => {
-    if (callSort === 'date_desc') return (new Date(b.date || 0).getTime()) - (new Date(a.date || 0).getTime());
-    if (callSort === 'date_asc') return (new Date(a.date || 0).getTime()) - (new Date(b.date || 0).getTime());
-    if (callSort === 'duration_desc') return (parseInt(b.duration || '0', 10)) - (parseInt(a.duration || '0', 10));
-    if (callSort === 'name_asc') return (a.name || a.number || '').localeCompare(b.name || b.number || '', 'fa');
+    if (callSort === 'date_desc') {
+      const timeDiff = getCallTimeValue(b) - getCallTimeValue(a);
+      if (timeDiff !== 0) return timeDiff;
+      return (Number(b.id) || 0) - (Number(a.id) || 0);
+    }
+    if (callSort === 'date_asc') {
+      const timeDiff = getCallTimeValue(a) - getCallTimeValue(b);
+      if (timeDiff !== 0) return timeDiff;
+      return (Number(a.id) || 0) - (Number(b.id) || 0);
+    }
+    if (callSort === 'duration_desc') {
+      return getCallDurationSec(b) - getCallDurationSec(a);
+    }
+    if (callSort === 'name_asc') {
+      return (a.name || a.number || '').localeCompare(b.name || b.number || '', 'fa');
+    }
     return 0;
   });
 

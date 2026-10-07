@@ -649,10 +649,11 @@ export class AdbManager {
         else if (typeCode === 3) typeStr = 'missed';
         else if (typeCode === 5) typeStr = 'rejected';
 
-        const rawDate = dateMatch ? new Date(parseInt(dateMatch[1], 10)) : new Date();
         const durationSec = durMatch ? parseInt(durMatch[1], 10) : 0;
         const mins = Math.floor(durationSec / 60);
         const secs = durationSec % 60;
+        const dateNum = dateMatch ? parseInt(dateMatch[1], 10) : Date.now();
+        const rawDate = new Date(dateNum);
 
         callLogs.push({
           id: idMatch ? idMatch[1] : String(Math.random()),
@@ -660,8 +661,11 @@ export class AdbManager {
           number: numMatch ? numMatch[1].trim() : 'Unknown',
           type: typeStr,
           duration: `${mins}m ${secs}s`,
+          rawDuration: durationSec,
           timestamp: rawDate.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
-          date: rawDate.toLocaleDateString('fa-IR')
+          date: rawDate.toLocaleDateString('fa-IR'),
+          rawDate: dateNum,
+          isoDate: rawDate.toISOString()
         });
       }
 
@@ -1079,7 +1083,8 @@ export class AdbManager {
         const typeMatch = row.match(/type=(\d+)/);
 
         const typeCode = typeMatch ? parseInt(typeMatch[1], 10) : 1;
-        const rawDate = dateMatch ? new Date(parseInt(dateMatch[1], 10)) : new Date();
+        const dateNum = dateMatch ? parseInt(dateMatch[1], 10) : Date.now();
+        const rawDate = new Date(dateNum);
 
         messages.push({
           id: idMatch ? idMatch[1] : String(Math.random()),
@@ -1088,6 +1093,9 @@ export class AdbManager {
           sender: typeCode === 2 ? 'شما' : (addrMatch ? addrMatch[1].trim() : 'ناشناس'),
           body: bodyMatch ? bodyMatch[1].trim() : '',
           timestamp: rawDate.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
+          date: rawDate.toLocaleDateString('fa-IR'),
+          rawDate: dateNum,
+          isoDate: rawDate.toISOString(),
           type: typeCode === 2 ? 'sent' : 'inbox',
           read: true
         });
