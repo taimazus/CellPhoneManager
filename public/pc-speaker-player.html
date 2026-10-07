@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>پخش صدای کامپیوتر روی گوشی | CellPhoneManager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    body {
+      background: #080c14;
+      color: #f1f5f9;
+      font-family: 'Vazirmatn', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow: hidden;
+      background-image: radial-gradient(circle at 50% 10%, rgba(37, 99, 235, 0.2), transparent 60%);
+    }
+    .card {
+      background: rgba(17, 24, 39, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 28px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      text-align: center;
+      position: relative;
+    }
+    .header {
+      margin-bottom: 24px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      margin-bottom: 12px;
+    }
+    .badge.disconnected {
+      background: rgba(244, 63, 94, 0.15);
+      color: #fb7185;
+      border-color: rgba(244, 63, 94, 0.3);
+    }
+    .badge.buffering {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+    .indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.8); }
+    }
+    h1 {
+      font-size: 20px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+    p.subtitle {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    /* Visualizer Canvas */
+    .visualizer-container {
+      width: 100%;
+      height: 90px;
+      background: rgba(11, 15, 25, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+      margin: 20px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+    }
+    /* Big Play/Pause Button */
+    .play-btn {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      border: none;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      cursor: pointer;
+      margin: 0 auto 20px;
+      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.4);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .play-btn:active {
+      transform: scale(0.92);
+      box-shadow: 0 5px 15px rgba(37, 99, 235, 0.3);
+    }
+    .play-btn.paused {
+      background: linear-gradient(135deg, #334155, #1e293b);
+      box-shadow: none;
+    }
+    /* Controls Area */
+    .volume-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 18px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .volume-box span {
+      font-size: 13px;
+      font-weight: 700;
+      color: #cbd5e1;
+      min-width: 42px;
+    }
+    input[type=range] {
+      flex: 1;
+      height: 6px;
+      -webkit-appearance: none;
+      background: #1e293b;
+      border-radius: 9999px;
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #3b82f6;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);
+    }
+    .stats-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #64748b;
+      padding: 0 4px;
+    }
+    .stats-row span strong {
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <div id="statusBadge" class="badge">
+        <span class="indicator"></span>
+        <span id="statusText">در حال آماده‌سازی...</span>
+      </div>
+      <h1>بلندگوی کامپیوتر روی گوشی</h1>
+      <p class="subtitle">صدای زنده سیستم از طریق کابل USB یا Wi-Fi</p>
+    </div>
+
+    <!-- Visualizer Canvas -->
+    <div class="visualizer-container">
+      <canvas id="visualizerCanvas"></canvas>
+    </div>
+
+    <!-- Play/Stop Toggle -->
+    <button id="togglePlayBtn" class="play-btn" title="پخش / توقف">
+      ▶
+    </button>
+
+    <!-- Volume Slider -->
+    <div class="volume-box">
+      <span id="volLabel">100%</span>
+      <input type="range" id="volumeSlider" min="0" max="100" value="100">
+      <span style="font-size: 16px;">🔊</span>
+    </div>
+
+    <!-- Telemetry Stats -->
+    <div class="stats-row">
+      <span>سرعت: <strong id="latencyLabel">کم‌تاخیر (Ultra-Low)</strong></span>
+      <span>کدک: <strong>MP3 Live</strong></span>
+    </div>
+  </div>
+
+  <audio id="audioElement" preload="none" crossorigin="anonymous"></audio>
+
+  <script>
+    const audio = document.getElementById('audioElement');
+    const toggleBtn = document.getElementById('togglePlayBtn');
+    const statusBadge = document.getElementById('statusBadge');
+    const statusText = document.getElementById('statusText');
+    const volumeSlider = document.getElementById('volumeSlider');
+    const volLabel = document.getElementById('volLabel');
+    const canvas = document.getElementById('visualizerCanvas');
+    const canvasCtx = canvas.getContext('2d');
+
+    let audioCtx = null;
+    let analyser = null;
+    let isPlaying = false;
+    let wakeLock = null;
+
+    // Stream URL
+    const streamUrl = '/api/pc-speaker/stream.mp3?t=' + Date.now();
+
+    function setStatus(state, text) {
+      statusBadge.className = 'badge ' + state;
+      statusText.textContent = text;
+    }
+
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+        }
+      } catch (err) {}
+    }
+
+    function initAudioContext() {
+      if (audioCtx) return;
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 64;
+        const source = audioCtx.createMediaElementSource(audio);
+        source.connect(analyser);
+        analyser.connect(audioCtx.destination);
+        drawVisualizer();
+      } catch (e) {
+        console.error('AudioContext init error:', e);
+      }
+    }
+
+    function drawVisualizer() {
+      requestAnimationFrame(drawVisualizer);
+      if (!analyser || !isPlaying) {
+        canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      analyser.getByteFrequencyData(dataArray);
+
+      canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+      const barWidth = (canvas.width / bufferLength) * 1.5;
+      let x = 0;
+
+      for (let i = 0; i < bufferLength; i++) {
+        const barHeight = (dataArray[i] / 255) * canvas.height * 0.85;
+        const grad = canvasCtx.createLinearGradient(0, canvas.height, 0, 0);
+        grad.addColorStop(0, '#2563eb');
+        grad.addColorStop(1, '#60a5fa');
+        canvasCtx.fillStyle = grad;
+        canvasCtx.fillRect(x, canvas.height - barHeight, barWidth - 2, barHeight);
+        x += barWidth;
+      }
+    }
+
+    function startPlayback() {
+      initAudioContext();
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      audio.src = '/api/pc-speaker/stream.mp3?t=' + Date.now();
+      setStatus('buffering', 'در حال اتصال به صدای ویندوز...');
+      audio.play().then(() => {
+        isPlaying = true;
+        toggleBtn.innerHTML = '⏸';
+        toggleBtn.classList.remove('paused');
+        setStatus('', 'در حال پخش زنده صدای سیستم');
+        requestWakeLock();
+      }).catch(err => {
+        setStatus('disconnected', 'کلیک کنید تا پخش آغاز شود');
+        isPlaying = false;
+        toggleBtn.innerHTML = '▶';
+        toggleBtn.classList.add('paused');
+      });
+    }
+
+    function stopPlayback() {
+      audio.pause();
+      audio.src = '';
+      isPlaying = false;
+      toggleBtn.innerHTML = '▶';
+      toggleBtn.classList.add('paused');
+      setStatus('disconnected', 'پخش متوقف شد');
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      if (isPlaying) {
+        stopPlayback();
+      } else {
+        startPlayback();
+      }
+    });
+
+    volumeSlider.addEventListener('input', (e) => {
+      const val = e.target.value;
+      audio.volume = val / 100;
+      volLabel.textContent = val + '%';
+    });
+
+    audio.addEventListener('waiting', () => {
+      setStatus('buffering', 'در حال بافر صدای زنده...');
+    });
+    audio.addEventListener('playing', () => {
+      setStatus('', 'در حال پخش زنده صدای سیستم');
+    });
+    audio.addEventListener('error', () => {
+      setStatus('disconnected', 'صدا یافت نشد (استریم را در ویندوز فعال کنید)');
+      isPlaying = false;
+      toggleBtn.innerHTML = '▶';
+      toggleBtn.classList.add('paused');
+    });
+
+    // Auto resize canvas
+    function resizeCanvas() {
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Auto start on load
+    window.addEventListener('DOMContentLoaded', () => {
+      startPlayback();
+    });
+  </script>
+</body>
+</html>

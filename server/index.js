@@ -32,6 +32,7 @@ import { passwordManager } from './passwordManager.js';
 import { audioRecorderManager } from './audioRecorderManager.js';
 import { hardwareLabManager } from './hardwareLabManager.js';
 import { systemDoctorManager } from './systemDoctorManager.js';
+import { pcSpeakerManager } from './pcSpeakerManager.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -514,6 +515,53 @@ app.get('/api/devices/:id/mic/status', (req, res) => {
   const { id } = req.params;
   const status = audioRecorderManager.getStatus(id);
   res.json(status);
+});
+
+// -------------------------------------------------------------
+// PC-to-Phone Speaker (Reverse Audio Streaming) APIs
+// -------------------------------------------------------------
+app.get('/api/pc-speaker/stream.mp3', (req, res) => {
+  pcSpeakerManager.registerClient(res);
+});
+
+app.get('/api/pc-speaker/status', (req, res) => {
+  res.json(pcSpeakerManager.getStatus());
+});
+
+app.get('/api/pc-speaker/devices', async (req, res) => {
+  try {
+    const devices = await pcSpeakerManager.listAudioDevices();
+    res.json({ devices });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/pc-speaker/start', async (req, res) => {
+  const { id } = req.params;
+  const options = req.body || {};
+  try {
+    const result = await pcSpeakerManager.startStream({ ...options, serial: id });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/pc-speaker/stop', (req, res) => {
+  const { id } = req.params;
+  const result = pcSpeakerManager.stopStream(id);
+  res.json(result);
+});
+
+app.post('/api/devices/:id/pc-speaker/open-receiver', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pcSpeakerManager.launchMobileReceiver(id);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Audio Recordings & File Management APIs

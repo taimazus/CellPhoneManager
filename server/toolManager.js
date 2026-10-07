@@ -51,6 +51,18 @@ export class ToolManager {
     }
   }
 
+  async getFfmpegPath() {
+    const localFfmpeg = path.join(this.binDir, 'ffmpeg', 'ffmpeg.exe');
+    if (fs.existsSync(localFfmpeg)) return localFfmpeg;
+    try {
+      await execAsync('ffmpeg -version');
+      return 'ffmpeg';
+    } catch {
+      return 'ffmpeg';
+    }
+  }
+
+
   async getDiagnosticStatus() {
     const adbPath = await this.getAdbPath();
     const scrcpyPath = await this.getScrcpyPath();
