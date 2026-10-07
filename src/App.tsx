@@ -1,41 +1,55 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { DeviceHeader } from './components/DeviceHeader';
 import { OverviewTab } from './components/OverviewTab';
-import { MirrorControlTab } from './components/MirrorControlTab';
-import { AppsTab } from './components/AppsTab';
-import { TweaksTab } from './components/TweaksTab';
-import { DiagnosticsTab } from './components/DiagnosticsTab';
-import { DoctorTab } from './components/DoctorTab';
-import { FilesTab } from './components/FilesTab';
-import { BackupTab } from './components/BackupTab';
-import { FastbootTab } from './components/FastbootTab';
-import { HardwareLabTab } from './components/HardwareLabTab';
-import { MessagesTab } from './components/MessagesTab';
-import { CameraTab } from './components/CameraTab';
-import { MicrophoneTab } from './components/MicrophoneTab';
-import { NetworkVpnTab } from './components/NetworkVpnTab';
-import { AutomationTab } from './components/AutomationTab';
-import { NotificationsTab } from './components/NotificationsTab';
-import { MultiDeviceTab } from './components/MultiDeviceTab';
-import { ApkInspectorTab } from './components/ApkInspectorTab';
-import { ScreenRecorderTab } from './components/ScreenRecorderTab';
-import { BatteryHealthTab } from './components/BatteryHealthTab';
-import { AiAssistantTab } from './components/AiAssistantTab';
-import { RemoteControllerTab } from './components/RemoteControllerTab';
-import { GpsSimulatorTab } from './components/GpsSimulatorTab';
-import { DebloaterTab } from './components/DebloaterTab';
-import { AppClonerTab } from './components/AppClonerTab';
-import { MigrationTab } from './components/MigrationTab';
-import { ScreenOcrTab } from './components/ScreenOcrTab';
-import { AudioFxTab } from './components/AudioFxTab';
-import { LockscreenRescueTab } from './components/LockscreenRescueTab';
-import { RootToolkitTab } from './components/RootToolkitTab';
-import { RomFlasherTab } from './components/RomFlasherTab';
-import { PasswordVaultTab } from './components/PasswordVaultTab';
 import { WirelessModal } from './components/WirelessModal';
 import { UserGuideModal } from './components/UserGuideModal';
 import { Device } from './types';
+
+// Lazy loaded tab components for on-demand bundle splitting
+const MirrorControlTab = lazy(() => import('./components/MirrorControlTab').then(m => ({ default: m.MirrorControlTab })));
+const AppsTab = lazy(() => import('./components/AppsTab').then(m => ({ default: m.AppsTab })));
+const TweaksTab = lazy(() => import('./components/TweaksTab').then(m => ({ default: m.TweaksTab })));
+const DiagnosticsTab = lazy(() => import('./components/DiagnosticsTab').then(m => ({ default: m.DiagnosticsTab })));
+const DoctorTab = lazy(() => import('./components/DoctorTab').then(m => ({ default: m.DoctorTab })));
+const FilesTab = lazy(() => import('./components/FilesTab').then(m => ({ default: m.FilesTab })));
+const BackupTab = lazy(() => import('./components/BackupTab').then(m => ({ default: m.BackupTab })));
+const FastbootTab = lazy(() => import('./components/FastbootTab').then(m => ({ default: m.FastbootTab })));
+const HardwareLabTab = lazy(() => import('./components/HardwareLabTab').then(m => ({ default: m.HardwareLabTab })));
+const MessagesTab = lazy(() => import('./components/MessagesTab').then(m => ({ default: m.MessagesTab })));
+const CameraTab = lazy(() => import('./components/CameraTab').then(m => ({ default: m.CameraTab })));
+const MicrophoneTab = lazy(() => import('./components/MicrophoneTab').then(m => ({ default: m.MicrophoneTab })));
+const NetworkVpnTab = lazy(() => import('./components/NetworkVpnTab').then(m => ({ default: m.NetworkVpnTab })));
+const AutomationTab = lazy(() => import('./components/AutomationTab').then(m => ({ default: m.AutomationTab })));
+const NotificationsTab = lazy(() => import('./components/NotificationsTab').then(m => ({ default: m.NotificationsTab })));
+const MultiDeviceTab = lazy(() => import('./components/MultiDeviceTab').then(m => ({ default: m.MultiDeviceTab })));
+const ApkInspectorTab = lazy(() => import('./components/ApkInspectorTab').then(m => ({ default: m.ApkInspectorTab })));
+const ScreenRecorderTab = lazy(() => import('./components/ScreenRecorderTab').then(m => ({ default: m.ScreenRecorderTab })));
+const BatteryHealthTab = lazy(() => import('./components/BatteryHealthTab').then(m => ({ default: m.BatteryHealthTab })));
+const AiAssistantTab = lazy(() => import('./components/AiAssistantTab').then(m => ({ default: m.AiAssistantTab })));
+const RemoteControllerTab = lazy(() => import('./components/RemoteControllerTab').then(m => ({ default: m.RemoteControllerTab })));
+const GpsSimulatorTab = lazy(() => import('./components/GpsSimulatorTab').then(m => ({ default: m.GpsSimulatorTab })));
+const DebloaterTab = lazy(() => import('./components/DebloaterTab').then(m => ({ default: m.DebloaterTab })));
+const AppClonerTab = lazy(() => import('./components/AppClonerTab').then(m => ({ default: m.AppClonerTab })));
+const MigrationTab = lazy(() => import('./components/MigrationTab').then(m => ({ default: m.MigrationTab })));
+const ScreenOcrTab = lazy(() => import('./components/ScreenOcrTab').then(m => ({ default: m.ScreenOcrTab })));
+const AudioFxTab = lazy(() => import('./components/AudioFxTab').then(m => ({ default: m.AudioFxTab })));
+const LockscreenRescueTab = lazy(() => import('./components/LockscreenRescueTab').then(m => ({ default: m.LockscreenRescueTab })));
+const RootToolkitTab = lazy(() => import('./components/RootToolkitTab').then(m => ({ default: m.RootToolkitTab })));
+const RomFlasherTab = lazy(() => import('./components/RomFlasherTab').then(m => ({ default: m.RomFlasherTab })));
+const PasswordVaultTab = lazy(() => import('./components/PasswordVaultTab').then(m => ({ default: m.PasswordVaultTab })));
+
+const TabLoadingSkeleton = () => (
+  <div className="flex flex-col items-center justify-center min-h-[400px] w-full gap-4 text-center">
+    <div className="w-12 h-12 rounded-2xl border-2 border-amber-500/30 border-t-amber-400 animate-spin flex items-center justify-center shadow-lg shadow-amber-500/10">
+      <div className="w-6 h-6 rounded-xl bg-amber-500/20" />
+    </div>
+    <div className="space-y-1">
+      <p className="text-sm font-medium text-amber-200/90">در حال بارگذاری ماژول...</p>
+      <p className="text-xs text-slate-400">سامانه مدیریت دستگاه‌های هوشمند سهند</p>
+    </div>
+  </div>
+);
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -264,115 +278,117 @@ export function App() {
         <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-7">
           <div className="max-w-7xl mx-auto pb-12">
             <TabErrorBoundary activeTab={activeTab}>
-              {activeTab === 'overview' && (
-                <OverviewTab 
-                  device={selectedDevice} 
-                  onNavigateTab={setActiveTab} 
-                  onQuickAction={handleQuickAction} 
-                />
-              )}
-              {activeTab === 'ai' && (
-                <AiAssistantTab device={selectedDevice} />
-              )}
-              {activeTab === 'mirror' && (
-                <MirrorControlTab
-                  device={selectedDevice}
-                  onSendKey={handleSendKey}
-                  onSendTap={handleSendTap}
-                  onScreenshot={() => handleQuickAction('screenshot')}
-                />
-              )}
-              {activeTab === 'gamepad' && (
-                <RemoteControllerTab device={selectedDevice} />
-              )}
-              {activeTab === 'notifications' && (
-                <NotificationsTab device={selectedDevice} />
-              )}
-              {activeTab === 'network' && (
-                <NetworkVpnTab device={selectedDevice} />
-              )}
-              {activeTab === 'automation' && (
-                <AutomationTab device={selectedDevice} />
-              )}
-              {activeTab === 'gps' && (
-                <GpsSimulatorTab device={selectedDevice} />
-              )}
-              {activeTab === 'recorder' && (
-                <ScreenRecorderTab device={selectedDevice} />
-              )}
-              {activeTab === 'ocr' && (
-                <ScreenOcrTab device={selectedDevice} />
-              )}
-              {activeTab === 'camera' && (
-                <CameraTab device={selectedDevice} />
-              )}
-              {activeTab === 'microphone' && (
-                <MicrophoneTab device={selectedDevice} />
-              )}
-              {activeTab === 'audiofx' && (
-                <AudioFxTab device={selectedDevice} />
-              )}
-              {activeTab === 'messages' && (
-                <MessagesTab device={selectedDevice} />
-              )}
-              {activeTab === 'battery' && (
-                <BatteryHealthTab device={selectedDevice} />
-              )}
-              {activeTab === 'migration' && (
-                <MigrationTab devices={devices} selectedDevice={selectedDevice} />
-              )}
-              {activeTab === 'cloner' && (
-                <AppClonerTab device={selectedDevice} />
-              )}
-              {activeTab === 'debloater' && (
-                <DebloaterTab device={selectedDevice} />
-              )}
-              {activeTab === 'rescue' && (
-                <LockscreenRescueTab device={selectedDevice} />
-              )}
-              {activeTab === 'passwords' && (
-                <PasswordVaultTab device={selectedDevice} />
-              )}
-              {activeTab === 'multidevice' && (
-                <MultiDeviceTab 
-                  devices={devices} 
-                  selectedDevice={selectedDevice} 
-                  onSelectDevice={setSelectedDevice} 
-                />
-              )}
-              {activeTab === 'inspector' && (
-                <ApkInspectorTab device={selectedDevice} />
-              )}
-              {activeTab === 'apps' && (
-                <AppsTab device={selectedDevice} />
-              )}
-              {activeTab === 'files' && (
-                <FilesTab device={selectedDevice} />
-              )}
-              {activeTab === 'backup' && (
-                <BackupTab device={selectedDevice} />
-              )}
-              {activeTab === 'root' && (
-                <RootToolkitTab device={selectedDevice} />
-              )}
-              {activeTab === 'rom' && (
-                <RomFlasherTab device={selectedDevice} />
-              )}
-              {activeTab === 'fastboot' && (
-                <FastbootTab device={selectedDevice} />
-              )}
-              {activeTab === 'hardware' && (
-                <HardwareLabTab device={selectedDevice} />
-              )}
-              {activeTab === 'tweaks' && (
-                <TweaksTab device={selectedDevice} />
-              )}
-              {activeTab === 'diagnostics' && (
-                <DiagnosticsTab device={selectedDevice} />
-              )}
-              {activeTab === 'doctor' && (
-                <DoctorTab device={selectedDevice} />
-              )}
+              <Suspense fallback={<TabLoadingSkeleton />}>
+                {activeTab === 'overview' && (
+                  <OverviewTab 
+                    device={selectedDevice} 
+                    onNavigateTab={setActiveTab} 
+                    onQuickAction={handleQuickAction} 
+                  />
+                )}
+                {activeTab === 'ai' && (
+                  <AiAssistantTab device={selectedDevice} />
+                )}
+                {activeTab === 'mirror' && (
+                  <MirrorControlTab
+                    device={selectedDevice}
+                    onSendKey={handleSendKey}
+                    onSendTap={handleSendTap}
+                    onScreenshot={() => handleQuickAction('screenshot')}
+                  />
+                )}
+                {activeTab === 'gamepad' && (
+                  <RemoteControllerTab device={selectedDevice} />
+                )}
+                {activeTab === 'notifications' && (
+                  <NotificationsTab device={selectedDevice} />
+                )}
+                {activeTab === 'network' && (
+                  <NetworkVpnTab device={selectedDevice} />
+                )}
+                {activeTab === 'automation' && (
+                  <AutomationTab device={selectedDevice} />
+                )}
+                {activeTab === 'gps' && (
+                  <GpsSimulatorTab device={selectedDevice} />
+                )}
+                {activeTab === 'recorder' && (
+                  <ScreenRecorderTab device={selectedDevice} />
+                )}
+                {activeTab === 'ocr' && (
+                  <ScreenOcrTab device={selectedDevice} />
+                )}
+                {activeTab === 'camera' && (
+                  <CameraTab device={selectedDevice} />
+                )}
+                {activeTab === 'microphone' && (
+                  <MicrophoneTab device={selectedDevice} />
+                )}
+                {activeTab === 'audiofx' && (
+                  <AudioFxTab device={selectedDevice} />
+                )}
+                {activeTab === 'messages' && (
+                  <MessagesTab device={selectedDevice} />
+                )}
+                {activeTab === 'battery' && (
+                  <BatteryHealthTab device={selectedDevice} />
+                )}
+                {activeTab === 'migration' && (
+                  <MigrationTab devices={devices} selectedDevice={selectedDevice} />
+                )}
+                {activeTab === 'cloner' && (
+                  <AppClonerTab device={selectedDevice} />
+                )}
+                {activeTab === 'debloater' && (
+                  <DebloaterTab device={selectedDevice} />
+                )}
+                {activeTab === 'rescue' && (
+                  <LockscreenRescueTab device={selectedDevice} />
+                )}
+                {activeTab === 'passwords' && (
+                  <PasswordVaultTab device={selectedDevice} />
+                )}
+                {activeTab === 'multidevice' && (
+                  <MultiDeviceTab 
+                    devices={devices} 
+                    selectedDevice={selectedDevice} 
+                    onSelectDevice={setSelectedDevice} 
+                  />
+                )}
+                {activeTab === 'inspector' && (
+                  <ApkInspectorTab device={selectedDevice} />
+                )}
+                {activeTab === 'apps' && (
+                  <AppsTab device={selectedDevice} />
+                )}
+                {activeTab === 'files' && (
+                  <FilesTab device={selectedDevice} />
+                )}
+                {activeTab === 'backup' && (
+                  <BackupTab device={selectedDevice} />
+                )}
+                {activeTab === 'root' && (
+                  <RootToolkitTab device={selectedDevice} />
+                )}
+                {activeTab === 'rom' && (
+                  <RomFlasherTab device={selectedDevice} />
+                )}
+                {activeTab === 'fastboot' && (
+                  <FastbootTab device={selectedDevice} />
+                )}
+                {activeTab === 'hardware' && (
+                  <HardwareLabTab device={selectedDevice} />
+                )}
+                {activeTab === 'tweaks' && (
+                  <TweaksTab device={selectedDevice} />
+                )}
+                {activeTab === 'diagnostics' && (
+                  <DiagnosticsTab device={selectedDevice} />
+                )}
+                {activeTab === 'doctor' && (
+                  <DoctorTab device={selectedDevice} />
+                )}
+              </Suspense>
             </TabErrorBoundary>
           </div>
         </main>

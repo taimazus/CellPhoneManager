@@ -218,10 +218,29 @@ export class UniversalBackupManager {
     }
   }
 
+  validateAndResolveBackupPath(backupId) {
+    if (!backupId || typeof backupId !== 'string') {
+      return null;
+    }
+    const cleanId = backupId.trim();
+    if (!/^[a-zA-Z0-9_\-\u0600-\u06FF.]+$/.test(cleanId) || cleanId.includes('..')) {
+      return null;
+    }
+    const resolvedBackupDir = path.resolve(this.backupDir);
+    const resolvedTarget = path.resolve(resolvedBackupDir, cleanId);
+    if (!resolvedTarget.startsWith(resolvedBackupDir + path.sep)) {
+      return null;
+    }
+    return resolvedTarget;
+  }
+
   // 3. Restore Backup to Any Device (Cross-Platform)
   async restoreBackup({ backupId, targetSerial, targetType = 'android', options = { contacts: true, sms: true, calls: true } }) {
     try {
-      const backupPath = path.join(this.backupDir, backupId);
+      const backupPath = this.validateAndResolveBackupPath(backupId);
+      if (!backupPath) {
+        return { success: false, error: 'شناسه نسخه پشتیبان نامعتبر است (مسیر غیرمجاز).' };
+      }
       if (!fs.existsSync(backupPath)) {
         return { success: false, error: 'پوشه نسخه پشتیبان یافت نشد.' };
       }
@@ -232,21 +251,24 @@ export class UniversalBackupManager {
       const results = {
         contactsRestored: 0,
         smsRestored: 0,
-        callsRestored: 0
+        smsStaged: 0,
+        callsRestored: 0,
+        callsStaged: 0,
+        notes: []
       };
 
-      if (targetSerial.startsWith('mock-')) {
+      if (targetSerial && targetSerial.startsWith('mock-')) {
         return {
           success: true,
           message: `بازیابی اطلاعات (${manifest?.deviceName || 'بک‌آپ'}) روی دستگاه ${targetSerial} با موفقیت انجام شد (شبیه‌ساز).`,
-          details: { contacts: 142, sms: 589, calls: 76 }
+          details: { contactsRestored: 142, smsStaged: 589, callsStaged: 76 }
         };
       }
 
       // Restore Contacts
       if (options.contacts && fs.existsSync(path.join(backupPath, 'contacts.json'))) {
         const contacts = JSON.parse(fs.readFileSync(path.join(backupPath, 'contacts.json'), 'utf8'));
-        if (targetType === 'android') {
+        if (targetType === 'android' && Array.isArray(contacts)) {
           for (const c of contacts) {
             try {
               await adbManager.addContact(targetSerial, c);
@@ -258,21 +280,44 @@ export class UniversalBackupManager {
         }
       }
 
-      // Restore SMS
-      if (options.sms && fs.existsSync(path.join(backupPath, 'messages.json'))) {
-        const smsList = JSON.parse(fs.readFileSync(path.join(backupPath, 'messages.json'), 'utf8'));
-        results.smsRestored = smsList.length;
+      // Restore SMS and Calls staging on device
+      if (targetType === 'android' && targetSerial) {
+        const stageDir = '/sdcard/CellPhoneManager_Restore/';
+        if (options.sms && fs.existsSync(path.join(backupPath, 'messages.json'))) {
+          const smsList = JSON.parse(fs.readFileSync(path.join(backupPath, 'messages.json'), 'utf8'));
+          if (Array.isArray(smsList)) {
+            results.smsStaged = smsList.length;
+            try {
+              await fileManager.pushFile(targetSerial, path.join(backupPath, 'messages.json'), stageDir);
+              results.notes.push(`تعداد ${smsList.length} پیامک در مسیر ${stageDir}messages.json قرار گرفت.`);
+            } catch (err) {
+              console.error('[UniversalBackupManager] Error staging SMS:', err);
+            }
+          }
+        }
+
+        if (options.calls && fs.existsSync(path.join(backupPath, 'calls.json'))) {
+          const calls = JSON.parse(fs.readFileSync(path.join(backupPath, 'calls.json'), 'utf8'));
+          if (Array.isArray(calls)) {
+            results.callsStaged = calls.length;
+            try {
+              await fileManager.pushFile(targetSerial, path.join(backupPath, 'calls.json'), stageDir);
+              results.notes.push(`تعداد ${calls.length} تماس در مسیر ${stageDir}calls.json قرار گرفت.`);
+            } catch (err) {
+              console.error('[UniversalBackupManager] Error staging Calls:', err);
+            }
+          }
+        }
       }
 
-      // Restore Calls
-      if (options.calls && fs.existsSync(path.join(backupPath, 'calls.json'))) {
-        const calls = JSON.parse(fs.readFileSync(path.join(backupPath, 'calls.json'), 'utf8'));
-        results.callsRestored = calls.length;
+      let summaryMsg = `بازیابی انجام شد: ${results.contactsRestored} مخاطب بازگردانی شد.`;
+      if (results.smsStaged > 0 || results.callsStaged > 0) {
+        summaryMsg += ` فایل‌های پیامک (${results.smsStaged}) و تماس (${results.callsStaged}) در حافظه گوشی ذخیره شدند.`;
       }
 
       return {
         success: true,
-        message: `بازیابی با موفقیت انجام شد: ${results.contactsRestored} مخاطب به دستگاه مقصد افزوده شدند.`,
+        message: summaryMsg,
         details: results
       };
     } catch (e) {
@@ -284,7 +329,10 @@ export class UniversalBackupManager {
   // 4. Delete Backup
   async deleteBackup(backupId) {
     try {
-      const backupPath = path.join(this.backupDir, backupId);
+      const backupPath = this.validateAndResolveBackupPath(backupId);
+      if (!backupPath) {
+        return { success: false, error: 'شناسه نسخه پشتیبان نامعتبر است (مسیر غیرمجاز).' };
+      }
       if (fs.existsSync(backupPath)) {
         fs.rmSync(backupPath, { recursive: true, force: true });
         return { success: true, message: 'نسخه پشتیبان با موفقیت حذف شد.' };

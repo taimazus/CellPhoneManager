@@ -39,16 +39,39 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
 const PORT = process.env.PORT || 3001;
+const HOST = process.env.HOST || '127.0.0.1';
 
-app.use(cors());
+// Restrict CORS to localhost and 127.0.0.1
+const allowedOrigins = [
+  /^http:\/\/localhost(:\d+)?$/,
+  /^http:\/\/127\.0\.0\.1(:\d+)?$/
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const isAllowed = allowedOrigins.some(regex => regex.test(origin));
+    if (isAllowed) {
+      return callback(null, true);
+    }
+    return callback(new Error('CORS access denied for this origin.'));
+  },
+  credentials: true
+}));
+
 app.use(express.json());
 
-// Multer upload destination
+// Multer upload destination with 500MB limit
 const uploadsDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
-const upload = multer({ dest: uploadsDir });
+const upload = multer({
+  dest: uploadsDir,
+  limits: {
+    fileSize: 500 * 1024 * 1024 // 500 MB max
+  }
+});
 
 // Serve static frontend build if present
 const distPath = path.join(process.cwd(), 'dist');
@@ -360,10 +383,6 @@ app.post('/api/devices/:id/tweaks', async (req, res) => {
       }
       if (action === 'doze_mode') {
         const result = await adbManager.setAggressiveDoze(id);
-        return res.json(result);
-      }
-      if (action === 'shell') {
-        const result = await adbManager.runAdb(`shell ${value}`, id);
         return res.json(result);
       }
     } else if (devType === 'ios') {
@@ -2287,53 +2306,6 @@ app.post('/api/devices/:id/root/fastboot/flash-boot', async (req, res) => {
 });
 
 // -------------------------------------------------------------
-// 28. Universal Cross-Platform Full & Custom Backup / Restore APIs
-// -------------------------------------------------------------
-app.get('/api/backups', async (req, res) => {
-  const result = await universalBackupManager.listBackups();
-  res.json(result);
-});
-
-app.post('/api/devices/:id/backup/create', async (req, res) => {
-  const { id } = req.params;
-  const { type, deviceName, options } = req.body;
-  const result = await universalBackupManager.createBackup({
-    serial: id,
-    type: type || 'android',
-    deviceName: deviceName || 'Phone',
-    options: options || { contacts: true, sms: true, calls: true, apps: true }
-  });
-  res.json(result);
-});
-
-app.post('/api/backups/:backupId/restore', async (req, res) => {
-  const { backupId } = req.params;
-  const { targetSerial, targetType, options } = req.body;
-  const result = await universalBackupManager.restoreBackup({
-    backupId,
-    targetSerial,
-    targetType: targetType || 'android',
-    options: options || { contacts: true, sms: true, calls: true }
-  });
-  res.json(result);
-});
-
-app.delete('/api/backups/:backupId', async (req, res) => {
-  const { backupId } = req.params;
-  const result = await universalBackupManager.deleteBackup(backupId);
-  res.json(result);
-});
-
-app.post('/api/backups/open-folder', (req, res) => {
-  const backupDir = path.join(process.cwd(), 'backups');
-  if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
-  if (process.platform === 'win32') {
-    spawn('explorer.exe', [backupDir], { detached: true });
-  }
-  res.json({ success: true, message: 'پوشه نسخه‌های پشتیبان در کامپیوتر باز شد' });
-});
-
-// -------------------------------------------------------------
 // 29. Password Vault, Wi-Fi Keys & Account Manager APIs
 // -------------------------------------------------------------
 app.get('/api/devices/:id/passwords/wifi', async (req, res) => {
@@ -2646,8 +2618,17 @@ app.all('/api/*', (req, res) => {
   res.status(404).json({ success: false, error: `آدرس وب‌سرویس یافت نشد: ${req.method} ${req.originalUrl}` });
 });
 
-// Global JSON Error Handler
+// Global Error Handler (Handles Multer limits, CORS, and generic exceptions)
 app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ success: false, error: 'حجم فایل ارسالی بیش از حد مجاز (۵۰۰ مگابایت) است.' });
+    }
+    return res.status(400).json({ success: false, error: `خطای آپلود: ${err.message}` });
+  }
+  if (err.message && err.message.includes('CORS')) {
+    return res.status(403).json({ success: false, error: err.message });
+  }
   console.error('Express Server Error:', err);
   res.status(err.status || 500).json({ success: false, error: err.message || 'خطای داخلی سرور' });
 });
@@ -2658,10 +2639,10 @@ app.get('*', (req, res) => {
   if (fs.existsSync(indexHtml)) {
     res.sendFile(indexHtml);
   } else {
-    res.send('CellPhoneManager Backend Server is Running on port ' + PORT);
+    res.send('CellPhoneManager Backend Server is Running on ' + HOST + ':' + PORT);
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`🚀 CellPhoneManager backend bridge running at http://localhost:${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`🚀 CellPhoneManager backend bridge running at http://${HOST}:${PORT}`);
 });

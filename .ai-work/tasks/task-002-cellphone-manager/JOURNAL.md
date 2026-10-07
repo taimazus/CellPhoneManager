@@ -71,3 +71,12 @@
   - Git Release: Tag `v3.0.0` published publicly.
   - Unit tests: 7/7 suites passed, 16/16 tests passed.
   - Production build: Vite compiled with 0 errors.
+
+## 2026-10-07 - Enterprise Repository Audit (Read-only)
+- **Intent/scope:** Started a repository-wide, read-only enterprise audit using existing task ID. Read task STATE/JOURNAL and reconciled historical claims against current code before review. No product files were modified.
+- **Protocol:** Shared enterprise-audit skill contract was present, but `core/enterprise-audit.md` and referenced stack guide were unavailable. Followed the user instructions' evidence-first fallback and skill contract.
+- **Discovery:** Root `C:\Users\Taimazus\Desktop\CellPhoneManager`; Node.js ES module backend (Express/ws) plus React 19/TypeScript/Vite/Tailwind frontend; ADB/Fastboot/Scrcpy/pymobiledevice3 bridges; Vitest. README/SPEC/manifests and code inspected. Current package is v3.2.0; package-lock root version is 1.0.0.
+- **Findings recorded in STATE.md:** AUD-001 unauthenticated exposed API and proxy command injection; AUD-002 arbitrary shell through tweak endpoint; AUD-003 recursive backup deletion path traversal; AUD-004 restore path traversal; AUD-005 false-success SMS/call restore; AUD-006 unbounded uploads; AUD-007 duplicate backup route registrations; AUD-008 oversized main bundle risk. Severity, evidence class, trigger, verification plan and remediation priorities recorded there.
+- **Actual checks:** `npm test` passed: 17 test files, 58 tests, exit 0. `npm run build` passed: 1,948 modules; main chunk 820.48 kB with Vite >500 kB warning. No exploit was executed against a running server or actual hardware.
+- **Limitations:** No dedicated API integration/security tests; real Windows registry behavior and physical devices not exercised; build check does not prove runtime feature correctness. Audit cannot prove absence of unreviewed defects.
+- **Next step:** User review of P0/P1 defects; remediation is outside this read-only audit authorization.

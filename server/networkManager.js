@@ -1,10 +1,13 @@
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import util from 'util';
 import https from 'https';
 import http from 'http';
 import { toolManager } from './toolManager.js';
 
 const execAsync = util.promisify(exec);
+const execFileAsync = util.promisify(execFile);
+
+const PROXY_SERVER_REGEX = /^[a-zA-Z0-9.\-_]+:\d{1,5}$/;
 
 export class NetworkManager {
   async runAdb(cmd, serial = null) {
@@ -116,19 +119,56 @@ export class NetworkManager {
       }
 
       if (enabled) {
-        const regCmd1 = `reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyEnable /t REG_DWORD /d 1 /f`;
-        const regCmd2 = `reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyServer /t REG_SZ /d "${proxyServer}" /f`;
-        await execAsync(regCmd1);
-        await execAsync(regCmd2);
+        if (!proxyServer || typeof proxyServer !== 'string' || !PROXY_SERVER_REGEX.test(proxyServer.trim())) {
+          return {
+            success: false,
+            message: 'فرمت آدرس پروکسی نامعتبر است. فرمت صحیح: IP:Port مانند 127.0.0.1:10809'
+          };
+        }
+        const cleanProxy = proxyServer.trim();
+
+        await execFileAsync('reg.exe', [
+          'add',
+          'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings',
+          '/v',
+          'ProxyEnable',
+          '/t',
+          'REG_DWORD',
+          '/d',
+          '1',
+          '/f'
+        ]);
+
+        await execFileAsync('reg.exe', [
+          'add',
+          'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings',
+          '/v',
+          'ProxyServer',
+          '/t',
+          'REG_SZ',
+          '/d',
+          cleanProxy,
+          '/f'
+        ]);
+
         return {
           success: true,
           enabled: true,
-          proxyServer,
-          message: `پروکسی ویندوز با موفقیت روی ${proxyServer} تنظیم و فعال شد!`
+          proxyServer: cleanProxy,
+          message: `پروکسی ویندوز با موفقیت روی ${cleanProxy} تنظیم و فعال شد!`
         };
       } else {
-        const regCmd = `reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyEnable /t REG_DWORD /d 0 /f`;
-        await execAsync(regCmd);
+        await execFileAsync('reg.exe', [
+          'add',
+          'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings',
+          '/v',
+          'ProxyEnable',
+          '/t',
+          'REG_DWORD',
+          '/d',
+          '0',
+          '/f'
+        ]);
         return {
           success: true,
           enabled: false,
@@ -145,11 +185,19 @@ export class NetworkManager {
       if (process.platform !== 'win32') {
         return { enabled: false, proxyServer: '' };
       }
-      const queryCmd = `reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyEnable`;
-      const serverCmd = `reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyServer`;
+      const qRes = await execFileAsync('reg.exe', [
+        'query',
+        'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings',
+        '/v',
+        'ProxyEnable'
+      ]).catch(() => ({ stdout: '' }));
 
-      const qRes = await execAsync(queryCmd).catch(() => ({ stdout: '' }));
-      const sRes = await execAsync(serverCmd).catch(() => ({ stdout: '' }));
+      const sRes = await execFileAsync('reg.exe', [
+        'query',
+        'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings',
+        '/v',
+        'ProxyServer'
+      ]).catch(() => ({ stdout: '' }));
 
       const isEnabled = qRes.stdout.includes('0x1');
       let proxyServer = '';

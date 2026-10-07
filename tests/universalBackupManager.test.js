@@ -49,4 +49,22 @@ describe('UniversalBackupManager Test Suite', () => {
     // Clean up
     await universalBackupManager.deleteBackup(backupRes.backupId);
   });
+
+  it('should reject path traversal attempts in deleteBackup and restoreBackup', async () => {
+    // Path traversal in deleteBackup
+    const deleteTraversal1 = await universalBackupManager.deleteBackup('../test_sentinel');
+    expect(deleteTraversal1.success).toBe(false);
+    expect(deleteTraversal1.error).toContain('شناسه نسخه پشتیبان نامعتبر است');
+
+    const deleteTraversal2 = await universalBackupManager.deleteBackup('..\\..\\Windows');
+    expect(deleteTraversal2.success).toBe(false);
+
+    // Path traversal in restoreBackup
+    const restoreTraversal = await universalBackupManager.restoreBackup({
+      backupId: '../../etc/passwd',
+      targetSerial: 'mock-device-1'
+    });
+    expect(restoreTraversal.success).toBe(false);
+    expect(restoreTraversal.error).toContain('شناسه نسخه پشتیبان نامعتبر است');
+  });
 });
