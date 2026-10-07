@@ -8,38 +8,68 @@ import { adbManager } from './adbManager.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Windows Virtual-Key code map
-export const VK = {
-  // Arrow Keys
-  UP: 0x26,    // 38
-  DOWN: 0x28,  // 40
-  LEFT: 0x25,  // 37
-  RIGHT: 0x27, // 39
-  // Common Keys
-  SPACE: 0x20, // 32
-  ENTER: 0x0D, // 13
-  ESCAPE: 0x1B,// 27
-  TAB: 0x09,   // 9
-  SHIFT: 0x10, // 16
-  CONTROL: 0x11, // 17
-  ALT: 0x12,   // 18
-  // Letters A-Z
-  A: 0x41, B: 0x42, C: 0x43, D: 0x44, E: 0x45, F: 0x46, G: 0x47,
-  H: 0x48, I: 0x49, J: 0x4A, K: 0x4B, L: 0x4C, M: 0x4D, N: 0x4E,
-  O: 0x4F, P: 0x50, Q: 0x51, R: 0x52, S: 0x53, T: 0x54, U: 0x55,
-  V: 0x56, W: 0x57, X: 0x58, Y: 0x59, Z: 0x5A,
+// Pure Hardware ScanCodes (PS/2 Set 1) - 100% INDEPENDENT OF WINDOWS KEYBOARD LANGUAGE (FA/EN)
+export const SC = {
+  // Arrow Keys (Extended = true)
+  UP: { scan: 0x48, ext: true },
+  DOWN: { scan: 0x50, ext: true },
+  LEFT: { scan: 0x4B, ext: true },
+  RIGHT: { scan: 0x4D, ext: true },
+
+  // Special System Keys
+  SPACE: { scan: 0x39, ext: false },
+  ENTER: { scan: 0x1C, ext: false },
+  ESCAPE: { scan: 0x01, ext: false },
+  TAB: { scan: 0x0F, ext: false },
+  LSHIFT: { scan: 0x2A, ext: false },
+  RSHIFT: { scan: 0x36, ext: false },
+  LCTRL: { scan: 0x1D, ext: false },
+  LALT: { scan: 0x38, ext: false },
+
+  // Letters (Hardware scan code of physical key position on motherboard)
+  W: { scan: 0x11, ext: false },
+  A: { scan: 0x1E, ext: false },
+  S: { scan: 0x1F, ext: false },
+  D: { scan: 0x20, ext: false },
+  Q: { scan: 0x10, ext: false },
+  E: { scan: 0x12, ext: false },
+  R: { scan: 0x13, ext: false },
+  C: { scan: 0x2E, ext: false },
+  F: { scan: 0x21, ext: false },
+  Z: { scan: 0x2C, ext: false },
+  X: { scan: 0x2D, ext: false },
+
+  // Player 2 / Alternate Keys
+  I: { scan: 0x17, ext: false },
+  J: { scan: 0x24, ext: false },
+  K: { scan: 0x25, ext: false },
+  L: { scan: 0x26, ext: false },
+  B: { scan: 0x30, ext: false },
+  N: { scan: 0x31, ext: false },
+  V: { scan: 0x2F, ext: false },
+  G: { scan: 0x22, ext: false },
+  T: { scan: 0x14, ext: false },
+  Y: { scan: 0x15, ext: false },
+  U: { scan: 0x16, ext: false },
+  H: { scan: 0x23, ext: false },
+  P: { scan: 0x19, ext: false },
+
   // Numpad Keys
-  NUMPAD_0: 0x60, NUMPAD_1: 0x61, NUMPAD_2: 0x62, NUMPAD_3: 0x63,
-  NUMPAD_4: 0x64, NUMPAD_5: 0x65, NUMPAD_6: 0x66, NUMPAD_7: 0x67,
-  NUMPAD_8: 0x68, NUMPAD_9: 0x69,
-  // Digits 0-9
-  NUM_0: 0x30, NUM_1: 0x31, NUM_2: 0x32, NUM_3: 0x33, NUM_4: 0x34,
-  NUM_5: 0x35, NUM_6: 0x36, NUM_7: 0x37, NUM_8: 0x38, NUM_9: 0x39
+  NUMPAD_8: { scan: 0x48, ext: false },
+  NUMPAD_2: { scan: 0x50, ext: false },
+  NUMPAD_4: { scan: 0x4B, ext: false },
+  NUMPAD_6: { scan: 0x4D, ext: false },
+  NUMPAD_1: { scan: 0x4F, ext: false },
+  NUMPAD_3: { scan: 0x51, ext: false },
+  NUMPAD_5: { scan: 0x4C, ext: false },
+  NUMPAD_7: { scan: 0x47, ext: false },
+  NUMPAD_9: { scan: 0x49, ext: false },
+  NUMPAD_0: { scan: 0x52, ext: false }
 };
 
 export class PcGamepadManager {
   constructor() {
-    this.activeProfile = 'fifa'; // Default to FIFA
+    this.activeProfile = 'fifa'; // Default to FIFA Classic
     this.connectedControllers = new Map();
     this.latestInputs = {};
     this.isInputSimulationActive = true;
@@ -49,43 +79,80 @@ export class PcGamepadManager {
     this.profiles = {
       fifa: {
         id: 'fifa',
-        name: '⚽ فوتبال فیفا و پی‌اس (FIFA / PES)',
-        desc: 'پاس کوتاه با S، شوت با D، پاس در عمق با W، سانتر با A، دویدن با Shift/E، شروع با Space/Enter',
+        name: '⚽ فیفا کلاسیک (حرکت با جهت‌نما + پاس S، شوت D)',
+        desc: 'حرکت با کلیدهای جهت‌نما، پاس کوتاه S، شوت D، سانتر A، پاس عمقی W، دویدن Shift/E',
         mappings: {
-          // Player 1 mappings
-          'DPAD_UP': VK.UP,
-          'DPAD_DOWN': VK.DOWN,
-          'DPAD_LEFT': VK.LEFT,
-          'DPAD_RIGHT': VK.RIGHT,
-          'BTN_A': VK.S,      // Short Pass / Menu Select
-          'BTN_B': VK.D,      // Shoot / Cancel
-          'BTN_X': VK.A,      // Cross / Long Pass
-          'BTN_Y': VK.W,      // Through Ball
-          'L1': VK.Q,         // Player Switch
-          'R1': VK.E,         // Finesse / Sprint
-          'L2': VK.C,         // Shield Ball
-          'R2': VK.SHIFT,     // Sprint
-          'START': VK.SPACE,  // Space (Start/Confirm in FIFA)
-          'ENTER': VK.ENTER,  // Enter (Menu Advance)
-          'SELECT': VK.ESCAPE // Esc (Back / Pause)
+          'DPAD_UP': SC.UP,
+          'DPAD_DOWN': SC.DOWN,
+          'DPAD_LEFT': SC.LEFT,
+          'DPAD_RIGHT': SC.RIGHT,
+          'BTN_A': SC.S,       // Short Pass
+          'BTN_B': SC.D,       // Shoot
+          'BTN_X': SC.A,       // Cross / Long Pass
+          'BTN_Y': SC.W,       // Through Ball
+          'L1': SC.Q,          // Player Switch
+          'R1': SC.E,          // Finesse / Sprint
+          'L2': SC.C,          // Shield Ball
+          'R2': SC.LSHIFT,     // Sprint
+          'START': SC.SPACE,   // Space (Start in FIFA)
+          'ENTER': SC.ENTER,   // Enter (Menu Advance)
+          'SELECT': SC.ESCAPE  // Esc (Back / Pause)
         },
         player2Mappings: {
-          // Player 2 mappings (I/J/K/L + B/N/V/G)
-          'DPAD_UP': VK.I,
-          'DPAD_DOWN': VK.K,
-          'DPAD_LEFT': VK.J,
-          'DPAD_RIGHT': VK.L,
-          'BTN_A': VK.B,      // Short Pass
-          'BTN_B': VK.N,      // Shoot
-          'BTN_X': VK.V,      // Cross
-          'BTN_Y': VK.G,      // Through Ball
-          'L1': VK.T,         // Player Switch
-          'R1': VK.Y,         // Sprint
-          'L2': VK.H,         // Shield Ball
-          'R2': VK.U,         // Sprint
-          'START': VK.P,      // Player 2 Start
-          'ENTER': VK.ENTER,
-          'SELECT': VK.ESCAPE
+          'DPAD_UP': SC.I,
+          'DPAD_DOWN': SC.K,
+          'DPAD_LEFT': SC.J,
+          'DPAD_RIGHT': SC.L,
+          'BTN_A': SC.B,       // Short Pass
+          'BTN_B': SC.N,       // Shoot
+          'BTN_X': SC.V,       // Cross
+          'BTN_Y': SC.G,       // Through Ball
+          'L1': SC.T,          // Player Switch
+          'R1': SC.Y,          // Sprint
+          'L2': SC.H,          // Shield Ball
+          'R2': SC.U,          // Sprint
+          'START': SC.P,       // Player 2 Start
+          'ENTER': SC.ENTER,
+          'SELECT': SC.ESCAPE
+        }
+      },
+      fifa_wasd: {
+        id: 'fifa_wasd',
+        name: '⚽ فیفا مدرن (حرکت با WASD + پاس J، شوت K)',
+        desc: 'حرکت با کلیدهای WASD، پاس با J، شوت با K، سانتر با L، پاس در عمق با I، دویدن با Shift/E',
+        mappings: {
+          'DPAD_UP': SC.W,
+          'DPAD_DOWN': SC.S,
+          'DPAD_LEFT': SC.A,
+          'DPAD_RIGHT': SC.D,
+          'BTN_A': SC.J,       // Short Pass
+          'BTN_B': SC.K,       // Shoot
+          'BTN_X': SC.L,       // Cross / Tackle
+          'BTN_Y': SC.I,       // Through Ball
+          'L1': SC.Q,          // Switch
+          'R1': SC.E,          // Sprint
+          'L2': SC.C,          // Shield
+          'R2': SC.LSHIFT,     // Sprint
+          'START': SC.SPACE,
+          'ENTER': SC.ENTER,
+          'SELECT': SC.ESCAPE
+        },
+        player2Mappings: {
+          'DPAD_UP': SC.NUMPAD_8,
+          'DPAD_DOWN': SC.NUMPAD_2,
+          'DPAD_LEFT': SC.NUMPAD_4,
+          'DPAD_RIGHT': SC.NUMPAD_6,
+          'BTN_A': SC.NUMPAD_1,
+          'BTN_B': SC.NUMPAD_3,
+          'BTN_X': SC.NUMPAD_5,
+          'BTN_Y': SC.NUMPAD_7,
+          'L1': SC.NUMPAD_9,
+          'R1': SC.NUMPAD_0,
+          'L2': SC.H,
+          'R2': SC.U,
+          'START': SC.P,
+          'ENTER': SC.ENTER,
+          'SELECT': SC.ESCAPE
         }
       },
       racing: {
@@ -93,38 +160,38 @@ export class PcGamepadManager {
         name: '🏎️ مسابقه‌ای و اتومبیل‌رانی (Need for Speed / Forza)',
         desc: 'گاز با W/Up، ترمز با S/Down، نیترو با Space، ترمز دستی با Shift و فرمان با ژیروسکوپ گوشی',
         mappings: {
-          'DPAD_UP': VK.UP,
-          'DPAD_DOWN': VK.DOWN,
-          'DPAD_LEFT': VK.LEFT,
-          'DPAD_RIGHT': VK.RIGHT,
-          'BTN_A': VK.W,      // Accelerate
-          'BTN_B': VK.S,      // Brake
-          'BTN_X': VK.SPACE,  // Nitro
-          'BTN_Y': VK.C,      // Camera
-          'L1': VK.LEFT,
-          'R1': VK.RIGHT,
-          'L2': VK.SHIFT,     // Handbrake
-          'R2': VK.W,         // Gas
-          'START': VK.ENTER,
-          'ENTER': VK.ENTER,
-          'SELECT': VK.ESCAPE
+          'DPAD_UP': SC.UP,
+          'DPAD_DOWN': SC.DOWN,
+          'DPAD_LEFT': SC.LEFT,
+          'DPAD_RIGHT': SC.RIGHT,
+          'BTN_A': SC.W,       // Accelerate
+          'BTN_B': SC.S,       // Brake
+          'BTN_X': SC.SPACE,   // Nitro
+          'BTN_Y': SC.C,       // Camera
+          'L1': SC.LEFT,
+          'R1': SC.RIGHT,
+          'L2': SC.LSHIFT,     // Handbrake
+          'R2': SC.W,          // Gas
+          'START': SC.ENTER,
+          'ENTER': SC.ENTER,
+          'SELECT': SC.ESCAPE
         },
         player2Mappings: {
-          'DPAD_UP': VK.I,
-          'DPAD_DOWN': VK.K,
-          'DPAD_LEFT': VK.J,
-          'DPAD_RIGHT': VK.L,
-          'BTN_A': VK.I,
-          'BTN_B': VK.K,
-          'BTN_X': VK.P,
-          'BTN_Y': VK.O,
-          'L1': VK.J,
-          'R1': VK.L,
-          'L2': VK.U,
-          'R2': VK.I,
-          'START': VK.ENTER,
-          'ENTER': VK.ENTER,
-          'SELECT': VK.ESCAPE
+          'DPAD_UP': SC.I,
+          'DPAD_DOWN': SC.K,
+          'DPAD_LEFT': SC.J,
+          'DPAD_RIGHT': SC.L,
+          'BTN_A': SC.I,
+          'BTN_B': SC.K,
+          'BTN_X': SC.P,
+          'BTN_Y': SC.O,
+          'L1': SC.J,
+          'R1': SC.L,
+          'L2': SC.U,
+          'R2': SC.I,
+          'START': SC.ENTER,
+          'ENTER': SC.ENTER,
+          'SELECT': SC.ESCAPE
         }
       },
       action: {
@@ -132,38 +199,38 @@ export class PcGamepadManager {
         name: '🎯 اکشن و شوتر (WASD + Action Keys)',
         desc: 'حرکت با WASD، پرش با Space، شلیک با کلیک چپ/Enter، نشستن با C',
         mappings: {
-          'DPAD_UP': VK.W,
-          'DPAD_DOWN': VK.S,
-          'DPAD_LEFT': VK.A,
-          'DPAD_RIGHT': VK.D,
-          'BTN_A': VK.SPACE,  // Jump
-          'BTN_B': VK.C,      // Crouch
-          'BTN_X': VK.R,      // Reload
-          'BTN_Y': VK.E,      // Interact
-          'L1': VK.SHIFT,     // Sprint
-          'R1': VK.ENTER,     // Fire
-          'L2': VK.Q,         // Melee
-          'R2': VK.F,         // Grenade
-          'START': VK.ESCAPE,
-          'ENTER': VK.ENTER,
-          'SELECT': VK.TAB
+          'DPAD_UP': SC.W,
+          'DPAD_DOWN': SC.S,
+          'DPAD_LEFT': SC.A,
+          'DPAD_RIGHT': SC.D,
+          'BTN_A': SC.SPACE,   // Jump
+          'BTN_B': SC.C,       // Crouch
+          'BTN_X': SC.R,       // Reload
+          'BTN_Y': SC.E,       // Interact
+          'L1': SC.LSHIFT,    // Sprint
+          'R1': SC.ENTER,     // Fire
+          'L2': SC.Q,         // Melee
+          'R2': SC.F,         // Grenade
+          'START': SC.ESCAPE,
+          'ENTER': SC.ENTER,
+          'SELECT': SC.TAB
         },
         player2Mappings: {
-          'DPAD_UP': VK.I,
-          'DPAD_DOWN': VK.K,
-          'DPAD_LEFT': VK.J,
-          'DPAD_RIGHT': VK.L,
-          'BTN_A': VK.P,
-          'BTN_B': VK.H,
-          'BTN_X': VK.U,
-          'BTN_Y': VK.Y,
-          'L1': VK.O,
-          'R1': VK.ENTER,
-          'L2': VK.T,
-          'R2': VK.G,
-          'START': VK.ESCAPE,
-          'ENTER': VK.ENTER,
-          'SELECT': VK.TAB
+          'DPAD_UP': SC.I,
+          'DPAD_DOWN': SC.K,
+          'DPAD_LEFT': SC.J,
+          'DPAD_RIGHT': SC.L,
+          'BTN_A': SC.P,
+          'BTN_B': SC.H,
+          'BTN_X': SC.U,
+          'BTN_Y': SC.Y,
+          'L1': SC.O,
+          'R1': SC.ENTER,
+          'L2': SC.T,
+          'R2': SC.G,
+          'START': SC.ESCAPE,
+          'ENTER': SC.ENTER,
+          'SELECT': SC.TAB
         }
       },
       retro: {
@@ -171,38 +238,38 @@ export class PcGamepadManager {
         name: '🕹️ شبیه‌سازها و بازی‌های کلاسیک (RetroArch / MAME)',
         desc: 'چهار جهت جهت‌نما، دکمه‌های اصلی Z/X/A/S برای پلتفرمر و آرکید',
         mappings: {
-          'DPAD_UP': VK.UP,
-          'DPAD_DOWN': VK.DOWN,
-          'DPAD_LEFT': VK.LEFT,
-          'DPAD_RIGHT': VK.RIGHT,
-          'BTN_A': VK.Z,
-          'BTN_B': VK.X,
-          'BTN_X': VK.A,
-          'BTN_Y': VK.S,
-          'L1': VK.Q,
-          'R1': VK.E,
-          'L2': VK.NUM_1,
-          'R2': VK.NUM_2,
-          'START': VK.ENTER,
-          'ENTER': VK.ENTER,
-          'SELECT': VK.ESCAPE
+          'DPAD_UP': SC.UP,
+          'DPAD_DOWN': SC.DOWN,
+          'DPAD_LEFT': SC.LEFT,
+          'DPAD_RIGHT': SC.RIGHT,
+          'BTN_A': SC.Z,
+          'BTN_B': SC.X,
+          'BTN_X': SC.A,
+          'BTN_Y': SC.S,
+          'L1': SC.Q,
+          'R1': SC.E,
+          'L2': SC.W,
+          'R2': SC.D,
+          'START': SC.ENTER,
+          'ENTER': SC.ENTER,
+          'SELECT': SC.ESCAPE
         },
         player2Mappings: {
-          'DPAD_UP': VK.I,
-          'DPAD_DOWN': VK.K,
-          'DPAD_LEFT': VK.J,
-          'DPAD_RIGHT': VK.L,
-          'BTN_A': VK.B,
-          'BTN_B': VK.N,
-          'BTN_X': VK.V,
-          'BTN_Y': VK.G,
-          'L1': VK.T,
-          'R1': VK.Y,
-          'L2': VK.NUM_3,
-          'R2': VK.NUM_4,
-          'START': VK.ENTER,
-          'ENTER': VK.ENTER,
-          'SELECT': VK.ESCAPE
+          'DPAD_UP': SC.I,
+          'DPAD_DOWN': SC.K,
+          'DPAD_LEFT': SC.J,
+          'DPAD_RIGHT': SC.L,
+          'BTN_A': SC.B,
+          'BTN_B': SC.N,
+          'BTN_X': SC.V,
+          'BTN_Y': SC.G,
+          'L1': SC.T,
+          'R1': SC.Y,
+          'L2': SC.U,
+          'R2': SC.H,
+          'START': SC.ENTER,
+          'ENTER': SC.ENTER,
+          'SELECT': SC.ESCAPE
         }
       }
     };
@@ -370,10 +437,10 @@ export class PcGamepadManager {
     // Select Player 1 or Player 2 mapping
     const profile = this.profiles[this.activeProfile] || this.profiles.fifa;
     const mappings = player === 2 && profile.player2Mappings ? profile.player2Mappings : profile.mappings;
-    const vkCode = mappings[button];
+    const scObj = mappings[button];
 
-    if (vkCode !== undefined) {
-      this.sendWindowsKey(vkCode, state || 'down');
+    if (scObj !== undefined) {
+      this.sendWindowsKey(scObj, state || 'down');
     }
   }
 
@@ -390,15 +457,17 @@ export class PcGamepadManager {
     }
   }
 
-  sendWindowsKey(vkCode, state = 'down') {
-    if (process.platform !== 'win32') return;
+  sendWindowsKey(scObj, state = 'down') {
+    if (process.platform !== 'win32' || !scObj) return;
 
     // Ensure bridge is alive
     if (!this.bridgeProcess || this.bridgeProcess.killed) {
       this.initNativeBridge();
     }
 
-    const command = state === 'up' ? `UP:${vkCode}` : (state === 'tap' ? `TAP:${vkCode}` : `DOWN:${vkCode}`);
+    const { scan, ext = false } = scObj;
+    const isExtStr = ext ? 'true' : 'false';
+    const command = state === 'up' ? `HW_UP:${scan},${isExtStr}` : (state === 'tap' ? `HW_TAP:${scan},${isExtStr}` : `HW_DOWN:${scan},${isExtStr}`);
 
     if (this.bridgeProcess && this.bridgeProcess.stdin && this.bridgeProcess.stdin.writable) {
       try {

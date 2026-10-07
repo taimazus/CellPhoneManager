@@ -40,12 +40,6 @@ public class WinInput {
     static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
     [DllImport("user32.dll")]
-    static extern uint MapVirtualKey(uint uCode, uint uMapType);
-
-    [DllImport("user32.dll")]
-    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
-
-    [DllImport("user32.dll")]
     public static extern void mouse_event(uint dwFlags, int dx, int dy, uint dwData, UIntPtr dwExtraInfo);
 
     public const uint INPUT_KEYBOARD = 1;
@@ -54,46 +48,33 @@ public class WinInput {
     public const uint KEYEVENTF_KEYUP = 0x0002;
     public const uint KEYEVENTF_SCANCODE = 0x0008;
 
-    public static void KeyDown(byte vk) {
-        ushort scan = (ushort)MapVirtualKey((uint)vk, 0);
-        bool isExt = (vk >= 0x21 && vk <= 0x28) || vk == 0x2D || vk == 0x2E;
-
-        // 1. Hardware DirectInput SendInput
+    // Pure Hardware ScanCode Injection - Completely Independent of Windows Keyboard Language!
+    public static void HardwareKeyDown(ushort scanCode, bool isExtended) {
         INPUT[] inputs = new INPUT[1];
         inputs[0].type = INPUT_KEYBOARD;
-        inputs[0].u.ki.wVk = (ushort)vk;
-        inputs[0].u.ki.wScan = scan;
-        inputs[0].u.ki.dwFlags = (isExt ? KEYEVENTF_EXTENDEDKEY : 0);
+        inputs[0].u.ki.wVk = 0; // 0 VK guarantees pure hardware scancode bypasses Windows layout
+        inputs[0].u.ki.wScan = scanCode;
+        inputs[0].u.ki.dwFlags = KEYEVENTF_SCANCODE | (isExtended ? KEYEVENTF_EXTENDEDKEY : 0);
         inputs[0].u.ki.time = 0;
         inputs[0].u.ki.dwExtraInfo = IntPtr.Zero;
         SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
-
-        // 2. Hardware keybd_event dual layer
-        keybd_event(vk, (byte)scan, (isExt ? KEYEVENTF_EXTENDEDKEY : 0), UIntPtr.Zero);
     }
 
-    public static void KeyUp(byte vk) {
-        ushort scan = (ushort)MapVirtualKey((uint)vk, 0);
-        bool isExt = (vk >= 0x21 && vk <= 0x28) || vk == 0x2D || vk == 0x2E;
-
-        // 1. Hardware DirectInput SendInput
+    public static void HardwareKeyUp(ushort scanCode, bool isExtended) {
         INPUT[] inputs = new INPUT[1];
         inputs[0].type = INPUT_KEYBOARD;
-        inputs[0].u.ki.wVk = (ushort)vk;
-        inputs[0].u.ki.wScan = scan;
-        inputs[0].u.ki.dwFlags = KEYEVENTF_KEYUP | (isExt ? KEYEVENTF_EXTENDEDKEY : 0);
+        inputs[0].u.ki.wVk = 0;
+        inputs[0].u.ki.wScan = scanCode;
+        inputs[0].u.ki.dwFlags = KEYEVENTF_KEYUP | KEYEVENTF_SCANCODE | (isExtended ? KEYEVENTF_EXTENDEDKEY : 0);
         inputs[0].u.ki.time = 0;
         inputs[0].u.ki.dwExtraInfo = IntPtr.Zero;
         SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
-
-        // 2. Hardware keybd_event dual layer
-        keybd_event(vk, (byte)scan, KEYEVENTF_KEYUP | (isExt ? KEYEVENTF_EXTENDEDKEY : 0), UIntPtr.Zero);
     }
 
-    public static void KeyTap(byte vk) {
-        KeyDown(vk);
+    public static void HardwareKeyTap(ushort scanCode, bool isExtended) {
+        HardwareKeyDown(scanCode, isExtended);
         System.Threading.Thread.Sleep(45);
-        KeyUp(vk);
+        HardwareKeyUp(scanCode, isExtended);
     }
 
     public static void MouseClick(string type) {
@@ -125,15 +106,22 @@ while ($line = [Console]::In.ReadLine()) {
     if ([string]::IsNullOrWhiteSpace($line)) { continue }
 
     try {
-        if ($line.StartsWith("TAP:")) {
-            $vk = [byte]($line.Substring(4))
-            [WinInput]::KeyTap($vk)
-        } elseif ($line.StartsWith("DOWN:")) {
-            $vk = [byte]($line.Substring(5))
-            [WinInput]::KeyDown($vk)
-        } elseif ($line.StartsWith("UP:")) {
-            $vk = [byte]($line.Substring(3))
-            [WinInput]::KeyUp($vk)
+        if ($line.StartsWith("HW_DOWN:")) {
+            # Format: HW_DOWN:<scanCode>,<isExtended>
+            $parts = $line.Substring(8).Split(",")
+            $scan = [ushort]$parts[0]
+            $isExt = if ($parts.Length -gt 1) { [bool]::Parse($parts[1]) } else { $false }
+            [WinInput]::HardwareKeyDown($scan, $isExt)
+        } elseif ($line.StartsWith("HW_UP:")) {
+            $parts = $line.Substring(6).Split(",")
+            $scan = [ushort]$parts[0]
+            $isExt = if ($parts.Length -gt 1) { [bool]::Parse($parts[1]) } else { $false }
+            [WinInput]::HardwareKeyUp($scan, $isExt)
+        } elseif ($line.StartsWith("HW_TAP:")) {
+            $parts = $line.Substring(7).Split(",")
+            $scan = [ushort]$parts[0]
+            $isExt = if ($parts.Length -gt 1) { [bool]::Parse($parts[1]) } else { $false }
+            [WinInput]::HardwareKeyTap($scan, $isExt)
         } elseif ($line.StartsWith("MOUSE:")) {
             $parts = $line.Substring(6).Split(",")
             if ($parts.Length -eq 2) {
