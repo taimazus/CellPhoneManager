@@ -194,6 +194,15 @@ app.get('/api/devices/:id/details', async (req, res) => {
 });
 
 // Wireless connection & pairing APIs
+app.get('/api/devices/wireless/scan', async (req, res) => {
+  try {
+    const result = await networkManager.scanLocalSubnetForDevices();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message, devices: [] });
+  }
+});
+
 app.post('/api/devices/wireless/pair', async (req, res) => {
   const { ip, port, code } = req.body;
   if (!ip || !port || !code) {

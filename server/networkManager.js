@@ -2,6 +2,7 @@ import { exec, execFile } from 'child_process';
 import util from 'util';
 import https from 'https';
 import http from 'http';
+import net from 'net';
 import { toolManager } from './toolManager.js';
 
 const execAsync = util.promisify(exec);
@@ -274,6 +275,108 @@ export class NetworkManager {
         resolve({ success: true, ip: '194.168.1.1', country: 'Germany (آلمان)', city: 'Frankfurt (فرانکفورت)', lat: 50.1109, lng: 8.6821 });
       });
     });
+  }
+
+  // 12. Local Subnet & Network Discovery Scanner
+  async checkTcpPort(ip, port = 5555, timeoutMs = 400) {
+    return new Promise((resolve) => {
+      const socket = new net.Socket();
+      let resolved = false;
+
+      socket.setTimeout(timeoutMs);
+      socket.on('connect', () => {
+        if (!resolved) {
+          resolved = true;
+          socket.destroy();
+          resolve(true);
+        }
+      });
+      socket.on('timeout', () => {
+        if (!resolved) {
+          resolved = true;
+          socket.destroy();
+          resolve(false);
+        }
+      });
+      socket.on('error', () => {
+        if (!resolved) {
+          resolved = true;
+          socket.destroy();
+          resolve(false);
+        }
+      });
+
+      try {
+        socket.connect(port, ip);
+      } catch {
+        resolve(false);
+      }
+    });
+  }
+
+  async scanLocalSubnetForDevices() {
+    try {
+      const { stdout } = await execAsync('arp -a');
+      const lines = (stdout || '').split('\n');
+      const candidates = [];
+
+      for (const line of lines) {
+        const match = line.trim().match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+([0-9a-fA-F\-]{17})\s+(\w+)/i);
+        if (match) {
+          const ip = match[1];
+          const mac = match[2].toUpperCase().replace(/-/g, ':');
+          const type = match[3].toLowerCase();
+
+          // Skip broadcast, multicast, loopback
+          if (ip.endsWith('.255') || ip.startsWith('224.') || ip.startsWith('239.') || ip === '255.255.255.255' || ip.startsWith('127.')) {
+            continue;
+          }
+
+          candidates.push({ ip, mac, type });
+        }
+      }
+
+      // Check port 5555 in parallel with timeout
+      const checkResults = await Promise.all(
+        candidates.slice(0, 30).map(async (c) => {
+          const isAdbOpen = await this.checkTcpPort(c.ip, 5555, 450);
+          
+          let vendor = 'دستگاه متصل به شبکه Wi-Fi';
+          let deviceType = 'Smart Device';
+
+          if (c.mac.startsWith('B4:0E:DE') || c.mac.startsWith('AC:C1:EE') || c.mac.startsWith('34:CE:00')) {
+            vendor = 'شیائومی / ردمی (Xiaomi)';
+            deviceType = 'Android';
+          } else if (c.mac.startsWith('DC:71:44') || c.mac.startsWith('F4:60:E2') || c.mac.startsWith('50:77:05')) {
+            vendor = 'سامسونگ گلکسی (Samsung)';
+            deviceType = 'Android';
+          } else if (c.mac.startsWith('AC:BC:32') || c.mac.startsWith('F0:18:98') || c.mac.startsWith('18:F6:43')) {
+            vendor = 'اپل آیفون / آیپد (Apple iOS)';
+            deviceType = 'iOS';
+          } else if (isAdbOpen) {
+            vendor = 'گوشی اندروید (Wireless Debugging فعال)';
+            deviceType = 'Android';
+          }
+
+          return {
+            ip: c.ip,
+            mac: c.mac,
+            isAdbOpen,
+            vendor,
+            deviceType,
+            status: isAdbOpen ? 'آماده اتصال فوری (پورت ۵۵۵۵ باز)' : 'شناسایی‌شده در شبکه Wi-Fi'
+          };
+        })
+      );
+
+      return {
+        success: true,
+        totalFound: checkResults.length,
+        devices: checkResults
+      };
+    } catch (err) {
+      return { success: false, error: err.message, devices: [] };
+    }
   }
 }
 
