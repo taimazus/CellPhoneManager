@@ -91,37 +91,37 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-xl bg-[#0c142b] border border-cyan-500/30 rounded-3xl p-6 shadow-2xl shadow-cyan-950/80 glass-panel text-right">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+      <div className="relative w-full max-w-xl bg-[#121319] border border-amber-500/30 rounded-3xl p-6 shadow-2xl shadow-black/80 glass-panel text-right">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div className="flex items-center justify-between pb-4 border-b border-amber-500/15">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-blue-600/30 text-cyan-400 border border-cyan-500/30">
+            <div className="p-2.5 rounded-xl bg-gradient-to-tr from-amber-500/20 via-yellow-500/25 to-amber-600/30 text-yellow-300 border border-amber-500/35">
               <Wifi className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 اتصال بی‌سیم گوشی از طریق Wi-Fi
               </h3>
-              <p className="text-xs text-slate-400">اتصال و کنترل دستگاه‌های متصل به شبکه محلی بدون نیاز به کابل</p>
+              <p className="text-xs text-stone-400">اتصال و کنترل دستگاه‌های متصل به شبکه محلی بدون نیاز به کابل</p>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+            className="p-2 rounded-xl bg-[#181922] hover:bg-[#22242f] text-stone-400 hover:text-yellow-300 border border-amber-500/15 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Tab Selector */}
-        <div className="grid grid-cols-2 gap-2 my-4 p-1 bg-slate-900/90 rounded-2xl border border-slate-800">
+        <div className="grid grid-cols-2 gap-2 my-4 p-1 bg-[#0e0f14] rounded-2xl border border-amber-500/20">
           <button
             onClick={() => { setTab('pair'); setStatus(null); }}
             className={`py-2 px-3 rounded-xl text-xs font-bold transition-all ${
               tab === 'pair'
-                ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-black shadow-md shadow-amber-500/20'
+                : 'text-stone-400 hover:text-amber-200'
             }`}
           >
             روش ۱: اندروید ۱۱ به بالا (Wireless Debugging)
@@ -130,13 +130,14 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
             onClick={() => { setTab('direct'); setStatus(null); }}
             className={`py-2 px-3 rounded-xl text-xs font-bold transition-all ${
               tab === 'direct'
-                ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-black shadow-md shadow-amber-500/20'
+                : 'text-stone-400 hover:text-amber-200'
             }`}
           >
             روش ۲: اتصال با IP و پورت (TCP/IP)
           </button>
         </div>
+
 
         {/* Status Toast */}
         {status && (

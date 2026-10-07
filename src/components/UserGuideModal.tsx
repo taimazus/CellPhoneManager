@@ -315,26 +315,27 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose,
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4" dir="rtl">
-      <div className="bg-[#0b1329] border border-cyan-500/30 rounded-3xl w-full max-w-5xl h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-scaleUp">
+      <div className="bg-[#121319] border border-amber-500/30 rounded-3xl w-full max-w-5xl h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-scaleUp">
         
         {/* Modal Header */}
-        <div className="p-5 bg-slate-900/90 border-b border-cyan-500/20 flex items-center justify-between gap-4">
+        <div className="p-5 bg-[#171822] border-b border-amber-500/20 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 text-slate-950 font-bold shadow-lg shadow-cyan-500/20">
+            <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-600 text-stone-950 font-black shadow-lg shadow-amber-500/20">
               <BookOpen className="w-6 h-6" />
             </div>
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <span>مرکز راهنما و آموزش جامع کاربران (Help & Learning Center)</span>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-mono">
-                  نسخه ۳.۰
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-yellow-300 font-mono font-bold border border-amber-500/30">
+                  ROYAL EDITION
                 </span>
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-stone-400">
                 راهنمای قدم‌به‌قدم فعال‌سازی و بهره‌برداری از کلیه امکانات حرفه‌ای CellPhoneManager
               </p>
             </div>
           </div>
+
 
           <button
             onClick={onClose}
