@@ -307,49 +307,80 @@ export const MirrorControlTab: React.FC<MirrorControlTabProps> = ({
       {/* Right Side Settings & Scrcpy Launch Controls (5 cols) */}
       <div className="lg:col-span-5 space-y-6">
         {/* In-Browser Live Stream Controls Card */}
-        <div className="rounded-2xl glass-panel p-6 border border-emerald-500/30">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400">
+        {/* In-Browser Live Stream Controls Card */}
+        <div className="rounded-2xl glass-panel p-6 border border-amber-500/25 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-500/20 text-yellow-300 border border-amber-500/30">
               <MonitorPlay className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-base font-bold text-white">پخش زنده مستقیم درون مرورگر</h3>
-              <p className="text-xs text-slate-400">نمایش تصویر واقعی گوشی با قابلیت کلیک و لمس زنده</p>
+              <p className="text-xs text-stone-400">نمایش تصویر واقعی گوشی با قابلیت کلیک و لمس زنده</p>
             </div>
           </div>
 
-          <div className="space-y-4 pt-2">
+          <div className="space-y-4 pt-1">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-300">وضعیت استریم مرورگر:</span>
+              <span className="text-xs text-stone-300">وضعیت استریم مرورگر:</span>
               <button
                 onClick={() => setIsStreamingWeb(!isStreamingWeb)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
                   isStreamingWeb
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                    ? 'bg-amber-500/20 text-yellow-300 border-amber-500/40 shadow-sm shadow-amber-500/15'
+                    : 'bg-stone-800 text-stone-400 border-stone-700'
                 }`}
               >
                 {isStreamingWeb ? '🟢 پخش خودکار فعال' : '⏸️ متوقف شده'}
               </button>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between text-xs text-slate-300 mb-1.5">
-                <span>فاصله تازه‌سازی فریم (Refresh Rate):</span>
-                <span className="font-mono text-emerald-400 font-bold">{streamIntervalMs} ms</span>
+            {/* Comprehensive Refresh Rate Slider & Presets */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-stone-300">
+                <span>سرعت تازه‌سازی تصویر (Refresh Rate):</span>
+                <span className="font-mono text-yellow-300 font-bold bg-amber-500/15 px-2 py-0.5 rounded-md border border-amber-500/30">
+                  {streamIntervalMs} ms ({streamIntervalMs <= 1000 ? `~${(1000 / streamIntervalMs).toFixed(1)} FPS` : `هر ${(streamIntervalMs / 1000).toFixed(1)} ثانیه`})
+                </span>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                {[500, 750, 1500].map((ms) => (
+
+              <input 
+                type="range" 
+                min="50" 
+                max="5000" 
+                step="50" 
+                value={streamIntervalMs} 
+                onChange={(e) => setStreamIntervalMs(Number(e.target.value))}
+                className="w-full accent-amber-400 cursor-pointer h-2 bg-stone-800 rounded-lg"
+              />
+
+              <div className="flex items-center justify-between text-[10px] text-stone-400 font-mono">
+                <span>🚀 50ms (فوق سریع)</span>
+                <span>⚡ 500ms (نرمال)</span>
+                <span>🔋 5000ms (کم‌مصرف)</span>
+              </div>
+
+              {/* Quick Speed Presets Grid */}
+              <div className="grid grid-cols-4 gap-1.5 pt-1">
+                {[
+                  { ms: 100, label: '۱۰۰ms (۱۰fps)' },
+                  { ms: 250, label: '۲۵۰ms (۴fps)' },
+                  { ms: 500, label: '۵۰۰ms (۲fps)' },
+                  { ms: 750, label: '۷۵۰ms (روان)' },
+                  { ms: 1000, label: '۱ ثانیه (بهینه)' },
+                  { ms: 2000, label: '۲ ثانیه (باتری)' },
+                  { ms: 3000, label: '۳ ثانیه' },
+                  { ms: 5000, label: '۵ ثانیه (اکو)' }
+                ].map((item) => (
                   <button
-                    key={ms}
-                    onClick={() => setStreamIntervalMs(ms)}
-                    className={`py-1.5 rounded-lg text-xs font-mono font-bold border transition-all ${
-                      streamIntervalMs === ms 
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50' 
-                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700'
+                    key={item.ms}
+                    onClick={() => setStreamIntervalMs(item.ms)}
+                    className={`py-1.5 px-1 rounded-lg text-[10px] font-bold border transition-all truncate text-center ${
+                      streamIntervalMs === item.ms 
+                        ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-black border-amber-400 shadow-sm shadow-amber-500/20' 
+                        : 'bg-[#14151b] text-stone-400 border-amber-500/15 hover:border-amber-500/35 hover:text-stone-200'
                     }`}
                   >
-                    {ms} ms
+                    {item.label}
                   </button>
                 ))}
               </div>
@@ -358,99 +389,99 @@ export const MirrorControlTab: React.FC<MirrorControlTabProps> = ({
             <button
               onClick={fetchLiveFrame}
               disabled={isCapturing}
-              className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-bold text-xs transition-all flex items-center justify-center gap-2"
+              className="w-full py-2.5 rounded-xl bg-[#14151b] hover:bg-[#1d1f2a] text-stone-200 border border-amber-500/25 hover:border-amber-500/50 font-bold text-xs transition-all flex items-center justify-center gap-2 shadow-sm"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isCapturing ? 'animate-spin text-emerald-400' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isCapturing ? 'animate-spin text-yellow-400' : ''}`} />
               <span>دریافت فوری فریم جدید</span>
             </button>
           </div>
         </div>
 
         {/* Scrcpy Ultra HD Mirror Launcher Card */}
-        <div className="rounded-2xl glass-panel p-6 border border-cyan-500/30">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2.5 rounded-xl bg-cyan-500/20 text-cyan-400">
+        <div className="rounded-2xl glass-panel p-6 border border-amber-500/25 space-y-4">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2.5 rounded-xl bg-amber-500/20 text-yellow-300 border border-amber-500/30">
               <Zap className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">پنجره مستقل با Scrcpy (تا 120 FPS)</h3>
-              <p className="text-xs text-slate-400">نمایش با تأخیر زیر ۳۰ میلی‌ثانیه و موس و کیبورد کامل</p>
+              <h3 className="text-base font-bold text-white">پنجره مستقل با Scrcpy (تا 144 FPS)</h3>
+              <p className="text-xs text-stone-400">نمایش فوق روان با تأخیر زیر ۳۰ میلی‌ثانیه، ماوس و کیبورد کامل</p>
             </div>
           </div>
 
-          <div className="space-y-4 pt-2">
+          <div className="space-y-4 pt-1">
             {/* Bitrate Setting */}
             <div>
-              <div className="flex items-center justify-between text-xs text-slate-300 mb-1.5">
+              <div className="flex items-center justify-between text-xs text-stone-300 mb-1.5">
                 <span>بیت‌ریت ویدیو (Bitrate):</span>
-                <span className="font-mono text-cyan-400 font-bold">{bitrate} Mbps</span>
+                <span className="font-mono text-yellow-300 font-bold bg-amber-500/15 px-2 py-0.5 rounded-md border border-amber-500/30">{bitrate} Mbps</span>
               </div>
               <input 
                 type="range" 
                 min="2" 
-                max="32" 
+                max="48" 
                 step="2" 
                 value={bitrate} 
                 onChange={(e) => setBitrate(Number(e.target.value))}
-                className="w-full accent-cyan-400 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
+                className="w-full accent-amber-400 cursor-pointer h-2 bg-stone-800 rounded-lg"
               />
             </div>
 
             {/* Max FPS Setting */}
             <div>
-              <div className="flex items-center justify-between text-xs text-slate-300 mb-1.5">
+              <div className="flex items-center justify-between text-xs text-stone-300 mb-1.5">
                 <span>حداکثر نرخ فریم (FPS):</span>
-                <span className="font-mono text-cyan-400 font-bold">{maxFps} FPS</span>
+                <span className="font-mono text-yellow-300 font-bold bg-amber-500/15 px-2 py-0.5 rounded-md border border-amber-500/30">{maxFps} FPS</span>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                {[30, 60, 120].map((fps) => (
+              <div className="grid grid-cols-6 gap-1.5">
+                {[15, 30, 60, 90, 120, 144].map((fps) => (
                   <button
                     key={fps}
                     onClick={() => setMaxFps(fps)}
-                    className={`py-1.5 rounded-lg text-xs font-mono font-bold border transition-all ${
+                    className={`py-1.5 rounded-lg text-xs font-mono font-bold border transition-all text-center ${
                       maxFps === fps 
-                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50' 
-                        : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700'
+                        ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-black border-amber-400 shadow-sm shadow-amber-500/20' 
+                        : 'bg-[#14151b] text-stone-400 border-amber-500/15 hover:border-amber-500/35 hover:text-stone-200'
                     }`}
                   >
-                    {fps} FPS
+                    {fps}
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Options Checkboxes */}
-            <div className="space-y-2.5 pt-2">
-              <label className="flex items-center gap-3 text-xs text-slate-300 cursor-pointer select-none">
+            <div className="space-y-2.5 pt-1">
+              <label className="flex items-center gap-3 text-xs text-stone-300 cursor-pointer select-none">
                 <input 
                   type="checkbox" 
                   checked={turnScreenOff} 
                   onChange={(e) => setTurnScreenOff(e.target.checked)}
-                  className="rounded border-slate-700 text-cyan-500 focus:ring-0 w-4 h-4 bg-slate-900"
+                  className="rounded border-stone-700 text-amber-500 focus:ring-0 w-4 h-4 bg-stone-900"
                 />
                 <span className="flex items-center gap-1.5">
-                  <EyeOff className="w-3.5 h-3.5 text-slate-400" />
+                  <EyeOff className="w-3.5 h-3.5 text-stone-400" />
                   خاموش کردن صفحه فیزیکی گوشی حین کار برای صرفه‌جویی باتری
                 </span>
               </label>
 
-              <label className="flex items-center gap-3 text-xs text-slate-300 cursor-pointer select-none">
+              <label className="flex items-center gap-3 text-xs text-stone-300 cursor-pointer select-none">
                 <input 
                   type="checkbox" 
                   checked={alwaysOnTop} 
                   onChange={(e) => setAlwaysOnTop(e.target.checked)}
-                  className="rounded border-slate-700 text-cyan-500 focus:ring-0 w-4 h-4 bg-slate-900"
+                  className="rounded border-stone-700 text-amber-500 focus:ring-0 w-4 h-4 bg-stone-900"
                 />
                 <span>پنجره Scrcpy همیشه روی سایر برنامه‌ها بماند (Always on Top)</span>
               </label>
             </div>
 
             {/* Launch / Terminate Buttons */}
-            <div className="pt-3 flex gap-3">
+            <div className="pt-2 flex gap-3">
               {!isMirroring ? (
                 <button
                   onClick={startScrcpyMirror}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/25 transition-all"
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 hover:from-amber-300 hover:to-yellow-400 text-stone-950 font-black text-sm shadow-lg shadow-amber-500/25 transition-all transform hover:-translate-y-0.5"
                 >
                   <Play className="w-4 h-4 fill-current" />
                   <span>اجرای پنجره زنده در ویندوز</span>
@@ -467,6 +498,7 @@ export const MirrorControlTab: React.FC<MirrorControlTabProps> = ({
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );
