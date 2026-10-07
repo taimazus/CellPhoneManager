@@ -128,6 +128,15 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     return saved !== null ? parseInt(saved, 10) : 0; // 0 = SIM 1, 1 = SIM 2, -1 = System Default
   });
   const [ussdCode, setUssdCode] = useState<string>('');
+  const [ussdDialog, setUssdDialog] = useState<{
+    active: boolean;
+    title?: string;
+    message?: string;
+    hasInput?: boolean;
+    buttons?: string[];
+  } | null>(null);
+  const [ussdReplyText, setUssdReplyText] = useState<string>('');
+  const [ussdLoading, setUssdLoading] = useState<boolean>(false);
 
   const timerRef = useRef<any>(null);
 
@@ -149,6 +158,21 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     }
   };
 
+  const handleCheckUssdDialog = async () => {
+    if (!device) return;
+    try {
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/ussd/dialog`);
+      if (data && data.dialog && data.dialog.active) {
+        setUssdDialog(data.dialog);
+        showToast('پاسخ پیام USSD از روی گوشی دریافت شد', 'success');
+      } else {
+        showToast('در حال حاضر پیامی روی صفحه گوشی یافت نشد', 'error');
+      }
+    } catch (err: any) {
+      showToast(`خطا در بازخوانی پیام: ${err.message}`, 'error');
+    }
+  };
+
   const handleRunUssd = async (codeToRun?: string) => {
     if (!device) return;
     const code = codeToRun || ussdCode;
@@ -156,6 +180,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       showToast('لطفاً کد دستوری USSD را وارد کنید (مثلاً *100# یا *555#)', 'error');
       return;
     }
+    setUssdLoading(true);
     try {
       const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/ussd/run`, {
         method: 'POST',
@@ -164,9 +189,61 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       });
       if (data.success) {
         showToast(data.message || `کد دستوری ${code} با موفقیت ارسال شد`, 'success');
+        if (data.dialog && data.dialog.active) {
+          setUssdDialog(data.dialog);
+        } else {
+          // Poll once more after 2.5 seconds in case operator took longer
+          setTimeout(async () => {
+            try {
+              const checkData = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/ussd/dialog`);
+              if (checkData && checkData.dialog && checkData.dialog.active) {
+                setUssdDialog(checkData.dialog);
+              }
+            } catch {
+              // quiet
+            } finally {
+              setUssdLoading(false);
+            }
+          }, 2500);
+          return;
+        }
       } else {
         showToast(`خطا: ${data.error || 'خطای ناشناخته'}`, 'error');
       }
+    } catch (err: any) {
+      showToast(`خطا: ${err.message}`, 'error');
+    } finally {
+      setUssdLoading(false);
+    }
+  };
+
+  const handleReplyUssd = async () => {
+    if (!device || !ussdReplyText.trim()) return;
+    setUssdLoading(true);
+    try {
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/ussd/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: ussdReplyText.trim() })
+      });
+      if (data && data.dialog) {
+        setUssdDialog(data.dialog);
+        setUssdReplyText('');
+        showToast('پاسخ ارسال شد و منوی بعدی دریافت گردید', 'success');
+      }
+    } catch (err: any) {
+      showToast(`خطا: ${err.message}`, 'error');
+    } finally {
+      setUssdLoading(false);
+    }
+  };
+
+  const handleDismissUssd = async () => {
+    if (!device) return;
+    try {
+      await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/ussd/dismiss`, { method: 'POST' });
+      setUssdDialog(null);
+      showToast('پیام USSD بسته شد', 'success');
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
     }
@@ -976,7 +1053,16 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                     <Hash className="w-3.5 h-3.5 text-cyan-400" />
                     کدهای دستوری و شارژ سریع (USSD):
                   </span>
+                  <button
+                    onClick={handleCheckUssdDialog}
+                    className="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 bg-cyan-500/10 px-2 py-0.5 rounded-lg border border-cyan-500/20"
+                    title="بررسی و بازخوانی آخرین پیام دریافتی از شبکه"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>بررسی پیام شبکه</span>
+                  </button>
                 </div>
+
                 <div className="flex items-center gap-1.5">
                   <input
                     type="text"
@@ -988,9 +1074,10 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                   />
                   <button
                     onClick={() => handleRunUssd()}
-                    className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-slate-950 text-xs font-bold transition-all border border-cyan-500/30"
+                    disabled={ussdLoading}
+                    className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-slate-950 text-xs font-bold transition-all border border-cyan-500/30 disabled:opacity-50"
                   >
-                    ارسال USSD
+                    {ussdLoading ? 'در حال دریافت...' : 'ارسال USSD'}
                   </button>
                 </div>
 
@@ -1014,6 +1101,61 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                     </button>
                   ))}
                 </div>
+
+                {/* Live USSD Result & Dialog Box */}
+                {ussdDialog && ussdDialog.active && (
+                  <div className="mt-3 p-3.5 rounded-2xl bg-gradient-to-b from-[#0a1835] to-[#050e20] border border-cyan-500/40 shadow-xl space-y-2.5 animate-fadeIn">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-cyan-500/20">
+                      <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                        {ussdDialog.title || 'پاسخ پیام شبکه (USSD Result)'}
+                      </span>
+                      <button
+                        onClick={handleDismissUssd}
+                        className="text-slate-400 hover:text-rose-400 transition-colors p-1"
+                        title="بستن پیام"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="text-xs text-slate-200 whitespace-pre-wrap leading-relaxed font-sans bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 max-h-48 overflow-y-auto">
+                      {ussdDialog.message}
+                    </div>
+
+                    {/* Interactive USSD Reply Input */}
+                    {ussdDialog.hasInput && (
+                      <div className="space-y-1.5 pt-1">
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            placeholder="پاسخ منو (مثلاً ۱ یا ۲)..."
+                            value={ussdReplyText}
+                            onChange={(e) => setUssdReplyText(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleReplyUssd()}
+                            className="flex-1 bg-slate-900 border border-cyan-500/40 rounded-xl px-3 py-1.5 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-400"
+                          />
+                          <button
+                            onClick={handleReplyUssd}
+                            disabled={!ussdReplyText.trim() || ussdLoading}
+                            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 transition-all disabled:opacity-50"
+                          >
+                            ارسال پاسخ
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        onClick={handleDismissUssd}
+                        className="px-3 py-1 rounded-lg text-xs font-bold bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition-all"
+                      >
+                        بستن پیام (تایید)
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

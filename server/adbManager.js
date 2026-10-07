@@ -643,8 +643,114 @@ export class AdbManager {
     return await this.runAdb(`shell am start -a android.intent.action.CALL -d "tel:${encodedNum}"${extraArgs}`, serial);
   }
 
+  async getActiveDialog(serial) {
+    try {
+      if (serial && serial.startsWith('mock-')) {
+        return {
+          active: true,
+          title: 'پیام USSD اپراتور',
+          message: 'موجودی ریالی شما: ۱۲۵,۴۰۰ ریال\nبسته اینترنت فعال: ۵ گیگابایت تا ۱۴۰۵/۰۲/۱۵\n\n۱: خرید بسته اینترنت\n۲: انتقال شارژ\n۳: تنظیمات',
+          hasInput: true,
+          buttons: ['تایید', 'انصراف']
+        };
+      }
+
+      const dumpRes = await this.runAdb('shell "uiautomator dump /data/local/tmp/cpm_dump.xml && cat /data/local/tmp/cpm_dump.xml"', serial);
+      if (!dumpRes.success || !dumpRes.stdout || !dumpRes.stdout.includes('<hierarchy')) {
+        return { active: false, message: 'هیچ دیالوگی در حال حاضر فعال نیست' };
+      }
+
+      const xml = dumpRes.stdout;
+      
+      const msgMatch = xml.match(/<node[^>]*resource-id="[^"]*(?:id\/message|dialog_message|message_text|alert_message)[^"]*"[^>]*text="([^"]+)"/i)
+        || xml.match(/<node[^>]*text="([^"]{3,})"[^>]*resource-id="[^"]*(?:message|body|desc)[^"]*"/i);
+      
+      const titleMatch = xml.match(/<node[^>]*resource-id="[^"]*(?:id\/alertTitle|title)[^"]*"[^>]*text="([^"]+)"/i);
+      
+      const hasInput = xml.includes('class="android.widget.EditText"');
+      
+      const buttons = [];
+      const btnMatches = [...xml.matchAll(/<node[^>]*class="android.widget.Button"[^>]*text="([^"]+)"/gi)];
+      for (const b of btnMatches) {
+        if (b[1] && b[1].trim()) buttons.push(b[1].trim());
+      }
+
+      if (msgMatch && msgMatch[1]) {
+        const cleanMsg = msgMatch[1]
+          .replace(/&quot;/g, '"')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&#10;/g, '\n')
+          .replace(/\\n/g, '\n');
+
+        return {
+          active: true,
+          title: titleMatch ? titleMatch[1].replace(/&quot;/g, '"') : 'پیام شبکه مخابراتی (USSD)',
+          message: cleanMsg,
+          hasInput,
+          buttons: buttons.length > 0 ? buttons : ['تایید']
+        };
+      }
+
+      // Fallback: search for dialog or system UI text nodes
+      if (xml.includes('class="android.app.AlertDialog"') || xml.includes('com.android.phone') || xml.includes('com.google.android.dialer')) {
+        const textNodes = [...xml.matchAll(/<node[^>]*class="android.widget.TextView"[^>]*text="([^"]{4,})"/gi)];
+        for (const t of textNodes) {
+          const text = t[1];
+          if (text && !text.includes('Messages') && !text.includes('Phone') && !text.includes('Chrome') && !text.includes('Camera')) {
+            return {
+              active: true,
+              title: titleMatch ? titleMatch[1] : 'پیام شبکه (USSD)',
+              message: text.replace(/&#10;/g, '\n').replace(/&quot;/g, '"'),
+              hasInput,
+              buttons: buttons.length > 0 ? buttons : ['تایید']
+            };
+          }
+        }
+      }
+
+      return { active: false, message: 'پیام متنی فعالی روی صفحه دریافت نشد' };
+    } catch (e) {
+      return { active: false, error: e.message };
+    }
+  }
+
+  async replyToDialog(serial, text) {
+    try {
+      if (text && text.trim()) {
+        await this.runAdb(`shell input text "${text.trim()}"`, serial);
+        await new Promise(r => setTimeout(r, 200));
+        await this.runAdb('shell input keyevent 66', serial); // KEYCODE_ENTER
+      }
+      await new Promise(r => setTimeout(r, 2500));
+      return await this.getActiveDialog(serial);
+    } catch (e) {
+      return { active: false, error: e.message };
+    }
+  }
+
+  async dismissDialog(serial) {
+    try {
+      await this.runAdb('shell input keyevent 4', serial); // KEYCODE_BACK
+      return { success: true, message: 'دیالوگ بسته شد' };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
   async sendUssd(serial, code, options = {}) {
-    return await this.makeCall(serial, code, options);
+    const callRes = await this.makeCall(serial, code, options);
+    if (!callRes.success) return callRes;
+
+    // Allow network time to respond
+    await new Promise(r => setTimeout(r, 2500));
+    const dialog = await this.getActiveDialog(serial);
+    return {
+      success: true,
+      message: `کد دستوری ${code} ارسال شد`,
+      dialog
+    };
   }
 
   async setDefaultSim(serial, { voiceSlot, smsSlot, dataSlot }) {

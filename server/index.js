@@ -939,9 +939,41 @@ app.post('/api/devices/:id/ussd/run', async (req, res) => {
 
   try {
     if (id.startsWith('mock-')) {
-      return res.json({ success: true, message: `کد دستوری ${code} با موفقیت اجرا شد (شبیه‌ساز)` });
+      const mockDialog = await adbManager.getActiveDialog(id);
+      return res.json({ success: true, message: `کد دستوری ${code} با موفقیت اجرا شد (شبیه‌ساز)`, dialog: mockDialog });
     }
     const result = await adbManager.sendUssd(id, code, { simSlot });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/devices/:id/ussd/dialog', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const dialog = await adbManager.getActiveDialog(id);
+    res.json({ success: true, dialog });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/ussd/reply', async (req, res) => {
+  const { id } = req.params;
+  const { text } = req.body;
+  try {
+    const dialog = await adbManager.replyToDialog(id, text);
+    res.json({ success: true, dialog });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/ussd/dismiss', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await adbManager.dismissDialog(id);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
