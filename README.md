@@ -1,197 +1,58 @@
-# 📱 CellPhoneManager v3.0 — Ultimate Smartphone Management Suite
+# 📱 CellPhoneManager v3.1 — Universal Smartphone Management Suite
 
-[![Sahand Electronic Solutions](https://img.shields.io/badge/Powered%20by-Sahand%20Electronic%20Solutions%20(irres.ir)-00f0ff?style=for-the-badge&logo=android)](https://irres.ir)
+[![Sahand Electronic Solutions](https://img.shields.io/badge/Developed%20By-Sahand%20Electronic%20Solutions%20(irres.ir)-00f0ff?style=for-the-badge&logo=android)](https://irres.ir)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-taimazus%2FCellPhoneManager-181717?style=for-the-badge&logo=github)](https://github.com/taimazus/CellPhoneManager)
-[![License](https://img.shields.io/badge/License-MIT-emerald?style=for-the-badge)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20(x64)-blue?style=for-the-badge&logo=windows)](https://irres.ir)
-[![Android & iOS](https://img.shields.io/badge/Devices-Android%20%26%20iOS%20Supported-purple?style=for-the-badge&logo=apple)](https://irres.ir)
+[![Release Version](https://img.shields.io/badge/Version-v3.1%20PRO-emerald?style=for-the-badge)](https://github.com/taimazus/CellPhoneManager)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011%20(x64)-blue?style=for-the-badge&logo=windows)](https://irres.ir)
+[![Cross Platform](https://img.shields.io/badge/Support-Android%20%26%20Apple%20iOS-purple?style=for-the-badge&logo=apple)](https://irres.ir)
 
 <div align="center">
-  <img src="banner.jpg" alt="CellPhoneManager v3.0 Promo Banner" width="100%" style="border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.6);" />
-  <p><em>Developed for <strong>Sahand Electronic Solutions Co.</strong> (<a href="https://irres.ir">https://irres.ir</a>)</em></p>
-  <p><strong><a href="README.fa.md">🇮🇷 برای مشاهده راهنما به زبان فارسی اینجا کلیک کنید (Persian Documentation)</a></strong></p>
+  <img src="banner.jpg" alt="CellPhoneManager Promotional Banner" width="100%" style="border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.6);" />
+  <p><em>Professional software product by <strong>Sahand Electronic Solutions Co.</strong> (<a href="https://irres.ir">https://irres.ir</a>)</em></p>
+  <p><strong><a href="README.fa.md">🇮🇷 برای مشاهده مستندات به زبان فارسی اینجا کلیک کنید</a></strong></p>
 </div>
 
 ---
 
-## 🌟 Overview
+## 📌 Overview
 
-**CellPhoneManager v3.0** is an all-in-one, high-performance desktop control suite for **Android** and **iOS** devices. It seamlessly bridges desktop hardware with smartphone capabilities over wired USB or wireless Wi-Fi connections.
-
----
-
-## 🗺️ System Architecture Diagram
-
-```mermaid
-graph TD
-    A[CellPhoneManager v3.0] --> B[Device Control & Screen Mirroring]
-    A --> C[Power & Root Studio]
-    A --> D[Backup & Universal Restore]
-    A --> E[Multimedia & Peripheral Bridge]
-    A --> F[Network & VPN Tethering]
-    A --> G[Security, Forensics & Passwords]
-
-    B --> B1[In-Browser Live Stream]
-    B --> B2[Scrcpy 60fps Ultra-Low Latency]
-    B --> B3[Multi-Device Synchronized Fleet]
-
-    C --> C1[Magisk 27+ / KernelSU Root]
-    C --> C2[Temporary Fastboot Test Boot]
-    C --> C3[1-Click Complete Unroot]
-    C --> C4[Stock & Custom ROM Flasher]
-
-    D --> D1[vCard 3.0 & JSON Full Backup]
-    D --> D2[Cross-Platform Restore Android ⇄ iOS]
-    D --> D3[APK Extractor & Direct PC Typing]
-
-    E --> E1[4K Webcam for Zoom / OBS]
-    E --> E2[Studio Microphone Streaming]
-    E --> E3[Virtual Gamepad & PC Mouse]
-
-    F --> F1[1-Click USB RNDIS Tethering]
-    F --> F2[Phone VPN to Windows Proxy Tunnel]
-
-    G --> G1[Saved Wi-Fi Passwords Viewer]
-    G --> G2[Lockscreen Emergency Rescue & Wipe]
-    G --> G3[APK Security Risk Scanner]
-```
+**CellPhoneManager v3.1** is a high-performance, modern all-in-one desktop bridge and management suite for Windows 10 & 11. It connects to Android (Xiaomi/HyperOS, Samsung One UI, Huawei EMUI, ColorOS, Google Pixel) and Apple iOS devices over high-speed USB or Wireless ADB, providing rich diagnostics, seamless hardware controls, screen recording, deep system cleaning, and full data management without requiring root access.
 
 ---
 
-## 🚀 Easy Download & Installation from GitHub
+## 🌟 Key Features
 
-### Method 1: Clone with Git (Recommended)
+* **📦 Universal Backup & Restore Suite:** 1-Click Full or Granular Custom backups for Contacts (vCard 3.0 & JSON), SMS Messages, Call Logs, DCIM Camera Photos, and Installed Apps. Supports saving directly to PC storage (`backups/`) or Phone SD card (`/sdcard/CellPhoneManager_Backups/`).
+* **🩺 System Doctor & Deep Junk Cleaner:** High-speed scanner to reclaim gigabytes of hidden App Cache, Temp APKs, Gallery Thumbnails, and Heavy Crash Dumps with 1-click system repairs (DNS Turbo, Battery Reset, Graphics Restart).
+* **🎥 60FPS HD Screen Recorder with Native Hardware Finalization:** Hardware-accelerated screen recording with internal sound capture, proper MP4 `moov` atom header completion, and in-browser video playback.
+* **🔬 Hardware Diagnostic Laboratory:** Comprehensive diagnostic tests including Haptic Vibration (6 real vibration patterns), Audio Synthesizer (120Hz-8kHz frequency sweeps), Full-Screen Dead Pixel RGB checker, and real-time telemetry for 23+ hardware sensors.
+* **🔊 Audio Booster & Phone-to-PC Sound Relay:** Up to 200% hardware sound boost and low-latency live audio streaming from smartphone directly to PC speakers.
+* **📖 Interactive Learning & Help Center:** 11-topic comprehensive user guide modal with smart search and in-tab contextual guidance cards across all features.
+* **🗑️ Safe OEM Debloater:** Effortlessly disable or uninstall carrier and manufacturer bloatware (MIUI ads, Samsung Knox, Google telemetry) with 1-click restore.
+* **🧩 APK & IPA Extractor:** Seamlessly install or extract raw APK and IPA installation packages with a single click.
+
+---
+
+## 🚀 Quick Start Guide
+
+### 1. Clone or Download Repository
 ```bash
-# 1. Clone the repository from GitHub
 git clone https://github.com/taimazus/CellPhoneManager.git
-
-# 2. Enter directory
 cd CellPhoneManager
-
-# 3. Run the smart auto-installer & launcher
-cpmStart.bat
 ```
 
----
-
-### Method 2: Download ZIP from GitHub Website
-1. Visit **[github.com/taimazus/CellPhoneManager](https://github.com/taimazus/CellPhoneManager)**.
-2. Click the green **Code** button and select **Download ZIP**.
-3. Extract the downloaded `.zip` file.
-4. Double-click **`cpmStart.bat`**.
-
-> 💡 **Smart Launcher (`cpmStart.bat`):** 
-> - Automatically checks and installs Node.js if missing.
-> - Automatically downloads dependencies and runs preflight checks.
-> - **Global Path Support:** You can add CellPhoneManager to your system `PATH` by running `cpmStart.bat --add-path` or copying it to Windows directory. Afterward, typing `cpmstart` from ANY terminal prompt or Run dialog (`Win + R`) will instantly launch the app.
-
----
-
-## 📱 Connecting Your Phone (3 Simple Steps)
-
-### For Android Phones (Samsung, Xiaomi, Pixel, Huawei, etc.):
-1. On your phone, go to **Settings** > **About Phone**.
-2. Tap **Build Number** (or MIUI/HyperOS Version) **7 times** until "Developer mode is turned on" appears.
-3. Go to **Settings** > **Developer Options** and enable **USB Debugging**.
-4. Connect phone via USB cable and tap **Allow / Always Allow** on the phone screen.
-
-### For Apple iPhone (iOS):
-- Connect iPhone via cable and tap **Trust This Computer** on your phone screen.
-
----
-
-## 🎯 Quick Feature Guide
-
-| Module | What It Does |
-|---|---|
-| 🖥️ **Live Screen & Control** | Mirror and control your phone with mouse & keyboard at 60fps |
-| 📞 **Live Calls & Telephony HUD** | Real-time incoming call detection, 1-click answer/reject, In-Call timer, Mute, Speaker & DTMF |
-| 💳 **Dual-SIM & USSD Engine** | Set preferred SIM per phone (SIM 1 / SIM 2) to eliminate dialogs; execute USSD codes (`*100#`, `*555#`) |
-| 🌐 **VPN & Network Sharing** | Route PC applications (Discord, Telegram, Browsers) through active phone VPN |
-| 📦 **Universal Backup** | 1-Click backup of Contacts, SMS, and Calls; restore across Android & iPhone |
-| 🔑 **Password & Wi-Fi Vault** | View saved Wi-Fi passwords with 1-click clipboard copy and export |
-| 📸 **4K Webcam Studio** | Use your phone camera as a crystal-clear webcam for OBS and Zoom |
-| 🎙️ **Microphone Bridge** | Use phone microphone on PC for gaming, Discord, and streaming |
-| 🎮 **Gamepad & Mouse Remote** | Turn smartphone into PC gaming controller (Xbox / D-Pad), presentation clicker & trackpad |
-| 🔃 **Multi-Criteria Sorting** | Sort Call logs, Contacts, SMS, Files, and Apps by Date, Size, Name, or Duration |
-| 🔥 **Root & Unroot Studio** | Test root safely in RAM (`fastboot boot`) or 1-click unroot for banking apps |
-| ⚡ **ROM Flasher Studio** | Flash official updates, LineageOS, PixelOS, or GSI partitions |
-| 🗑️ **Debloater** | 1-Click removal of pre-installed bloatware apps |
-
----
-
-## 📞 Dual-SIM & Interactive USSD Automation
-- **Zero-Interruption Calling & SMS:** Set your default SIM (SIM 1 / SIM 2 / Auto) in the software. Preferences are remembered automatically and passed via ADB intents, preventing phone popup prompts.
-- **Interactive USSD Response Viewer:** Execute carrier balance inquiries and recharge codes directly (`*140*11#`, `*100#`, `*555#`, `*733#`). Live response text is parsed and displayed on-screen with interactive reply input for numbered menus.
-- **Live Call State Polling:** 2.5-second heartbeat telemetry detects ringing states and displays live caller information with direct PC answer/hangup actions.
-- **1-Click Launchers:** Automatically and manually launch phone camera and dialer apps directly on the mobile screen.
-
----
-
-## 📦 Offline Drivers & Self-Contained Package (`bin/drivers/`)
-To guarantee 100% autonomous operation even without internet access or when remote package managers are unreachable, all essential drivers are bundled locally:
-
-| Package / Driver | Hardware & Scope | 1-Click Offline Installer |
-| :--- | :--- | :--- |
-| 📱 **`install_phone_drivers.bat`** | **Master Driver Installer:** Installs all Android USB connection drivers and virtual audio/gamepad drivers into Windows Driver Store | Double-click to run |
-| 🔌 **`google_usb_driver.zip`** | Official Google Universal ADB & Fastboot USB drivers (**Xiaomi, Samsung, Pixel, OnePlus, Huawei**) | Via `install_phone_drivers.bat` |
-| 🎙️ **`vbcable.zip`** | Official VB-Audio Virtual Cable (Pack 45) for mobile microphone PC routing | Double-click `install_vbcable.bat` |
-| 🎮 **`vigembus_setup.exe`** | Official ViGEmBus Virtual Gamepad driver for Xbox 360 / DualShock controller emulation | Double-click `install_vigembus.bat` |
-
----
-
-## 🎥 Using Phone Camera & Mic in Telegram, Zoom, OBS & Eitaa Web
-
-### 1. 1080p FHD 60FPS Webcam Streaming:
-- In CellPhoneManager, click **"Start Camera Webcam Stream"** to launch the ultra-smooth DirectX 11 window.
-- **Orientation & Rotation Controls:** Choose `0° (Landscape)`, `90° (Portrait)`, `180°`, or `270° (Portrait)` in settings or press **`Alt + ➡`** / **`Alt + ⬅`** on your keyboard to rotate in real time.
-- In **OBS Studio**, add a **Window Capture** source, select `Sahand HD Webcam`, and click **Start Virtual Camera**.
-- In Telegram, Zoom, or Discord settings, select **OBS Virtual Camera** as your video source.
-- *(Optional)* To un-mirror the local preview in Telegram, right-click the source in OBS and select **Transform > Flip Horizontal**.
-
-### 2. Microphone Forwarding:
-- In CellPhoneManager, go to **"Phone Microphone Studio"** and click **"Start Microphone Stream"**.
-- Set audio input in Telegram, Discord, or games to **`CABLE Output (VB-Audio Virtual Cable)`** for studio-quality crystal clear voice.
-
----
-
-## 🛑 How to Stop & Restart the Application
-
-### 1. Dedicated Scripts (Fastest)
-- **Stop:** Double-click **`cpmStop.bat`** or run `cpmstop` in terminal. It immediately frees ports 3001 & 5173.
-- **Restart:** Double-click **`cpmRestart.bat`** or run `cpmrestart` in terminal.
-
-### 2. Command-Line Options
-```cmd
-cpmstart --stop       # Stops all running backend & frontend services
-cpmstart --restart    # Clean restart of all services
+### 2. Launch
+Double-click **`cpmStart.bat`** or run:
+```bat
+.\cpmStart.bat
 ```
-
-### 3. Terminal Shortcut
-- Press **`Ctrl + C`** in the launcher terminal window, then type `Y` and press Enter.
+The automated script validates runtime dependencies, initializes ADB/Scrcpy tools, starts the server bridge on `http://localhost:3001`, and opens the dashboard in your default browser.
 
 ---
 
-## 🗑️ How to Completely Uninstall & Clean Up
+## 🏢 Sahand Electronic Solutions Co.
 
-To remove CellPhoneManager completely from your PC:
-1. **Close the Application:** Press `Ctrl + C` in the launcher terminal or close the window.
-2. **Stop ADB Background Daemon (Optional):** Open CMD and run:
-   ```cmd
-   taskkill /F /IM adb.exe
-   ```
-3. **Delete Folder:** Delete the `CellPhoneManager` folder. No background registry entries or hidden files remain on your system.
-
----
-
-## 🏢 About Sahand Electronic Solutions
-Developed by **Sahand Electronic Solutions Co.** (**شرکت راهکار الکترونیک سهند**).
-
-- 🌐 **Website:** [https://irres.ir](https://irres.ir)
-- 📍 **GitHub:** [https://github.com/taimazus/CellPhoneManager](https://github.com/taimazus/CellPhoneManager)
-- ✉️ **Email:** [info@irres.ir](mailto:info@irres.ir)
-
----
-
-## 📄 License
-This project is licensed under the **MIT License** - see [LICENSE](LICENSE) for details.
+* **Website:** [https://irres.ir](https://irres.ir)
+* **GitHub Repository:** [https://github.com/taimazus/CellPhoneManager](https://github.com/taimazus/CellPhoneManager)
+* **License:** MIT Open Source License

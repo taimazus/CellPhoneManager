@@ -90,7 +90,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, devic
                 CellPhone<span className="text-cyan-400">Manager</span>
               </h1>
               <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 font-mono font-bold">
-                v3.0
+                v3.1
               </span>
             </div>
             <a 
