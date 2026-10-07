@@ -267,12 +267,51 @@ export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device
             </div>
           </div>
 
-          {/* Quick Notice for Xiaomi / MIUI Users */}
-          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-stone-300 flex items-start gap-2.5">
-            <HelpCircle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-            <p className="leading-relaxed">
-              <strong>نکته مهم برای گوشی‌های شیائومی و سامسونگ:</strong> لطفاً قفل صفحه گوشی را باز نگه دارید. در صورتی که پس از زدن دکمه، پنجره انتخاب مرورگر روی گوشی ظاهر شد، مرورگر <strong>Chrome</strong> یا <strong>Mi Browser</strong> را انتخاب کنید، یا کافیست <strong>QR کد</strong> بالا را با دوربین گوشی اسکن نمایید.
-            </p>
+          {/* Comprehensive Step-by-Step Guide Card */}
+          <div className="p-5 rounded-3xl bg-gradient-to-br from-[#181a28] to-[#10111a] border border-amber-500/30 space-y-4 shadow-xl">
+            <div className="flex items-center gap-2 text-yellow-300 font-bold text-sm">
+              <HelpCircle className="w-5 h-5 text-amber-400" />
+              <span>📖 راهنمای کامل راه‌اندازی، رفع مشکل و بازی با دسته گوشی:</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs text-stone-300">
+              <div className="p-4 rounded-2xl bg-black/40 border border-amber-500/20 space-y-2">
+                <div className="font-bold text-amber-300 flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-amber-500/20 text-yellow-300 flex items-center justify-center text-[11px] font-black">۱</span>
+                  <span>ریستارت سرور (بسیار مهم):</span>
+                </div>
+                <p className="text-[11px] text-stone-400 leading-relaxed">
+                  فایل <strong className="text-stone-200">cpmRestart.bat</strong> در پوشه پروژه را اجرا کنید تا موتور جدید سخت‌افزاری DirectInput لود شود.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-black/40 border border-amber-500/20 space-y-2">
+                <div className="font-bold text-amber-300 flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-amber-500/20 text-yellow-300 flex items-center justify-center text-[11px] font-black">۲</span>
+                  <span>کلیک روی پنجره بازی (Focus):</span>
+                </div>
+                <p className="text-[11px] text-stone-400 leading-relaxed">
+                  با ماوس روی پنجره بازی <strong className="text-stone-200">FIFA 18</strong> یک بار کلیک کنید تا پنجره در حالت فعال قرار گیرد و کلیدها دریافت شوند.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-black/40 border border-amber-500/20 space-y-2">
+                <div className="font-bold text-amber-300 flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-amber-500/20 text-yellow-300 flex items-center justify-center text-[11px] font-black">۳</span>
+                  <span>رد کردن منوها با ENTER:</span>
+                </div>
+                <p className="text-[11px] text-stone-400 leading-relaxed">
+                  برای رد کردن صفحات راهنما و پاپ‌آپ‌ها، دکمه <strong className="text-emerald-400">↵ ENTER</strong> یا <strong className="text-amber-400">START (Space)</strong> وسط گوشی را بزنید.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-stone-300 flex items-center justify-between flex-wrap gap-2">
+              <span className="flex items-center gap-1.5">
+                <Crown className="w-4 h-4 text-yellow-400" />
+                <span><strong>بازی دونفره:</strong> برای گوشی دوم، کافیست دکمه آبی بالای دسته را بزنید تا به <strong>«بازیکن ۲ (صورتی)»</strong> تبدیل شود.</span>
+              </span>
+            </div>
           </div>
 
           {/* Game Profiles Grid */}
