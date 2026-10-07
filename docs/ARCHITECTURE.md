@@ -47,6 +47,12 @@ classDiagram
         +captureScreenshot(serial)
         +sendTap(serial, x, y)
         +sendKey(serial, keycode)
+        +makeCall(serial, number, options)
+        +sendUssd(serial, code, options)
+        +setDefaultSim(serial, options)
+        +getCallState(serial)
+        +answerCall(serial)
+        +endCall(serial)
     }
 
     class RootManager {

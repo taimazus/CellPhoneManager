@@ -134,5 +134,20 @@
   - Deep Hardware & Security Identity (CPU ABI, Security Patch, Bootloader state, SELinux, Uptime)
   - Visual Storage Breakdown & 1-Click Turbo Cache Cleaner
   - Quick App Launcher & Phone Deep-Link / URL Opener
+- [x] Dual-SIM Selection & USSD Execution Studio (`server/adbManager.js` & `MessagesTab.tsx`):
+  - SIM 1 / SIM 2 / Auto preference selection per phone to eliminate intrusive on-screen SIM selection popups
+  - Automatic `multi_sim_voice_call` & `multi_sim_sms` hardware dispatch and persistent client localStorage
+  - Full USSD code executor with automatic `#` to `%23` encoding and multi-SIM dispatch
+  - Preset quick-action chips for Irancell, Hamrah-e Aval, RighTel, 733 (AP), and 788
+- [x] Multi-Criteria Sorting Engine:
+  - Call Logs: Date (newest/oldest), Duration, Contact Name
+  - Contacts: Name A-Z / Z-A, Phone number
+  - SMS Messages: Date, Thread group
+  - Files: Name, Size, Date modified
+  - Installed Apps: Name, Package ID, Size, Install Date
+- [x] Dedicated Process Lifecycles & Global Launcher Scripts:
+  - `cpmStart.bat` with auto Node.js installation, dependency installation, preflight tests, and `--add-path` global system PATH support
+  - `cpmStop.bat` & `server/stop.js` with instant PID termination and port 3001/5173 recovery
+  - `cpmRestart.bat` for seamless service recycling
 - [x] Unit & End-to-End Verification Tests (`tests/`)
 - [x] One-click Launcher Script (`start.bat`)

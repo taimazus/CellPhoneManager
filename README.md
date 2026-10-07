@@ -105,14 +105,25 @@ cpmStart.bat
 | Module | What It Does |
 |---|---|
 | 🖥️ **Live Screen & Control** | Mirror and control your phone with mouse & keyboard at 60fps |
+| 📞 **Live Calls & Telephony HUD** | Real-time incoming call detection, 1-click answer/reject, In-Call timer, Mute, Speaker & DTMF |
+| 💳 **Dual-SIM & USSD Engine** | Set preferred SIM per phone (SIM 1 / SIM 2) to eliminate dialogs; execute USSD codes (`*100#`, `*555#`) |
 | 🌐 **VPN & Network Sharing** | Route PC applications (Discord, Telegram, Browsers) through active phone VPN |
 | 📦 **Universal Backup** | 1-Click backup of Contacts, SMS, and Calls; restore across Android & iPhone |
 | 🔑 **Password & Wi-Fi Vault** | View saved Wi-Fi passwords with 1-click clipboard copy and export |
 | 📸 **4K Webcam Studio** | Use your phone camera as a crystal-clear webcam for OBS and Zoom |
 | 🎙️ **Microphone Bridge** | Use phone microphone on PC for gaming, Discord, and streaming |
+| 🎮 **Gamepad & Mouse Remote** | Turn smartphone into PC gaming controller (Xbox / D-Pad), presentation clicker & trackpad |
+| 🔃 **Multi-Criteria Sorting** | Sort Call logs, Contacts, SMS, Files, and Apps by Date, Size, Name, or Duration |
 | 🔥 **Root & Unroot Studio** | Test root safely in RAM (`fastboot boot`) or 1-click unroot for banking apps |
 | ⚡ **ROM Flasher Studio** | Flash official updates, LineageOS, PixelOS, or GSI partitions |
 | 🗑️ **Debloater** | 1-Click removal of pre-installed bloatware apps |
+
+---
+
+## 📞 Dual-SIM & USSD Automation
+- **Zero-Interruption Calling & SMS:** Set your default SIM (SIM 1 / SIM 2 / Auto) in the software. Preferences are remembered automatically and passed via ADB intents, preventing phone popup prompts.
+- **USSD Code Runner:** Execute carrier balance inquiries and recharge codes directly (`*140*11#`, `*100#`, `*555#`, `*733#`) with automatic `#` to `%23` encoding and multi-SIM slot dispatch.
+- **Live Call State Polling:** 2.5-second heartbeat telemetry detects ringing states and displays live caller information with direct PC answer/hangup actions.
 
 ---
 
