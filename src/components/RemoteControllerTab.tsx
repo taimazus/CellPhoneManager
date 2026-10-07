@@ -102,36 +102,52 @@ export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device
         </div>
       </div>
 
+      {/* In-Tab User Guide */}
+      <div className="p-4 rounded-2xl bg-cyan-950/20 border border-cyan-500/20 text-xs text-cyan-200 leading-relaxed space-y-2">
+        <div className="flex items-center gap-2 font-bold text-cyan-400">
+          <Sliders className="w-4 h-4" />
+          <span>نحوه عملکرد کلیدهای گیم‌پد و کنترلر روی گوشی:</span>
+        </div>
+        <p>
+          این دکمه‌ها وابسته به مختصات لمسی خاصی روی صفحه نیستند؛ بلکه کدهای سخت‌افزاری استاندارد گیم‌پد اندروید (Android KeyEvents نظیر DPAD_UP، DPAD_DOWN، BUTTON_A، BUTTON_B و...) را به گوشی ارسال می‌کنند.
+        </p>
+        <p className="text-[11px] text-slate-400">
+          🎮 **کاربرد:** در تمام بازی‌های سازگار با دسته (مانند بازی‌های ریسینگ، فیفا، Call of Duty، شبیه‌سازهای کنسول PPSSPP / RetroArch) و منوهای اندروید، با زدن هر جهت یا دکمه، بازی دقیقاً مثل یک کنترلر واقعی واکنش نشان می‌دهد. چنانچه بازی شما لمسی خالص است، از تب **«نمایش و کنترل زنده»** مستقیماً روی تصویر گوشی کلیک کنید.
+        </p>
+      </div>
+
       {/* Main Mode Content */}
       {mode === 'gamepad' && (
         <div className="rounded-3xl glass-panel p-8 border border-slate-800 space-y-8 bg-gradient-to-b from-[#0a1228] to-[#040814]">
           <div className="flex items-center justify-between text-xs text-slate-400 border-b border-slate-800 pb-4">
-            <span className="font-bold text-cyan-400">طرح کنترلر حرفه‌ای بازی (Gaming Layout)</span>
-            <span>کلیدها بلافاصله با کمترین تاخیر (Zero Latency) ارسال می‌شوند</span>
+            <span className="font-bold text-cyan-400">طرح استاندارد کنترلر بازی (Gaming Layout)</span>
+            <span>ارسال مستقیم سیگنال‌های سخت‌افزاری به بازی‌ها</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center max-w-4xl mx-auto" dir="ltr">
             {/* D-Pad (Left) */}
-            <div className="flex flex-col items-center space-y-2">
+            <div className="flex flex-col items-center space-y-2" dir="ltr">
               <button
                 onClick={() => handleSendKey(19, 'جهت بالا D-Pad')}
                 className="w-16 h-16 rounded-2xl bg-slate-800 hover:bg-cyan-500/20 active:bg-cyan-500 active:text-slate-950 border border-slate-700 text-slate-200 font-bold shadow-lg transition-all"
               >
                 ▲
               </button>
-              <div className="flex gap-2">
+              <div className="flex gap-2" dir="ltr">
                 <button
                   onClick={() => handleSendKey(21, 'جهت چپ D-Pad')}
                   className="w-16 h-16 rounded-2xl bg-slate-800 hover:bg-cyan-500/20 active:bg-cyan-500 active:text-slate-950 border border-slate-700 text-slate-200 font-bold shadow-lg transition-all"
+                  title="جهت چپ (Left)"
                 >
                   ◀
                 </button>
-                <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-[10px] text-slate-500">
+                <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-[10px] text-slate-500 font-mono">
                   D-PAD
                 </div>
                 <button
                   onClick={() => handleSendKey(22, 'جهت راست D-Pad')}
                   className="w-16 h-16 rounded-2xl bg-slate-800 hover:bg-cyan-500/20 active:bg-cyan-500 active:text-slate-950 border border-slate-700 text-slate-200 font-bold shadow-lg transition-all"
+                  title="جهت راست (Right)"
                 >
                   ▶
                 </button>
@@ -145,7 +161,7 @@ export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device
             </div>
 
             {/* Center Controls: Select / Start */}
-            <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="flex flex-col items-center justify-center space-y-4" dir="rtl">
               <div className="flex gap-3">
                 <button
                   onClick={() => handleSendKey(82, 'Menu / Select')}
@@ -161,26 +177,26 @@ export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device
                 </button>
               </div>
               <div className="p-4 rounded-3xl bg-slate-900/60 border border-slate-800 text-center text-[11px] text-slate-400">
-                مناسب برای بازی‌های ریسینگ، FIFA و امولاتورها
+                مناسب برای بازی‌های ریسینگ، FIFA، اکشن و شبیه‌سازها
               </div>
             </div>
 
             {/* ABXY Action Buttons (Right) */}
-            <div className="flex flex-col items-center space-y-2">
+            <div className="flex flex-col items-center space-y-2" dir="ltr">
               <button
                 onClick={() => handleSendKey(100, 'دکمه Y (مثلث)')}
                 className="w-16 h-16 rounded-full bg-amber-500/20 hover:bg-amber-500 text-amber-300 active:text-slate-950 border border-amber-500/40 font-black text-lg shadow-lg transition-all"
               >
                 Y
               </button>
-              <div className="flex gap-2">
+              <div className="flex gap-2" dir="ltr">
                 <button
                   onClick={() => handleSendKey(99, 'دکمه X (مربع)')}
                   className="w-16 h-16 rounded-full bg-blue-500/20 hover:bg-blue-500 text-blue-300 active:text-slate-950 border border-blue-500/40 font-black text-lg shadow-lg transition-all"
                 >
                   X
                 </button>
-                <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-[10px] text-slate-500">
+                <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-[10px] text-slate-500 font-mono">
                   ABXY
                 </div>
                 <button
