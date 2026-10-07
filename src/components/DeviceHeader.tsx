@@ -72,13 +72,13 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
   const oemBadge = getOemBadge();
 
   return (
-    <header className="h-16 bg-[#0d0e13]/95 border-b border-amber-500/15 px-4 sm:px-6 flex items-center justify-between backdrop-blur-2xl sticky top-0 z-30 select-none">
+    <header className="h-16 bg-[#0d0e13]/95 border-b border-amber-500/15 px-2.5 sm:px-4 md:px-6 flex items-center justify-between backdrop-blur-2xl sticky top-0 z-30 select-none min-w-0 w-full gap-2 overflow-x-hidden">
       {/* Device Selector & Left Controls */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink">
         {onToggleSidebar && (
           <button
             onClick={onToggleSidebar}
-            className="md:hidden p-2 rounded-xl bg-[#14151b] text-stone-400 hover:text-yellow-300 border border-amber-500/20"
+            className="md:hidden p-2 rounded-xl bg-[#14151b] hover:bg-[#1a1b22] text-stone-300 hover:text-yellow-300 border border-amber-500/25 shrink-0 transition-colors active:scale-95"
             title="منوی ناوبری"
           >
             <Menu className="w-4 h-4" />
@@ -86,25 +86,25 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
         )}
 
         {/* Device Dropdown Card */}
-        <div className="relative group">
-          <div className="flex items-center gap-2.5 bg-[#14151b] hover:bg-[#1a1b22] px-3 py-1.5 rounded-xl border border-amber-500/25 hover:border-amber-500/50 cursor-pointer transition-all shadow-sm">
-            <div className={`p-1.5 rounded-lg ${
+        <div className="relative group min-w-0 shrink">
+          <div className="flex items-center gap-1.5 sm:gap-2 bg-[#14151b] hover:bg-[#1a1b22] px-2.5 sm:px-3 py-1.5 rounded-xl border border-amber-500/25 hover:border-amber-500/50 cursor-pointer transition-all shadow-sm min-w-0">
+            <div className={`p-1.5 rounded-lg shrink-0 ${
               selectedDevice?.type === 'ios' ? 'bg-stone-800 text-stone-100' : 'bg-amber-500/20 text-yellow-300'
             }`}>
-              {selectedDevice?.type === 'ios' ? <Apple className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+              {selectedDevice?.type === 'ios' ? <Apple className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
             </div>
             
-            <div className="text-right">
-              <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                <span className="truncate max-w-[130px] sm:max-w-[200px] text-amber-100">
+            <div className="text-right min-w-0 overflow-hidden">
+              <div className="text-xs font-bold text-white flex items-center gap-1 min-w-0">
+                <span className="truncate max-w-[90px] xs:max-w-[130px] sm:max-w-[180px] md:max-w-[220px] text-amber-100 block">
                   {selectedDevice ? selectedDevice.name : 'در حال جستجو...'}
                 </span>
-                <ChevronDown className="w-3.5 h-3.5 text-stone-400 group-hover:text-yellow-300 transition-colors" />
+                <ChevronDown className="w-3 h-3 text-stone-400 group-hover:text-yellow-300 transition-colors shrink-0" />
               </div>
-              <div className="text-[10px] text-stone-400 font-mono flex items-center gap-1.5">
-                <span className="text-amber-300/80">{selectedDevice?.osVersion || 'Android'}</span>
-                <span>•</span>
-                <span className="text-yellow-400/90 truncate max-w-[90px]">{selectedDevice?.serial || 'Disconnected'}</span>
+              <div className="text-[9px] sm:text-[10px] text-stone-400 font-mono flex items-center gap-1 truncate">
+                <span className="text-amber-300/80 shrink-0">{selectedDevice?.osVersion || 'Android'}</span>
+                <span className="shrink-0">•</span>
+                <span className="text-yellow-400/90 truncate max-w-[60px] sm:max-w-[100px]">{selectedDevice?.serial || 'Disconnected'}</span>
               </div>
             </div>
 
@@ -131,7 +131,7 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
 
         {/* OEM Badge */}
         {oemBadge && (
-          <div className={`hidden xl:flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border ${oemBadge.color}`}>
+          <div className={`hidden xl:flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border shrink-0 ${oemBadge.color}`}>
             <Crown className="w-3.5 h-3.5 text-yellow-400/80" />
             <span>{oemBadge.label}</span>
           </div>
@@ -139,7 +139,7 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
 
         {/* Connection Type Badge */}
         {selectedDevice && (
-          <div className={`hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border ${
+          <div className={`hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border shrink-0 ${
             selectedDevice.id.includes(':') || selectedDevice.id.includes('.')
               ? 'bg-amber-500/15 text-yellow-300 border-amber-500/30'
               : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
@@ -162,7 +162,7 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
         <button
           onClick={onRefreshDevices}
           disabled={isRefreshing}
-          className="p-2 rounded-xl bg-[#14151b] hover:bg-[#1a1b22] text-stone-400 hover:text-yellow-300 border border-amber-500/20 transition-all disabled:opacity-50"
+          className="p-2 rounded-xl bg-[#14151b] hover:bg-[#1a1b22] text-stone-400 hover:text-yellow-300 border border-amber-500/20 transition-all disabled:opacity-50 shrink-0"
           title="بروزرسانی وضعیت و اتصال‌ها"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-yellow-400' : ''}`} />
@@ -171,7 +171,7 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
         {/* Add Wireless Device */}
         <button
           onClick={onOpenWirelessModal}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-yellow-300 border border-amber-500/30 text-xs font-bold transition-all group"
+          className="hidden md:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-yellow-300 border border-amber-500/30 text-xs font-bold transition-all group shrink-0"
           title="اتصال دستگاه جدید با وای‌فای"
         >
           <Wifi className="w-3.5 h-3.5 text-yellow-400 group-hover:scale-110 transition-transform" />
@@ -180,27 +180,28 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
       </div>
 
       {/* Telemetry Badges & Quick Action Tools */}
-      <div className="flex items-center gap-2 sm:gap-2.5">
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         {/* Company Branding & Website Link */}
         <a
           href="https://irres.ir"
           target="_blank"
           rel="noreferrer"
-          className="hidden 2xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-600/15 text-yellow-300 border border-amber-500/30 text-xs font-bold transition-all hover:border-amber-500/60 shadow-sm group"
+          className="hidden 2xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-600/15 text-yellow-300 border border-amber-500/30 text-xs font-bold transition-all hover:border-amber-500/60 shadow-sm group shrink-0"
           title="شرکت راهکار الکترونیک سهند (https://irres.ir)"
         >
           <Crown className="w-3.5 h-3.5 text-yellow-400" />
           <span>راهکار الکترونیک سهند</span>
-          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-yellow-200 border border-amber-500/30">v3.2.0</span>
+          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-yellow-200 border border-amber-500/30">v3.4.2</span>
           <ExternalLink className="w-3 h-3 opacity-70 group-hover:opacity-100" />
         </a>
 
+        {/* Battery Status */}
         {selectedDevice?.battery && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#14151b] border border-amber-500/20 text-xs text-stone-200">
+          <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-[#14151b] border border-amber-500/20 text-xs text-stone-200 shrink-0">
             {selectedDevice.battery.status === 'Charging' ? (
-              <BatteryCharging className="w-3.5 h-3.5 text-yellow-400 animate-pulse" />
+              <BatteryCharging className="w-3.5 h-3.5 text-yellow-400 animate-pulse shrink-0" />
             ) : (
-              <Battery className="w-3.5 h-3.5 text-stone-400" />
+              <Battery className="w-3.5 h-3.5 text-stone-400 shrink-0" />
             )}
             <span className="font-mono font-bold text-xs text-yellow-400">
               {selectedDevice.battery.level}%
@@ -209,35 +210,34 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
           </div>
         )}
 
-
         {/* User Guide Button */}
         <button
           onClick={() => onOpenGuideModal()}
-          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-yellow-300 border border-amber-500/35 text-xs font-bold transition-all shadow-sm"
+          className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-yellow-300 border border-amber-500/35 text-xs font-bold transition-all shadow-sm shrink-0 active:scale-95"
           title="مرکز راهنما و آموزش جامع"
         >
-          <BookOpen className="w-3.5 h-3.5 text-yellow-400" />
-          <span className="hidden md:inline">راهنما</span>
+          <BookOpen className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+          <span className="hidden sm:inline">راهنما</span>
         </button>
 
         {/* Quick Screenshot */}
         <button
           onClick={() => onQuickAction('screenshot')}
-          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#14151b] hover:bg-[#1a1b22] text-stone-300 hover:text-yellow-300 border border-amber-500/20 hover:border-amber-500/40 text-xs font-semibold transition-all shadow-sm"
+          className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-[#14151b] hover:bg-[#1a1b22] text-stone-300 hover:text-yellow-300 border border-amber-500/20 hover:border-amber-500/40 text-xs font-semibold transition-all shadow-sm shrink-0 active:scale-95"
           title="اسکرین‌شات و ذخیره در سیستم"
         >
-          <Camera className="w-3.5 h-3.5 text-yellow-400/80" />
-          <span className="hidden md:inline">اسکرین‌شات</span>
+          <Camera className="w-3.5 h-3.5 text-yellow-400/80 shrink-0" />
+          <span className="hidden lg:inline">اسکرین‌شات</span>
         </button>
 
         {/* Quick Reboot */}
         <button
           onClick={() => onQuickAction('reboot')}
-          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-all shadow-sm"
+          className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-all shadow-sm shrink-0 active:scale-95"
           title="راه‌اندازی مجدد (Reboot)"
         >
-          <Power className="w-3.5 h-3.5 text-rose-400" />
-          <span className="hidden md:inline">ری‌استارت</span>
+          <Power className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+          <span className="hidden lg:inline">ری‌استارت</span>
         </button>
       </div>
     </header>
