@@ -83,10 +83,12 @@ export class MirrorManager {
     }
 
     if (options.cameraFps) {
-      args.push(`--camera-fps=${options.cameraFps}`); // e.g. 60
+      args.push(`--camera-fps=${options.cameraFps}`);
+    } else {
+      args.push('--camera-fps=30');
     }
 
-    if (options.highSpeed) {
+    if (options.highSpeed && options.cameraFps > 30) {
       args.push('--camera-high-speed');
     }
 

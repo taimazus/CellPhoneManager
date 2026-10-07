@@ -33,8 +33,8 @@ interface CameraTabProps {
 export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
   const [facing, setFacing] = useState<'back' | 'front'>('back');
   const [cameraSize, setCameraSize] = useState<string>('1920x1080');
-  const [cameraFps, setCameraFps] = useState<number>(60);
-  const [highSpeed, setHighSpeed] = useState<boolean>(true);
+  const [cameraFps, setCameraFps] = useState<number>(30);
+  const [highSpeed, setHighSpeed] = useState<boolean>(false);
   const [stayOnTop, setStayOnTop] = useState<boolean>(true);
   const [torchEnabled, setTorchEnabled] = useState<boolean>(false);
   const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
@@ -354,10 +354,17 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
 
             {/* In-Browser Viewfinder Toggle */}
             <button
-              onClick={() => setIsLiveStreaming(!isLiveStreaming)}
+              onClick={() => {
+                const nextState = !isLiveStreaming;
+                setIsLiveStreaming(nextState);
+                if (nextState) {
+                  handleLaunchCameraApp();
+                  showToast('پیش‌نمایش فعال شد و برنامه دوربین در گوشی باز گردید', 'success');
+                }
+              }}
               className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-bold transition-all border ${
                 isLiveStreaming 
-                  ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' 
+                  ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-lg shadow-purple-500/20' 
                   : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border-slate-700'
               }`}
             >
