@@ -1364,6 +1364,19 @@ app.post('/api/devices/:id/sms/clear', async (req, res) => {
   }
 });
 
+app.post('/api/devices/:id/sms/open-app', async (req, res) => {
+  const { id } = req.params;
+  try {
+    if (id.startsWith('mock-')) {
+      return res.json({ success: true, message: 'برنامه پیام‌رسان در شبیه‌ساز باز شد' });
+    }
+    const result = await adbManager.openSmsApp(id);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // -------------------------------------------------------------
 // 11. Network, USB Tethering & VPN Sharing APIs
 // -------------------------------------------------------------

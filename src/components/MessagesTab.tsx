@@ -788,6 +788,21 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     }
   };
 
+  const handleOpenSmsApp = async () => {
+    if (!device) return;
+    try {
+      const res = await fetch(`/api/devices/${device.id}/sms/open-app`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        showToast('برنامه پیام‌ها در صفحه گوشی باز شد', 'success');
+      } else {
+        showToast(`خطا: ${data.error || 'ناشناخته'}`, 'error');
+      }
+    } catch (err: any) {
+      showToast(`خطا در باز کردن برنامه پیام‌ها: ${err.message}`, 'error');
+    }
+  };
+
   const handleDeleteSms = async (messageId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!device) return;
@@ -801,20 +816,14 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       const data = await res.json();
       if (data.success) {
         showToast('پیامک با موفقیت حذف شد', 'success');
-        const updated = smsList.filter(s => s.id !== messageId);
-        setSmsList(updated);
-        if (selectedThread) {
-          const remainingInThread = updated.filter(s => (s.threadId || s.number) === selectedThread);
-          if (remainingInThread.length === 0) {
-            const nextThread = updated[0] ? (updated[0].threadId || updated[0].number) : null;
-            setSelectedThread(nextThread);
-          }
-        }
+        fetchSms();
       } else {
-        showToast(`خطا در حذف پیامک: ${data.error || 'ناشناخته'}`, 'error');
+        showToast(data.error || 'خطا در حذف پیامک (محدودیت امنیتی اندروید)', 'error');
+        fetchSms();
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
+      fetchSms();
     }
   };
 
@@ -832,18 +841,14 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       const data = await res.json();
       if (data.success) {
         showToast('گفتگو با موفقیت حذف شد', 'success');
-        const updated = smsList.filter(s => (s.threadId || s.number) !== threadKey && s.number !== number);
-        setSmsList(updated);
-        setSelectedSmsThreads(prev => prev.filter(k => k !== threadKey));
-        if (selectedThread === threadKey) {
-          const nextThread = updated[0] ? (updated[0].threadId || updated[0].number) : null;
-          setSelectedThread(nextThread);
-        }
+        fetchSms();
       } else {
-        showToast(`خطا در حذف گفتگو: ${data.error || 'ناشناخته'}`, 'error');
+        showToast(data.error || 'خطا در حذف گفتگو (محدودیت امنیتی اندروید)', 'error');
+        fetchSms();
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
+      fetchSms();
     }
   };
 
@@ -871,19 +876,16 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       const data = await res.json();
       if (data.success) {
         showToast(`${selectedSmsThreads.length} گفتگو با موفقیت حذف شدند`, 'success');
-        const updated = smsList.filter(s => !selectedSmsThreads.includes(s.threadId || s.number));
-        setSmsList(updated);
-        if (selectedThread && selectedSmsThreads.includes(selectedThread)) {
-          const nextThread = updated[0] ? (updated[0].threadId || updated[0].number) : null;
-          setSelectedThread(nextThread);
-        }
         setSelectedSmsThreads([]);
         setIsSmsSelectMode(false);
+        fetchSms();
       } else {
-        showToast(`خطا در حذف گروهی: ${data.error || 'ناشناخته'}`, 'error');
+        showToast(data.error || 'خطا در حذف گروهی (محدودیت امنیتی اندروید)', 'error');
+        fetchSms();
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
+      fetchSms();
     }
   };
 
@@ -899,11 +901,14 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
         setSelectedThread(null);
         setSelectedSmsThreads([]);
         setIsSmsSelectMode(false);
+        fetchSms();
       } else {
-        showToast(`خطا: ${data.error || 'ناشناخته'}`, 'error');
+        showToast(data.error || 'خطا در پاکسازی (محدودیت امنیتی اندروید)', 'error');
+        fetchSms();
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
+      fetchSms();
     }
   };
 
@@ -2057,6 +2062,15 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                     title="پشتیبان JSON پیامک‌ها"
                   >
                     <Download className="w-4 h-4" />
+                  </button>
+
+                  {/* Open SMS app on Phone */}
+                  <button
+                    onClick={handleOpenSmsApp}
+                    className="p-1.5 rounded-lg bg-slate-900 text-cyan-400 hover:text-cyan-200 border border-slate-800 transition-all"
+                    title="باز کردن برنامه پیام‌ها روی صفحه گوشی"
+                  >
+                    <Smartphone className="w-4 h-4" />
                   </button>
 
                   {/* Clear All SMS */}

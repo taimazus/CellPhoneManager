@@ -1242,25 +1242,60 @@ export class AdbManager {
     return await this.runAdb(`shell am start -a android.intent.action.SENDTO -d "sms:${number}" --es sms_body "${escaped}"${extraArgs}`, serial);
   }
 
+  async getSmsCount(serial) {
+    try {
+      const res = await this.runAdb('shell "content query --uri content://sms --projection count\\(*\\)"', serial);
+      if (res.success && res.stdout) {
+        const match = res.stdout.match(/count\(\*\)=(\d+)/);
+        if (match) return parseInt(match[1], 10);
+      }
+    } catch {}
+    return -1;
+  }
+
+  async openSmsApp(serial) {
+    return await this.runAdb('shell am start -a android.intent.action.MAIN -c android.intent.category.APP_MESSAGING', serial);
+  }
+
   async deleteSms(serial, id) {
+    const countBefore = await this.getSmsCount(serial);
+    let res;
     if (Array.isArray(id)) {
       const idList = id.map(i => `'${i}'`).join(',');
-      return await this.runAdb(`shell content delete --uri content://sms --where "_id IN (${idList})"`, serial);
+      res = await this.runAdb(`shell content delete --uri content://sms --where "_id IN (${idList})"`, serial);
+    } else {
+      res = await this.runAdb(`shell content delete --uri content://sms --where "_id=${id}"`, serial);
     }
-    return await this.runAdb(`shell content delete --uri content://sms --where "_id=${id}"`, serial);
+    const countAfter = await this.getSmsCount(serial);
+    if (countBefore > 0 && countAfter >= countBefore) {
+      return {
+        success: false,
+        error: 'سیستم‌عامل اندروید به دلایل امنیتی اجازه حذف مستقیم پیامک از طریق پورت ADB را مسدود کرده است (فقط برنامه پیام‌رسان پیش‌فرض یا روت مجاز است). برای حذف، از داخل برنامه پیام‌های گوشی اقدام فرمایید.',
+        requireDefaultApp: true
+      };
+    }
+    return res.success ? { success: true, message: 'پیامک با موفقیت حذف شد' } : res;
   }
 
   async deleteSmsThread(serial, threadKey, number) {
     try {
+      const countBefore = await this.getSmsCount(serial);
       if (threadKey && !isNaN(Number(threadKey))) {
-        const res = await this.runAdb(`shell content delete --uri content://sms --where "thread_id=${threadKey}"`, serial);
-        if (res.success) return res;
+        await this.runAdb(`shell content delete --uri content://sms --where "thread_id=${threadKey}"`, serial);
       }
       if (number) {
         const cleanNum = number.replace(/'/g, '');
-        return await this.runAdb(`shell content delete --uri content://sms --where "address='${cleanNum}'"`, serial);
+        await this.runAdb(`shell content delete --uri content://sms --where "address='${cleanNum}'"`, serial);
       }
-      return { success: false, error: 'شناسه گفتگو یا شماره نامعتبر است' };
+      const countAfter = await this.getSmsCount(serial);
+      if (countBefore > 0 && countAfter >= countBefore) {
+        return {
+          success: false,
+          error: 'سیستم‌عامل اندروید به دلایل امنیتی اجازه حذف مستقیم گفتگو از طریق کابل را مسدود کرده است. لطفاً گفتگو را از داخل برنامه پیام‌های گوشی حذف کنید.',
+          requireDefaultApp: true
+        };
+      }
+      return { success: true, message: 'گفتگو با موفقیت حذف شد' };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -1268,6 +1303,7 @@ export class AdbManager {
 
   async deleteSmsBatch(serial, { messageIds = [], threadKeys = [], numbers = [] } = {}) {
     try {
+      const countBefore = await this.getSmsCount(serial);
       if (messageIds && messageIds.length > 0) {
         const idList = messageIds.map(i => `'${i}'`).join(',');
         await this.runAdb(`shell content delete --uri content://sms --where "_id IN (${idList})"`, serial);
@@ -1282,6 +1318,14 @@ export class AdbManager {
         const numList = numbers.map(n => `'${n.replace(/'/g, '')}'`).join(',');
         await this.runAdb(`shell content delete --uri content://sms --where "address IN (${numList})"`, serial);
       }
+      const countAfter = await this.getSmsCount(serial);
+      if (countBefore > 0 && countAfter >= countBefore) {
+        return {
+          success: false,
+          error: 'به دلیل قوانین امنیتی اندروید، حذف مستقیم پیام‌ها فقط از داخل برنامه پیام‌رسان گوشی امکان‌پذیر است.',
+          requireDefaultApp: true
+        };
+      }
       return { success: true, message: 'پیام‌های انتخابی با موفقیت حذف شدند' };
     } catch (err) {
       return { success: false, error: err.message };
@@ -1289,7 +1333,17 @@ export class AdbManager {
   }
 
   async clearAllSms(serial) {
-    return await this.runAdb('shell content delete --uri content://sms', serial);
+    const countBefore = await this.getSmsCount(serial);
+    await this.runAdb('shell content delete --uri content://sms', serial);
+    const countAfter = await this.getSmsCount(serial);
+    if (countBefore > 0 && countAfter >= countBefore) {
+      return {
+        success: false,
+        error: 'سیستم‌عامل اندروید به دلایل امنیتی اجازه پاکسازی کلی پیامک‌ها از طریق پورت ADB را مسدود کرده است (تنها برنامه پیش‌فرض پیام‌رسان یا دستگاه روت‌شده مجاز است). لطفاً از داخل برنامه Messages گوشی اقدام فرمایید.',
+        requireDefaultApp: true
+      };
+    }
+    return { success: true, message: 'تمامی پیامک‌ها با موفقیت پاکسازی شدند' };
   }
 
   async setTorch(serial, enable) {
