@@ -33,10 +33,24 @@ echo ===========================================================================
 echo 📂 مسیر کاری پروژه: %cd%
 echo.
 
-:: Argument handler for registering PATH
+:: Argument handler for registering PATH, Stopping or Restarting
+if /i "%~1"=="--stop" goto :stop_app
+if /i "%~1"=="-stop" goto :stop_app
+if /i "%~1"=="stop" goto :stop_app
+if /i "%~1"=="--restart" goto :restart_app
+if /i "%~1"=="-restart" goto :restart_app
+if /i "%~1"=="restart" goto :restart_app
 if /i "%~1"=="--add-path" goto :add_path
 if /i "%~1"=="--register" goto :add_path
 goto :start_app
+
+:stop_app
+call "%~dp0cpmStop.bat"
+exit /b 0
+
+:restart_app
+call "%~dp0cpmRestart.bat"
+exit /b 0
 
 :add_path
 echo ⚙️ در حال ثبت مسیر CellPhoneManager در متغیر محیطی PATH ویندوز...

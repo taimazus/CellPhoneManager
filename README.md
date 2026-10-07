@@ -116,6 +116,23 @@ cpmStart.bat
 
 ---
 
+## 🛑 How to Stop & Restart the Application
+
+### 1. Dedicated Scripts (Fastest)
+- **Stop:** Double-click **`cpmStop.bat`** or run `cpmstop` in terminal. It immediately frees ports 3001 & 5173.
+- **Restart:** Double-click **`cpmRestart.bat`** or run `cpmrestart` in terminal.
+
+### 2. Command-Line Options
+```cmd
+cpmstart --stop       # Stops all running backend & frontend services
+cpmstart --restart    # Clean restart of all services
+```
+
+### 3. Terminal Shortcut
+- Press **`Ctrl + C`** in the launcher terminal window, then type `Y` and press Enter.
+
+---
+
 ## 🗑️ How to Completely Uninstall & Clean Up
 
 To remove CellPhoneManager completely from your PC:
