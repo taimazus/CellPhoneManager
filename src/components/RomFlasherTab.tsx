@@ -20,6 +20,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { Device } from '../types';
+import { safeFetchJson } from '../utils/api';
 
 interface RomFlasherTabProps {
   device: Device | null;
@@ -56,12 +57,11 @@ export const RomFlasherTab: React.FC<RomFlasherTabProps> = ({ device }) => {
     if (!device) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/devices/${device.id}/rom/info`);
-      const data = await res.json();
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/rom/info`);
       if (data.success) {
         setRomInfo(data);
       } else {
-        showToast(`خطا در دریافت مشخصات رام: ${data.error}`, 'error');
+        showToast(`خطا در دریافت مشخصات رام: ${data.error || 'خطای ناشناخته'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
@@ -82,16 +82,15 @@ export const RomFlasherTab: React.FC<RomFlasherTabProps> = ({ device }) => {
     }
     setLoading(true);
     try {
-      const res = await fetch(`/api/devices/${device.id}/rom/sideload`, {
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/rom/sideload`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ zipFilePath: sideloadPath })
       });
-      const data = await res.json();
       if (data.success) {
         showToast(data.message || 'عملیات سایدلود با موفقیت آغاز شد.', 'success');
       } else {
-        showToast(`خطا در سایدلود: ${data.error}`, 'error');
+        showToast(`خطا در سایدلود: ${data.error || 'خطای ناشناخته'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
@@ -107,7 +106,7 @@ export const RomFlasherTab: React.FC<RomFlasherTabProps> = ({ device }) => {
     }
     setLoading(true);
     try {
-      const res = await fetch(`/api/devices/${device?.id || 'default'}/rom/flash-partition`, {
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device?.id || 'default')}/rom/flash-partition`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -116,11 +115,10 @@ export const RomFlasherTab: React.FC<RomFlasherTabProps> = ({ device }) => {
           disableVerity
         })
       });
-      const data = await res.json();
       if (data.success) {
         showToast(`پارتیشن ${selectedPartition} با موفقیت فلش شد.`, 'success');
       } else {
-        showToast(`خطا در فلش پارتیشن: ${data.error}`, 'error');
+        showToast(`خطا در فلش پارتیشن: ${data.error || 'خطای ناشناخته'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
@@ -133,12 +131,11 @@ export const RomFlasherTab: React.FC<RomFlasherTabProps> = ({ device }) => {
     if (!confirm('هشدار: این کار تمام داده‌های کاربر (Data & Cache) را در فست‌بوت پاک می‌کند. آیا ادامه می‌دهید؟')) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/devices/${device?.id || 'default'}/rom/fastboot-wipe`, { method: 'POST' });
-      const data = await res.json();
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device?.id || 'default')}/rom/fastboot-wipe`, { method: 'POST' });
       if (data.success) {
         showToast('وایپ و فرمت کامل فست‌بوت (fastboot -w) با موفقیت انجام شد.', 'success');
       } else {
-        showToast(`خطا: ${data.error}`, 'error');
+        showToast(`خطا: ${data.error || 'خطای ناشناخته'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
@@ -150,16 +147,15 @@ export const RomFlasherTab: React.FC<RomFlasherTabProps> = ({ device }) => {
   const handleRebootMode = async (mode: string) => {
     if (!device) return;
     try {
-      const res = await fetch(`/api/devices/${device.id}/rom/reboot-mode`, {
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/rom/reboot-mode`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetMode: mode })
       });
-      const data = await res.json();
       if (data.success) {
         showToast(`دستگاه به حالت ${mode} ریبوت شد.`, 'success');
       } else {
-        showToast(`خطا: ${data.error}`, 'error');
+        showToast(`خطا: ${data.error || 'خطای ناشناخته'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');

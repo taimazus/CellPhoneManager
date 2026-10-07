@@ -19,6 +19,7 @@ import {
   Smartphone
 } from 'lucide-react';
 import { Device } from '../types';
+import { safeFetchJson } from '../utils/api';
 
 interface RootToolkitTabProps {
   device: Device | null;
@@ -49,8 +50,7 @@ export const RootToolkitTab: React.FC<RootToolkitTabProps> = ({ device }) => {
     if (!device) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/devices/${device.id}/root/status`);
-      const data = await res.json();
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/root/status`);
       if (data.success) {
         setStatus(data);
       }
@@ -68,9 +68,8 @@ export const RootToolkitTab: React.FC<RootToolkitTabProps> = ({ device }) => {
   const handleInstallMagisk = async () => {
     if (!device) return;
     try {
-      const res = await fetch(`/api/devices/${device.id}/root/magisk/install`, { method: 'POST' });
-      const data = await res.json();
-      showToast(data.message, 'success');
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/root/magisk/install`, { method: 'POST' });
+      showToast(data.message || (data.success ? 'عملیات موفق' : data.error), data.success ? 'success' : 'error');
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
     }
@@ -81,17 +80,16 @@ export const RootToolkitTab: React.FC<RootToolkitTabProps> = ({ device }) => {
     if (!confirm('آیا از بازگشت کامل از روت (Unroot) و پاکسازی ماژول‌های سیستمی اطمینان دارید؟')) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/devices/${device.id}/root/unroot`, {
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/root/unroot`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stockBootPath: stockBootPath || null })
       });
-      const data = await res.json();
       if (data.success) {
-        showToast(data.message, 'success');
+        showToast(data.message || 'آنروت با موفقیت انجام شد', 'success');
         fetchStatus();
       } else {
-        showToast(`خطا: ${data.error}`, 'error');
+        showToast(`خطا: ${data.error || 'خطای ناشناخته'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
@@ -107,16 +105,15 @@ export const RootToolkitTab: React.FC<RootToolkitTabProps> = ({ device }) => {
     }
     setLoading(true);
     try {
-      const res = await fetch(`/api/devices/${device?.id}/root/fastboot/temp-boot`, {
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device?.id || 'default')}/root/fastboot/temp-boot`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ patchedBootPath })
       });
-      const data = await res.json();
       if (data.success) {
         showToast('دستور تست بوت موقت در فست‌بوت ارسال شد.', 'success');
       } else {
-        showToast(`خطا در Fastboot: ${data.error || data.stderr}`, 'error');
+        showToast(`خطا در Fastboot: ${data.error || data.stderr || 'خطای ناشناخته'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
@@ -133,17 +130,16 @@ export const RootToolkitTab: React.FC<RootToolkitTabProps> = ({ device }) => {
     if (!confirm('آیا از فلش دائمی فایل Boot پچ‌شده روی پارتیشن بوت دستگاه اطمینان دارید؟')) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/devices/${device?.id}/root/fastboot/flash-boot`, {
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device?.id || 'default')}/root/fastboot/flash-boot`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ patchedBootPath })
       });
-      const data = await res.json();
       if (data.success) {
         showToast('فایل بوت با موفقیت روی دستگاه فلش شد!', 'success');
         fetchStatus();
       } else {
-        showToast(`خطا در فلش: ${data.error || data.stderr}`, 'error');
+        showToast(`خطا در فلش: ${data.error || data.stderr || 'خطای ناشناخته'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');

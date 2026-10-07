@@ -24,6 +24,7 @@ import {
   Grid
 } from 'lucide-react';
 import { Device } from '../types';
+import { safeFetchJson } from '../utils/api';
 
 interface CameraTabProps {
   device: Device | null;
@@ -55,7 +56,7 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
   const handleStartWebcam = async (customFacing = facing) => {
     if (!device) return;
     try {
-      const res = await fetch(`/api/devices/${device.id}/camera/webcam/start`, {
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/camera/webcam/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -66,12 +67,11 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
           stayOnTop
         })
       });
-      const data = await res.json();
       if (data.success) {
         setIsWebcamActive(true);
         showToast(data.message || 'وب‌کم دوربین با موفقیت فعال شد', 'success');
       } else {
-        showToast(`خطا در فعال‌سازی وب‌کم: ${data.error}`, 'error');
+        showToast(`خطا در فعال‌سازی وب‌کم: ${data.error || 'خطای ناشناخته'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
@@ -81,11 +81,12 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
   const handleStopWebcam = async () => {
     if (!device) return;
     try {
-      const res = await fetch(`/api/devices/${device.id}/camera/webcam/stop`, { method: 'POST' });
-      const data = await res.json();
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/camera/webcam/stop`, { method: 'POST' });
       if (data.success) {
         setIsWebcamActive(false);
         showToast('استریم وب‌کم متوقف شد', 'success');
+      } else {
+        showToast(`خطا: ${data.error || 'خطای ناشناخته'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
@@ -97,17 +98,16 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
     if (!device) return;
     const targetState = !torchEnabled;
     try {
-      const res = await fetch(`/api/devices/${device.id}/camera/torch`, {
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/camera/torch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enable: targetState })
       });
-      const data = await res.json();
       if (data.success) {
         setTorchEnabled(targetState);
         showToast(targetState ? 'فلش دوربین روشن شد' : 'فلش دوربین خاموش شد', 'success');
       } else {
-        showToast(`خطا در فلش: ${data.error}`, 'error');
+        showToast(`خطا در فلش: ${data.error || 'خطای ناشناخته'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
@@ -118,12 +118,11 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
   const handleTakeShutter = async () => {
     if (!device) return;
     try {
-      const res = await fetch(`/api/devices/${device.id}/camera/shutter`, { method: 'POST' });
-      const data = await res.json();
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/camera/shutter`, { method: 'POST' });
       if (data.success) {
         showToast('عکسبرداری انجام شد و در گالری گوشی ذخیره گردید', 'success');
       } else {
-        showToast(`خطا: ${data.error}`, 'error');
+        showToast(`خطا: ${data.error || 'خطای ناشناخته'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
@@ -134,7 +133,7 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
   useEffect(() => {
     if (!device || !isLiveStreaming) return;
     const interval = setInterval(() => {
-      setStreamUrl(`/api/devices/${device.id}/screencap.png?t=${Date.now()}`);
+      setStreamUrl(`/api/devices/${encodeURIComponent(device.id)}/screencap.png?t=${Date.now()}`);
     }, 250); // 4 FPS in-browser preview
     return () => clearInterval(interval);
   }, [device?.id, isLiveStreaming]);

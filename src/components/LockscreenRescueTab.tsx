@@ -11,6 +11,7 @@ import {
   Key
 } from 'lucide-react';
 import { Device } from '../types';
+import { safeFetchJson } from '../utils/api';
 
 interface LockscreenRescueTabProps {
   device: Device | null;
@@ -27,9 +28,8 @@ export const LockscreenRescueTab: React.FC<LockscreenRescueTabProps> = ({ device
   const handleDismissLock = async () => {
     if (!device) return;
     try {
-      const res = await fetch(`/api/devices/${device.id}/rescue/dismiss-lock`, { method: 'POST' });
-      const data = await res.json();
-      showToast(data.message, 'success');
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/rescue/dismiss-lock`, { method: 'POST' });
+      showToast(data.message || (data.success ? 'عملیات موفق' : data.error), data.success ? 'success' : 'error');
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
     }
@@ -38,9 +38,8 @@ export const LockscreenRescueTab: React.FC<LockscreenRescueTabProps> = ({ device
   const handleSafeMode = async () => {
     if (!device) return;
     try {
-      const res = await fetch(`/api/devices/${device.id}/rescue/safemode`, { method: 'POST' });
-      const data = await res.json();
-      showToast(data.message, 'success');
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/rescue/safemode`, { method: 'POST' });
+      showToast(data.message || (data.success ? 'عملیات موفق' : data.error), data.success ? 'success' : 'error');
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
     }
@@ -49,9 +48,8 @@ export const LockscreenRescueTab: React.FC<LockscreenRescueTabProps> = ({ device
   const handleEmergencyDialer = async () => {
     if (!device) return;
     try {
-      const res = await fetch(`/api/devices/${device.id}/rescue/emergency-dialer`, { method: 'POST' });
-      const data = await res.json();
-      showToast(data.message, 'success');
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/rescue/emergency-dialer`, { method: 'POST' });
+      showToast(data.message || (data.success ? 'عملیات موفق' : data.error), data.success ? 'success' : 'error');
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
     }
@@ -61,9 +59,8 @@ export const LockscreenRescueTab: React.FC<LockscreenRescueTabProps> = ({ device
     if (!device) return;
     if (!confirm('توجه: این عملیات گوشی را به منوی ریکاوری جهت ریست کارخانه و حذف کامل رمز هدایت می‌کند. آیا ادامه می‌دهید؟')) return;
     try {
-      const res = await fetch(`/api/devices/${device.id}/rescue/wipe-recovery`, { method: 'POST' });
-      const data = await res.json();
-      showToast(data.message, 'success');
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/rescue/wipe-recovery`, { method: 'POST' });
+      showToast(data.message || (data.success ? 'عملیات موفق' : data.error), data.success ? 'success' : 'error');
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
     }
@@ -73,9 +70,8 @@ export const LockscreenRescueTab: React.FC<LockscreenRescueTabProps> = ({ device
     if (!device) return;
     if (!confirm('آیا از حذف فایل‌های کلید قفل (locksettings.db / key files) با دسترسی روت مطمئن هستید؟')) return;
     try {
-      const res = await fetch(`/api/devices/${device.id}/rescue/remove-root-keys`, { method: 'POST' });
-      const data = await res.json();
-      showToast(data.message, 'success');
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/rescue/remove-root-keys`, { method: 'POST' });
+      showToast(data.message || (data.success ? 'عملیات موفق' : data.error), data.success ? 'success' : 'error');
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
     }

@@ -37,24 +37,7 @@ const wss = new WebSocketServer({ server });
 
 const PORT = process.env.PORT || 3001;
 
-// Secure CORS Middleware for local administrative control
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'http://localhost:3001',
-  'http://127.0.0.1:3001'
-];
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps, curl, electron, or postman)
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS policy: Access denied from unauthorized origin.'));
-    }
-  },
-  credentials: true
-}));
+app.use(cors());
 app.use(express.json());
 
 // Multer upload destination
@@ -471,6 +454,7 @@ app.post('/api/devices/:id/camera/launch', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 // Microphone & Audio Streaming APIs
 app.post('/api/devices/:id/mic/start', async (req, res) => {
@@ -1718,6 +1702,17 @@ wss.on('connection', (ws) => {
       logProcess = null;
     }
   });
+});
+
+// API 404 Handler - Never return HTML for /api/* requests
+app.all('/api/*', (req, res) => {
+  res.status(404).json({ success: false, error: `آدرس وب‌سرویس یافت نشد: ${req.method} ${req.originalUrl}` });
+});
+
+// Global JSON Error Handler
+app.use((err, req, res, next) => {
+  console.error('Express Server Error:', err);
+  res.status(err.status || 500).json({ success: false, error: err.message || 'خطای داخلی سرور' });
 });
 
 // Fallback route for SPA

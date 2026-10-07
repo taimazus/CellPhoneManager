@@ -24,6 +24,7 @@ import {
   Volume1
 } from 'lucide-react';
 import { Device } from '../types';
+import { safeFetchJson } from '../utils/api';
 
 interface MicrophoneTabProps {
   device: Device | null;
@@ -72,18 +73,17 @@ export const MicrophoneTab: React.FC<MicrophoneTabProps> = ({ device }) => {
         options.recordPath = `mic_record_${Date.now()}.opus`;
       }
 
-      const res = await fetch(`/api/devices/${device.id}/mic/start`, {
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/mic/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(options)
       });
-      const data = await res.json();
       if (data.success) {
         setIsStreaming(true);
         if (record) setIsRecording(true);
         showToast(data.message || 'استریم میکروفون فعال شد', 'success');
       } else {
-        showToast(`خطا: ${data.error}`, 'error');
+        showToast(`خطا: ${data.error || 'خطای ناشناخته'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
@@ -93,12 +93,13 @@ export const MicrophoneTab: React.FC<MicrophoneTabProps> = ({ device }) => {
   const handleStopMic = async () => {
     if (!device) return;
     try {
-      const res = await fetch(`/api/devices/${device.id}/mic/stop`, { method: 'POST' });
-      const data = await res.json();
+      const data = await safeFetchJson(`/api/devices/${encodeURIComponent(device.id)}/mic/stop`, { method: 'POST' });
       if (data.success) {
         setIsStreaming(false);
         setIsRecording(false);
         showToast('استریم میکروفون متوقف شد', 'success');
+      } else {
+        showToast(`خطا: ${data.error || 'خطای ناشناخته'}`, 'error');
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
