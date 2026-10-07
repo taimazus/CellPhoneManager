@@ -34,8 +34,22 @@ interface GamepadProfile {
   id: string;
   name: string;
   desc: string;
-  mappings: Record<string, string>;
+  mappings: Record<string, any>;
 }
+
+const formatKeyName = (val: any): string => {
+  if (!val) return '—';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object' && val.scan !== undefined) {
+    const reverseMap: Record<number, string> = {
+      0x1F: 'S', 0x20: 'D', 0x1E: 'A', 0x11: 'W', 0x24: 'J', 0x25: 'K', 0x26: 'L', 0x17: 'I',
+      0x39: 'Space', 0x1C: 'Enter', 0x01: 'Esc', 0x2A: 'Shift', 0x2C: 'Z', 0x2D: 'X',
+      0x48: 'Up', 0x50: 'Down', 0x4B: 'Left', 0x4D: 'Right'
+    };
+    return reverseMap[val.scan] || `Key(${val.scan})`;
+  }
+  return String(val);
+};
 
 export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device }) => {
   const [activeTabMode, setActiveTabMode] = useState<'pc_gamepad' | 'phone_control' | 'trackpad'>('pc_gamepad');
@@ -351,7 +365,12 @@ export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device
                     </div>
 
                     <div className="p-2.5 rounded-xl bg-black/40 border border-stone-800 text-[10px] font-mono text-stone-400 space-y-1">
-                      <div className="flex justify-between"><span>A / B / X / Y:</span> <span className="text-yellow-400">{prof.mappings['BTN_A']}, {prof.mappings['BTN_B']}, {prof.mappings['BTN_X']}, {prof.mappings['BTN_Y']}</span></div>
+                      <div className="flex justify-between">
+                        <span>A / B / X / Y:</span> 
+                        <span className="text-yellow-400">
+                          {formatKeyName(prof.mappings?.['BTN_A'])}, {formatKeyName(prof.mappings?.['BTN_B'])}, {formatKeyName(prof.mappings?.['BTN_X'])}, {formatKeyName(prof.mappings?.['BTN_Y'])}
+                        </span>
+                      </div>
                       <div className="flex justify-between"><span>D-Pad:</span> <span className="text-yellow-400">کلیدهای جهت‌نما / WASD</span></div>
                     </div>
                   </div>
