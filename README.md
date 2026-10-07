@@ -39,6 +39,31 @@
 
 ---
 
+## ⚙️ Prerequisites & Step-by-Step Installation
+
+### System Requirements:
+- **Operating System:** Windows 10 or 11 (64-bit x64)
+- **Runtime Environment:** [Node.js](https://nodejs.org) (v18 or higher)
+- **Python (Optional for specialized tools):** Python 3.10+ (all offline wheels pre-bundled in `bin/wheels/`)
+
+### Installation Steps:
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/taimazus/CellPhoneManager.git
+   cd CellPhoneManager
+   ```
+2. **Install project dependencies:**
+   ```bash
+   npm install
+   ```
+3. **Register Global PATH & Create Desktop Shortcut (Run Once):**
+   ```bash
+   npm run setup:shortcut
+   ```
+   *(Or double-click `setupDesktopShortcut.bat`)*
+
+---
+
 ## 🖥️ PATH Integration & Desktop Shortcut Setup
 
 To launch the suite by double-clicking the desktop icon or running **`cpm`** from any terminal:
