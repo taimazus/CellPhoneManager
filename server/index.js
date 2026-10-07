@@ -33,6 +33,7 @@ import { audioRecorderManager } from './audioRecorderManager.js';
 import { hardwareLabManager } from './hardwareLabManager.js';
 import { systemDoctorManager } from './systemDoctorManager.js';
 import { pcSpeakerManager } from './pcSpeakerManager.js';
+import { pcGamepadManager } from './pcGamepadManager.js';
 import { securityManager } from './securityManager.js';
 import { taskQueueManager } from './taskQueueManager.js';
 import { telemetryManager } from './telemetryManager.js';
@@ -43,6 +44,22 @@ import { capabilityManager } from './capabilityManager.js';
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
+
+// WebSocket Live Input and Stream Hub
+wss.on('connection', (ws) => {
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message.toString());
+      if (data.type === 'GAMEPAD_INPUT') {
+        pcGamepadManager.processGamepadEvent(data);
+      } else if (data.type === 'MOUSE_INPUT') {
+        pcGamepadManager.processMouseMove(data);
+      }
+    } catch {
+      // ignore non-json
+    }
+  });
+});
 
 const PORT = process.env.PORT || 3001;
 const HOST = process.env.HOST || '127.0.0.1';
@@ -2835,6 +2852,34 @@ app.post('/api/devices/:id/capabilities/evaluate', async (req, res) => {
   const { id } = req.params;
   const device = req.body || { id, serial: id };
   const result = await capabilityManager.evaluateDevice({ ...device, id, serial: id });
+  res.json(result);
+});
+
+// -------------------------------------------------------------
+// 39. Virtual PC Gamepad & Trackpad APIs
+// -------------------------------------------------------------
+app.get('/api/gamepad/status', (req, res) => {
+  res.json({
+    success: true,
+    activeProfile: pcGamepadManager.activeProfile,
+    profiles: pcGamepadManager.getProfiles(),
+    latestInputs: pcGamepadManager.latestInputs,
+    localIps: pcGamepadManager.getLocalIps()
+  });
+});
+
+app.post('/api/gamepad/profile', (req, res) => {
+  const { profileId } = req.body;
+  res.json(pcGamepadManager.setProfile(profileId));
+});
+
+app.post('/api/devices/:id/gamepad/launch', async (req, res) => {
+  const result = await pcGamepadManager.launchOnPhone(req.params.id);
+  res.json(result);
+});
+
+app.post('/api/devices/:id/gamepad/reverse', async (req, res) => {
+  const result = await pcGamepadManager.setupAdbReverse(req.params.id);
   res.json(result);
 });
 

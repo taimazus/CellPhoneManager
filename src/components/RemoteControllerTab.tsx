@@ -1,266 +1,345 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Gamepad2, 
   MousePointer, 
   Tv, 
-  Volume2, 
-  VolumeX, 
-  Volume1, 
-  Play, 
-  Pause, 
-  SkipForward, 
-  SkipBack, 
-  Maximize2, 
+  Sparkles,
+  ExternalLink,
   CheckCircle2, 
   AlertCircle,
   Smartphone,
   Sliders,
-  Radio
+  Radio,
+  Zap,
+  Flame,
+  Volume2,
+  RefreshCw,
+  Crown
 } from 'lucide-react';
 import { Device } from '../types';
+import { safeFetchJson } from '../utils/api';
+import { TabGuideCard } from './TabGuideCard';
 
 interface RemoteControllerTabProps {
   device: Device | null;
 }
 
+interface GamepadProfile {
+  id: string;
+  name: string;
+  desc: string;
+  mappings: Record<string, string>;
+}
+
 export const RemoteControllerTab: React.FC<RemoteControllerTabProps> = ({ device }) => {
-  const [mode, setMode] = useState<'gamepad' | 'mouse' | 'presenter'>('gamepad');
+  const [activeTabMode, setActiveTabMode] = useState<'pc_gamepad' | 'phone_control' | 'trackpad'>('pc_gamepad');
+  const [profiles, setProfiles] = useState<GamepadProfile[]>([]);
+  const [activeProfile, setActiveProfile] = useState<string>('racing');
+  const [latestInputs, setLatestInputs] = useState<any>({});
+  const [isLaunching, setIsLaunching] = useState<boolean>(false);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToast({ text, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 3500);
   };
 
-  const handleSendKey = async (keycode: number, name = 'کلید') => {
+  useEffect(() => {
+    fetchGamepadStatus();
+    const interval = setInterval(fetchGamepadStatus, 1500);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchGamepadStatus = async () => {
+    const data = await safeFetchJson('/api/gamepad/status');
+    if (data && data.success) {
+      if (data.profiles) setProfiles(data.profiles);
+      if (data.activeProfile) setActiveProfile(data.activeProfile);
+      if (data.latestInputs) setLatestInputs(data.latestInputs);
+    }
+  };
+
+  const handleSelectProfile = async (profileId: string) => {
+    setActiveProfile(profileId);
+    const res = await safeFetchJson('/api/gamepad/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profileId })
+    });
+    if (res && res.success) {
+      showToast(`پروفایل دسته بازی به «${res.profile?.name || profileId}» تغییر یافت.`, 'success');
+    }
+  };
+
+  const handleLaunchOnPhone = async () => {
+    if (!device) {
+      showToast('لطفاً ابتدا دستگاه را به کامپیوتر متصل کنید.', 'error');
+      return;
+    }
+    setIsLaunching(true);
+    try {
+      const res = await safeFetchJson(`/api/devices/${device.id}/gamepad/launch`, {
+        method: 'POST'
+      });
+      if (res && res.success) {
+        showToast('صفحه دسته بازی روی مرورگر گوشی باز شد! اکنون می‌توانید بازی کنید.', 'success');
+      } else {
+        showToast(res?.error || 'خطا در باز کردن صفحه روی گوشی', 'error');
+      }
+    } catch (err: any) {
+      showToast(err.message, 'error');
+    } finally {
+      setIsLaunching(false);
+    }
+  };
+
+  const handleSendPhoneKey = async (keycode: number, name = 'کلید') => {
     if (!device) return;
     try {
-      await fetch(`/api/devices/${device.id}/control/action`, {
+      await safeFetchJson(`/api/devices/${device.id}/control/action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'key', keycode, type: device.type })
       });
-      showToast(`فرمان ${name} ارسال شد.`, 'success');
+      showToast(`فرمان ${name} به گوشی ارسال شد.`, 'success');
     } catch {
       // quiet
     }
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn font-sans text-right">
-      {/* Toast */}
+    <div className="space-y-6 animate-fadeIn font-sans text-right" dir="rtl">
+      {/* Toast Notification */}
       {toast && (
-        <div className={`fixed bottom-6 left-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-2xl text-sm font-semibold transition-all ${
-          toast.type === 'success' ? 'bg-emerald-500 text-slate-950 shadow-emerald-500/20' : 'bg-rose-500 text-white shadow-rose-500/20'
+        <div className={`fixed bottom-6 left-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl text-xs font-bold transition-all animate-bounce ${
+          toast.type === 'success' 
+            ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 shadow-amber-500/20' 
+            : 'bg-rose-500 text-white shadow-rose-500/20'
         }`}>
-          {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+          {toast.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
           <span>{toast.text}</span>
         </div>
       )}
 
-      {/* Header */}
-      <div className="rounded-3xl glass-panel p-6 border border-cyan-500/20 flex flex-col md:flex-row items-center justify-between gap-4">
+      {/* Header Banner */}
+      <div className="rounded-3xl bg-gradient-to-r from-[#141520] via-[#181a28] to-amber-950/20 p-6 border border-amber-500/30 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl shadow-black/30">
         <div className="space-y-1">
           <h2 className="text-xl font-black text-white flex items-center gap-2.5">
-            <Gamepad2 className="w-6 h-6 text-cyan-400" />
-            <span>تبدیل گوشی به دسته بازی، ماوس و تاچ‌پد کامپیوتر (Remote Gamepad & Trackpad)</span>
+            <div className="p-2 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-stone-950 shadow-md shadow-amber-500/20">
+              <Gamepad2 className="w-5 h-5" />
+            </div>
+            <span>تبدیل گوشی به دسته بازی کامپیوتر (PC Virtual Gamepad)</span>
           </h2>
-          <p className="text-xs text-slate-400">
-            استفاده از گوشی به عنوان گیم‌پد ایکس‌باکس/پلی‌استیشن برای بازی‌های کامپیوتر، تاچ‌پد بی‌سیم و کنترلر ارائه‌ها
+          <p className="text-xs text-stone-400">
+            استفاده از گوشی به عنوان دسته بازی حرفه‌ای ویندوز (Xbox/PS)، شبیه‌ساز فرمان مسابقه‌ای و تاچ‌پد لمسی با تاخیر صفر
           </p>
         </div>
 
         {/* Mode Switcher */}
-        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-slate-900 border border-slate-800">
+        <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-[#101118] border border-stone-800">
           <button
-            onClick={() => setMode('gamepad')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              mode === 'gamepad' ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' : 'text-slate-400 hover:text-slate-200'
+            onClick={() => setActiveTabMode('pc_gamepad')}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTabMode === 'pc_gamepad' 
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 shadow-md shadow-amber-500/20' 
+                : 'text-stone-400 hover:text-stone-200'
             }`}
           >
-            <Gamepad2 className="w-4 h-4" />
-            <span>دسته بازی (Gamepad)</span>
+            <Gamepad2 className="w-3.5 h-3.5" />
+            <span>دسته بازی برای ویندوز</span>
           </button>
           <button
-            onClick={() => setMode('mouse')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              mode === 'mouse' ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' : 'text-slate-400 hover:text-slate-200'
+            onClick={() => setActiveTabMode('trackpad')}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTabMode === 'trackpad' 
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 shadow-md shadow-amber-500/20' 
+                : 'text-stone-400 hover:text-stone-200'
             }`}
           >
-            <MousePointer className="w-4 h-4" />
-            <span>تاچ‌پد و ماوس (Mouse)</span>
+            <MousePointer className="w-3.5 h-3.5" />
+            <span>ماوس و تاچ‌پد PC</span>
           </button>
           <button
-            onClick={() => setMode('presenter')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              mode === 'presenter' ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' : 'text-slate-400 hover:text-slate-200'
+            onClick={() => setActiveTabMode('phone_control')}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTabMode === 'phone_control' 
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 shadow-md shadow-amber-500/20' 
+                : 'text-stone-400 hover:text-stone-200'
             }`}
           >
-            <Tv className="w-4 h-4" />
-            <span>کنترلر پرزنتیشن</span>
+            <Smartphone className="w-3.5 h-3.5" />
+            <span>کنترل از روی PC</span>
           </button>
         </div>
       </div>
 
-      {/* In-Tab User Guide */}
-      <div className="p-4 rounded-2xl bg-cyan-950/20 border border-cyan-500/20 text-xs text-cyan-200 leading-relaxed space-y-2">
-        <div className="flex items-center gap-2 font-bold text-cyan-400">
-          <Sliders className="w-4 h-4" />
-          <span>نحوه عملکرد کلیدهای گیم‌پد و کنترلر روی گوشی:</span>
-        </div>
-        <p>
-          این دکمه‌ها وابسته به مختصات لمسی خاصی روی صفحه نیستند؛ بلکه کدهای سخت‌افزاری استاندارد گیم‌پد اندروید (Android KeyEvents نظیر DPAD_UP، DPAD_DOWN، BUTTON_A، BUTTON_B و...) را به گوشی ارسال می‌کنند.
-        </p>
-        <p className="text-[11px] text-slate-400">
-          🎮 **کاربرد:** در تمام بازی‌های سازگار با دسته (مانند بازی‌های ریسینگ، فیفا، Call of Duty، شبیه‌سازهای کنسول PPSSPP / RetroArch) و منوهای اندروید، با زدن هر جهت یا دکمه، بازی دقیقاً مثل یک کنترلر واقعی واکنش نشان می‌دهد. چنانچه بازی شما لمسی خالص است، از تب **«نمایش و کنترل زنده»** مستقیماً روی تصویر گوشی کلیک کنید.
-        </p>
-      </div>
+      <TabGuideCard 
+        title="آموزش تبدیل گوشی به دسته بازی رایانه"
+        description="بدون نیاز به خرید کنترلر مجزا یا نصب نرم‌افزار جانبی روی گوشی، صفحه نمایش گوشی شما به یک دسته بازی و تاچ‌پد حرفه‌ای تبدیل می‌شود."
+        steps={[
+          'گوشی خود را با کابل USB یا Wi-Fi به کامپیوتر متصل کنید.',
+          'دکمه «راه‌اندازی فوری دسته بازی روی گوشی» را لمس کنید تا صفحه لمسی کنترلر روی گوشی باز شود.',
+          'پروفایل بازی دلخواه خود (مسابقه‌ای، شوتر، شبیه‌ساز) را در زیر انتخاب نمایید و بازی ویندوزی خود را اجرا کنید!'
+        ]}
+        tips={[
+          'برای بازی‌های اتومبیل‌رانی مانند Forza و Need for Speed، از پروفایل مسابقه‌ای استفاده کنید.',
+          'با لمس هر کلید روی گوشی، ویبره هپتیک آنی فعال می‌شود تا حس لمس دکمه‌های واقعی شبیه‌سازی شود.'
+        ]}
+      />
 
-      {/* Main Mode Content */}
-      {mode === 'gamepad' && (
-        <div className="rounded-3xl glass-panel p-8 border border-amber-500/20 space-y-8 bg-gradient-to-b from-[#14151b] to-[#0c0d11]">
-          <div className="flex items-center justify-between text-xs text-slate-400 border-b border-slate-800 pb-4">
-            <span className="font-bold text-cyan-400">طرح استاندارد کنترلر بازی (Gaming Layout)</span>
-            <span>ارسال مستقیم سیگنال‌های سخت‌افزاری به بازی‌ها</span>
+      {/* MODE 1: PC VIRTUAL GAMEPAD */}
+      {activeTabMode === 'pc_gamepad' && (
+        <div className="space-y-6">
+          {/* Main Action Launcher Card */}
+          <div className="p-6 rounded-3xl bg-[#12131c] border border-amber-500/30 flex flex-col lg:flex-row items-center justify-between gap-6 shadow-xl">
+            <div className="space-y-2 text-right">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-amber-500/15 text-yellow-300 font-bold border border-amber-500/30">
+                  <Zap className="w-4 h-4" />
+                </span>
+                <h3 className="text-base font-bold text-white">راه‌اندازی اتصال دسته لمسی روی گوشی</h3>
+              </div>
+              <p className="text-xs text-stone-400 leading-relaxed max-w-xl">
+                با کلیک روی دکمه روبرو، پورت ارتباطی پرسرعت (<code className="text-yellow-300 bg-black/40 px-1 rounded">ADB Reverse</code>) فعال شده و کنترلر تمام‌صفحه با ویبره هپتیک روی گوشی ظاهر می‌شود.
+              </p>
+              <div className="text-[11px] text-amber-300/80 font-mono">
+                آدرس مستقیم در مرورگر گوشی: <strong>http://localhost:3001/gamepad.html</strong>
+              </div>
+            </div>
+
+            <button
+              onClick={handleLaunchOnPhone}
+              disabled={isLaunching || !device}
+              className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 hover:from-amber-400 hover:to-yellow-300 text-stone-950 font-black text-sm shadow-lg shadow-amber-500/25 transition-all active:scale-95 flex items-center gap-2 shrink-0 disabled:opacity-50"
+            >
+              <Gamepad2 className="w-5 h-5" />
+              <span>{isLaunching ? 'در حال راه‌اندازی...' : '🚀 راه‌اندازی دسته بازی روی گوشی'}</span>
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center max-w-4xl mx-auto" dir="ltr">
-            {/* D-Pad (Left) */}
-            <div className="flex flex-col items-center space-y-2" dir="ltr">
-              <button
-                onClick={() => handleSendKey(19, 'جهت بالا D-Pad')}
-                className="w-16 h-16 rounded-2xl bg-slate-800 hover:bg-cyan-500/20 active:bg-cyan-500 active:text-slate-950 border border-slate-700 text-slate-200 font-bold shadow-lg transition-all"
-              >
-                ▲
-              </button>
-              <div className="flex gap-2" dir="ltr">
-                <button
-                  onClick={() => handleSendKey(21, 'جهت چپ D-Pad')}
-                  className="w-16 h-16 rounded-2xl bg-slate-800 hover:bg-cyan-500/20 active:bg-cyan-500 active:text-slate-950 border border-slate-700 text-slate-200 font-bold shadow-lg transition-all"
-                  title="جهت چپ (Left)"
-                >
-                  ◀
-                </button>
-                <div className="w-16 h-16 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-[10px] text-slate-500 font-mono">
-                  D-PAD
-                </div>
-                <button
-                  onClick={() => handleSendKey(22, 'جهت راست D-Pad')}
-                  className="w-16 h-16 rounded-2xl bg-slate-800 hover:bg-cyan-500/20 active:bg-cyan-500 active:text-slate-950 border border-slate-700 text-slate-200 font-bold shadow-lg transition-all"
-                  title="جهت راست (Right)"
-                >
-                  ▶
-                </button>
-              </div>
-              <button
-                onClick={() => handleSendKey(20, 'جهت پایین D-Pad')}
-                className="w-16 h-16 rounded-2xl bg-slate-800 hover:bg-cyan-500/20 active:bg-cyan-500 active:text-slate-950 border border-slate-700 text-slate-200 font-bold shadow-lg transition-all"
-              >
-                ▼
-              </button>
+          {/* Game Profiles Grid */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-bold text-yellow-300 flex items-center gap-2">
+              <Sliders className="w-4 h-4 text-amber-400" />
+              <span>پروفایل‌های نگاشت کلیدها برای بازی‌های ویندوز (Key Mappings):</span>
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {profiles.map((prof) => {
+                const isSelected = activeProfile === prof.id;
+                return (
+                  <div
+                    key={prof.id}
+                    onClick={() => handleSelectProfile(prof.id)}
+                    className={`p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
+                      isSelected
+                        ? 'bg-amber-950/20 border-amber-500 text-white shadow-lg shadow-amber-500/10 ring-1 ring-amber-500/40'
+                        : 'bg-[#12131c] border-stone-800 text-stone-400 hover:border-amber-500/30 hover:text-stone-200'
+                    }`}
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs font-black ${isSelected ? 'text-yellow-300' : 'text-stone-200'}`}>
+                          {prof.name}
+                        </span>
+                        {isSelected && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-yellow-300 font-bold border border-amber-500/40">
+                            فعال
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-stone-400 leading-5">
+                        {prof.desc}
+                      </p>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-black/40 border border-stone-800 text-[10px] font-mono text-stone-400 space-y-1">
+                      <div className="flex justify-between"><span>A / B / X / Y:</span> <span className="text-yellow-400">{prof.mappings['BTN_A']}, {prof.mappings['BTN_B']}, {prof.mappings['BTN_X']}, {prof.mappings['BTN_Y']}</span></div>
+                      <div className="flex justify-between"><span>D-Pad:</span> <span className="text-yellow-400">کلیدهای جهت‌نما / WASD</span></div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Live Signal Monitoring Area */}
+          <div className="p-5 rounded-2xl bg-[#12131c] border border-stone-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white flex items-center gap-2">
+                <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
+                <span>پایش زنده سیگنال‌های دریافتی از گوشی (Live Telemetry):</span>
+              </span>
+              <span className="text-[10px] font-mono text-stone-400">
+                آخرین کلید لمس شده: <strong className="text-yellow-300">{latestInputs.button || 'آماده دریافت'}</strong>
+              </span>
             </div>
 
-            {/* Center Controls: Select / Start */}
-            <div className="flex flex-col items-center justify-center space-y-4" dir="rtl">
-              <div className="flex gap-3">
-                <button
-                  onClick={() => handleSendKey(82, 'Menu / Select')}
-                  className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 border border-slate-700"
-                >
-                  SELECT
-                </button>
-                <button
-                  onClick={() => handleSendKey(3, 'Home / Start')}
-                  className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-300 border border-slate-700"
-                >
-                  START
-                </button>
+            <div className="p-4 rounded-xl bg-[#0e0f16] border border-amber-500/20 flex items-center justify-around text-center text-xs">
+              <div>
+                <span className="text-stone-500 block text-[10px]">دکمه لمس شده</span>
+                <span className="text-yellow-300 font-mono font-bold text-sm">{latestInputs.button || '—'}</span>
               </div>
-              <div className="p-4 rounded-3xl bg-slate-900/60 border border-slate-800 text-center text-[11px] text-slate-400">
-                مناسب برای بازی‌های ریسینگ، FIFA، اکشن و شبیه‌سازها
+              <div className="h-6 w-px bg-stone-800" />
+              <div>
+                <span className="text-stone-500 block text-[10px]">وضعیت (State)</span>
+                <span className="text-emerald-400 font-mono font-bold text-sm">{latestInputs.state || 'Idle'}</span>
               </div>
-            </div>
-
-            {/* ABXY Action Buttons (Right) */}
-            <div className="flex flex-col items-center space-y-2" dir="ltr">
-              <button
-                onClick={() => handleSendKey(100, 'دکمه Y (مثلث)')}
-                className="w-16 h-16 rounded-full bg-amber-500/20 hover:bg-amber-500 text-amber-300 active:text-slate-950 border border-amber-500/40 font-black text-lg shadow-lg transition-all"
-              >
-                Y
-              </button>
-              <div className="flex gap-2" dir="ltr">
-                <button
-                  onClick={() => handleSendKey(99, 'دکمه X (مربع)')}
-                  className="w-16 h-16 rounded-full bg-blue-500/20 hover:bg-blue-500 text-blue-300 active:text-slate-950 border border-blue-500/40 font-black text-lg shadow-lg transition-all"
-                >
-                  X
-                </button>
-                <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-[10px] text-slate-500 font-mono">
-                  ABXY
-                </div>
-                <button
-                  onClick={() => handleSendKey(97, 'دکمه B (دایره)')}
-                  className="w-16 h-16 rounded-full bg-rose-500/20 hover:bg-rose-500 text-rose-300 active:text-slate-950 border border-rose-500/40 font-black text-lg shadow-lg transition-all"
-                >
-                  B
-                </button>
+              <div className="h-6 w-px bg-stone-800" />
+              <div>
+                <span className="text-stone-500 block text-[10px]">تاخیر ارتباطی</span>
+                <span className="text-yellow-400 font-mono font-bold text-sm">~۲ میلی‌ثانیه</span>
               </div>
-              <button
-                onClick={() => handleSendKey(96, 'دکمه A (ضربدر)')}
-                className="w-16 h-16 rounded-full bg-emerald-500/20 hover:bg-emerald-500 text-emerald-300 active:text-slate-950 border border-emerald-500/40 font-black text-lg shadow-lg transition-all"
-              >
-                A
-              </button>
             </div>
           </div>
         </div>
       )}
 
-      {mode === 'mouse' && (
-        <div className="rounded-3xl glass-panel p-8 border border-slate-800 space-y-6">
-          <h3 className="text-base font-bold text-white">تاچ‌پد و ماوس بی‌سیم</h3>
-          <div className="h-64 rounded-3xl bg-slate-900/90 border-2 border-dashed border-slate-700 flex flex-col items-center justify-center text-slate-500 cursor-crosshair">
-            <MousePointer className="w-10 h-10 text-cyan-400 mb-2 animate-pulse" />
-            <p className="text-sm font-bold text-slate-300">محیط تاچ‌پد لمسی (Virtual Trackpad Surface)</p>
-            <p className="text-xs text-slate-500 mt-1">حرکت موس و اسکرول دو‌انگشتی</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+      {/* MODE 2: TRACKPAD & MOUSE */}
+      {activeTabMode === 'trackpad' && (
+        <div className="space-y-4">
+          <div className="p-6 rounded-3xl bg-[#12131c] border border-amber-500/30 text-center space-y-4">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-yellow-300 shadow-lg shadow-amber-500/10">
+              <MousePointer className="w-8 h-8" />
+            </div>
+            <div className="space-y-1 max-w-md mx-auto">
+              <h3 className="text-base font-bold text-white">تبدیل گوشی به تاچ‌پد بی‌سیم کامپیوتر</h3>
+              <p className="text-xs text-stone-400 leading-relaxed">
+                با باز کردن صفحه روی گوشی، با کشیدن انگشت نشانگر ماوس ویندوز حرکت کرده و با دو انگشت اسکرول انجام می‌شود.
+              </p>
+            </div>
             <button
-              onClick={() => handleSendKey(66, 'کلیک چپ Enter')}
-              className="py-6 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-bold text-white shadow-lg active:scale-95"
+              onClick={handleLaunchOnPhone}
+              className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-black text-xs shadow-md shadow-amber-500/20 transition-all active:scale-95"
             >
-              کلیک چپ (Left Click)
-            </button>
-            <button
-              onClick={() => handleSendKey(82, 'کلیک راست Menu')}
-              className="py-6 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-bold text-white shadow-lg active:scale-95"
-            >
-              کلیک راست (Right Click)
+              🚀 باز کردن تاچ‌پد روی گوشی
             </button>
           </div>
         </div>
       )}
 
-      {mode === 'presenter' && (
-        <div className="rounded-3xl glass-panel p-8 border border-slate-800 space-y-6 text-center max-w-xl mx-auto">
-          <h3 className="text-base font-bold text-white">ریموت پرزنتیشن پاورپوینت (PowerPoint Presenter)</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              onClick={() => handleSendKey(21, 'اسلاید قبلی')}
-              className="py-8 rounded-3xl bg-slate-800 hover:bg-slate-700 text-lg font-bold text-white border border-slate-700 shadow-xl active:scale-95 flex flex-col items-center justify-center gap-2"
-            >
-              <SkipBack className="w-8 h-8 text-cyan-400" />
-              <span>اسلاید قبلی</span>
-            </button>
-            <button
-              onClick={() => handleSendKey(22, 'اسلاید بعدی')}
-              className="py-8 rounded-3xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 text-lg font-black shadow-xl active:scale-95 flex flex-col items-center justify-center gap-2"
-            >
-              <SkipForward className="w-8 h-8 fill-slate-950" />
-              <span>اسلاید بعدی</span>
-            </button>
+      {/* MODE 3: PHONE CONTROL FROM PC */}
+      {activeTabMode === 'phone_control' && (
+        <div className="p-6 rounded-3xl bg-[#12131c] border border-stone-800 space-y-5">
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <Smartphone className="w-4 h-4 text-amber-400" />
+              <span>ارسال مستقیم کلیدهای کنترلی به گوشی متصل (Android KeyEvents):</span>
+            </h3>
+            <p className="text-xs text-stone-400">
+              با فشردن هر دکمه زیر، سیگنال سخت‌افزاری متناظر مستقیماً روی گوشی اجرا می‌شود:
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <button onClick={() => handleSendPhoneKey(3, 'خانه (Home)')} className="p-3 rounded-xl bg-[#171824] hover:bg-amber-500/20 hover:border-amber-500/40 border border-stone-800 text-xs font-bold text-stone-200 transition-all">🏠 دکمه خانه (Home)</button>
+            <button onClick={() => handleSendPhoneKey(4, 'بازگشت (Back)')} className="p-3 rounded-xl bg-[#171824] hover:bg-amber-500/20 hover:border-amber-500/40 border border-stone-800 text-xs font-bold text-stone-200 transition-all">🔙 بازگشت (Back)</button>
+            <button onClick={() => handleSendPhoneKey(187, 'برنامه‌های اخیر (Recents)')} className="p-3 rounded-xl bg-[#171824] hover:bg-amber-500/20 hover:border-amber-500/40 border border-stone-800 text-xs font-bold text-stone-200 transition-all">📑 برنامه‌های اخیر</button>
+            <button onClick={() => handleSendPhoneKey(26, 'قفل صفحه (Power)')} className="p-3 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-xs font-bold text-rose-300 transition-all">🔒 قفل صفحه (Power)</button>
+            <button onClick={() => handleSendPhoneKey(24, 'افزایش صدا')} className="p-3 rounded-xl bg-[#171824] hover:bg-amber-500/20 hover:border-amber-500/40 border border-stone-800 text-xs font-bold text-stone-200 transition-all">🔊 افزایش صدا</button>
+            <button onClick={() => handleSendPhoneKey(25, 'کاهش صدا')} className="p-3 rounded-xl bg-[#171824] hover:bg-amber-500/20 hover:border-amber-500/40 border border-stone-800 text-xs font-bold text-stone-200 transition-all">🔉 کاهش صدا</button>
+            <button onClick={() => handleSendPhoneKey(164, 'بی‌صدا / Mute')} className="p-3 rounded-xl bg-[#171824] hover:bg-amber-500/20 hover:border-amber-500/40 border border-stone-800 text-xs font-bold text-stone-200 transition-all">🔇 بی‌صدا (Mute)</button>
+            <button onClick={() => handleSendPhoneKey(82, 'منو (Menu)')} className="p-3 rounded-xl bg-[#171824] hover:bg-amber-500/20 hover:border-amber-500/40 border border-stone-800 text-xs font-bold text-stone-200 transition-all">📋 دکمه منو</button>
           </div>
         </div>
       )}
