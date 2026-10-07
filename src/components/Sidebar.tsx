@@ -266,7 +266,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <ExternalLink className="w-2.5 h-2.5 opacity-70 group-hover:opacity-100" />
             </div>
             <div className="text-[9px] font-mono text-stone-400 mt-0.5">
-              https://irres.ir • v3.2.0 Royal
+              https://irres.ir • v3.4.2 Royal
             </div>
           </a>
         )}
