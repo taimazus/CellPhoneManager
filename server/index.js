@@ -1233,6 +1233,14 @@ app.get('/api/devices/:id/hardware/network', async (req, res) => {
 app.post('/api/fastboot/run', async (req, res) => {
   const { command } = req.body;
   if (!command) return res.status(400).json({ error: 'دستور Fastboot الزامی است' });
+  try {
+    const result = await adbManager.runFastboot(command);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // -------------------------------------------------------------
 // 13. Automation & Macro Studio APIs
 // -------------------------------------------------------------
