@@ -30,6 +30,7 @@ import {
   HardDrive
 } from 'lucide-react';
 import { ToolStatus, Device } from '../types';
+import { TabGuideCard } from './TabGuideCard';
 
 interface DoctorTabProps {
   device?: Device | null;
@@ -292,6 +293,21 @@ export const DoctorTab: React.FC<DoctorTabProps> = ({ device }) => {
           </button>
         </div>
       </div>
+
+      {/* In-Tab User Guide */}
+      <TabGuideCard
+        title="راهنمای پاکسازی عمیق و تعمیرات خودکار سیستم"
+        description="نحوه آزادسازی حافظه ذخیره‌سازی، رفع لگ و کرش، و تعمیر سرویس‌های مختل شده بدون از دست رفتن اطلاعات"
+        steps={[
+          "برای شناسایی تمام فایل‌های اضافی و کش پنهان گوشی، دکمه «اسکن جامع فایل‌های زائد» را لمس کنید.",
+          "با کلیک روی «پاکسازی تمام فایل‌های زائد»، کش برنامه‌ها، بندانگشتی‌ها و لاگ‌های سنگین حذف شده و چند گیگابایت فضای خالی آزاد می‌شود.",
+          "در تب «عیب‌یابی و تعمیرات»، در صورت بروز مشکل در اینترنت یا باتری، می‌توانید از ابزارهای بازنشانی سریع (مانند DNS Turbo و Battery Reset) استفاده کنید."
+        ]}
+        tips={[
+          "پاکسازی فایل‌های کش (Cache) کاملاً امن است و هیچ تاثیری بر عکس‌ها، پیام‌ها یا اطلاعات شخصی شما ندارد.",
+          "پیشنهاد می‌شود هفته‌ای یک‌بار عملیات پاکسازی را برای حفظ حداکثر سرعت گوشی انجام دهید."
+        ]}
+      />
 
       {/* SECTION 1: DEEP JUNK CLEANER */}
       {activeSection === 'cleaner' && (

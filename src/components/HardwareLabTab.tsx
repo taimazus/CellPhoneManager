@@ -29,6 +29,7 @@ import {
   Maximize2
 } from 'lucide-react';
 import { Device } from '../types';
+import { TabGuideCard } from './TabGuideCard';
 
 interface HardwareLabTabProps {
   device: Device | null;
@@ -298,6 +299,21 @@ export const HardwareLabTab: React.FC<HardwareLabTabProps> = ({ device }) => {
           <span>تازه سازی همه داده‌ها</span>
         </button>
       </div>
+
+      {/* In-Tab User Guide */}
+      <TabGuideCard
+        title="راهنمای تست و عیب‌یابی سخت‌افزار (Hardware Lab)"
+        description="روش‌های تست سلامت قطعات فیزیکی، ویبره، بلندگو، نمایشگر و سنسورهای حرکتی و محیطی گوشی"
+        steps={[
+          "برای تست موتور ویبره، از الگوهای مختلف (ضربه ملایم، پالس دوگانه، ضربان قلب، اعلام خطر و...) استفاده کنید تا از سلامت موتور هپتیک مطمئن شوید.",
+          "جهت تست بلندگوی مکالمه و اسپیکر اصلی، تست فرکانس صوتی (سینوس ۱۲۰ هرتز تا ۸۰۰۰ هرتز) یا تست رفت و برگشت فرکانس (Sweep) را پخش کنید.",
+          "برای بررسی پیکسل‌های سوخته صفحه نمایش، دکمه «تست تمام‌صفحه رنگ‌های خالص روی گوشی» را لمس کرده و رنگ‌های قرمز، سبز، آبی، سفید و مشکی را بررسی کنید."
+        ]}
+        tips={[
+          "برای تست ژیروسکوپ و شتاب‌سنج، گوشی را در دست گرفته و بچرخانید؛ مقادیر X, Y, Z باید به‌صورت زنده تغییر کنند.",
+          "در بخش سلامت باتری، وضعیت ولتاژ و دمای مدار شارژ را برای جلوگیری از بادکردگی باتری مانیتور کنید."
+        ]}
+      />
 
       {/* Sub-Navigation Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">

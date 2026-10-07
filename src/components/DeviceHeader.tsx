@@ -12,7 +12,8 @@ import {
   RefreshCw,
   SlidersHorizontal,
   Bot,
-  Apple
+  Apple,
+  BookOpen
 } from 'lucide-react';
 import { Device } from '../types';
 
@@ -23,6 +24,7 @@ interface DeviceHeaderProps {
   onRefreshDevices: () => void;
   onQuickAction: (action: string, payload?: any) => void;
   onOpenWirelessModal: () => void;
+  onOpenGuideModal: (topic?: string) => void;
   isRefreshing: boolean;
 }
 
@@ -33,6 +35,7 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
   onRefreshDevices,
   onQuickAction,
   onOpenWirelessModal,
+  onOpenGuideModal,
   isRefreshing
 }) => {
   const getOemBadge = () => {
@@ -171,6 +174,16 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
             <span className="text-slate-500 hidden sm:inline">| {selectedDevice.battery.temperature}°C</span>
           </div>
         )}
+
+        {/* Help & Guide Center Button */}
+        <button
+          onClick={() => onOpenGuideModal()}
+          className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500/10 to-amber-600/20 hover:from-amber-500/20 hover:to-amber-600/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition-all shadow-sm"
+          title="مرکز راهنما و آموزش جامع برنامه"
+        >
+          <BookOpen className="w-4 h-4 text-amber-400" />
+          <span className="hidden sm:inline">راهنما و آموزش</span>
+        </button>
 
         {/* Quick Screenshot Button */}
         <button

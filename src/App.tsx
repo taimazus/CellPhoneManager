@@ -34,6 +34,7 @@ import { RootToolkitTab } from './components/RootToolkitTab';
 import { RomFlasherTab } from './components/RomFlasherTab';
 import { PasswordVaultTab } from './components/PasswordVaultTab';
 import { WirelessModal } from './components/WirelessModal';
+import { UserGuideModal } from './components/UserGuideModal';
 import { Device } from './types';
 
 
@@ -43,6 +44,13 @@ export function App() {
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isWirelessModalOpen, setIsWirelessModalOpen] = useState<boolean>(false);
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState<boolean>(false);
+  const [guideTopic, setGuideTopic] = useState<string>('getting_started');
+
+  const handleOpenGuide = (topic: string = 'getting_started') => {
+    setGuideTopic(topic);
+    setIsGuideModalOpen(true);
+  };
 
   const fetchDevices = async () => {
     setIsRefreshing(true);
@@ -160,6 +168,7 @@ export function App() {
           onRefreshDevices={fetchDevices}
           onQuickAction={handleQuickAction}
           onOpenWirelessModal={() => setIsWirelessModalOpen(true)}
+          onOpenGuideModal={handleOpenGuide}
           isRefreshing={isRefreshing}
         />
 
@@ -285,6 +294,13 @@ export function App() {
         isOpen={isWirelessModalOpen}
         onClose={() => setIsWirelessModalOpen(false)}
         onRefresh={fetchDevices}
+      />
+
+      {/* Comprehensive User Guide Modal */}
+      <UserGuideModal
+        isOpen={isGuideModalOpen}
+        onClose={() => setIsGuideModalOpen(false)}
+        initialTopic={guideTopic}
       />
     </div>
   );

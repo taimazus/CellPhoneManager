@@ -20,6 +20,7 @@ import {
   Laptop
 } from 'lucide-react';
 import { Device } from '../types';
+import { TabGuideCard } from './TabGuideCard';
 
 interface AudioFxTabProps {
   device: Device | null;
@@ -189,6 +190,21 @@ export const AudioFxTab: React.FC<AudioFxTabProps> = ({ device }) => {
           <span>بروزرسانی سطح صدا</span>
         </button>
       </div>
+
+      {/* In-Tab User Guide */}
+      <TabGuideCard
+        title="راهنمای استودیوی صوتی و انتقال زنده صدا"
+        description="نحوه تقویت بلندی صدا، استفاده از اکولایزر و هدایت خروجی صدای گوشی به بلندگوهای کامپیوتر"
+        steps={[
+          "برای پخش آهنگ، فیلم یا صدای بازی گوشی روی اسپیکرهای کامپیوتر، حالت مورد نظر (همزمان روی هر دو یا فقط کامپیوتر) را انتخاب و دکمه «شروع پخش زنده صدای گوشی روی PC» را بزنید.",
+          "جهت افزایش بلندی صدای ضعیف گوشی، اسلایدر رسانه (Media) را تا حداکثر ببرید و گزینه «تقویت فوق‌العاده ۲۰۰٪» را روشن کنید.",
+          "می‌توانید صدای زنگ، هشدار آلارم، اعلان‌ها و مکالمه را به‌صورت کاملاً مجزا تنظیم نمایید."
+        ]}
+        tips={[
+          "در صورت وصل بودن کابل USB، صدا با کمترین تاخیر زمانی (کمتر از ۲۰ میلی‌ثانیه) منتقل می‌شود.",
+          "برای گوش دادن به پادکست هنگام کار با کامپیوتر، حالت «فقط روی کامپیوتر (قطع صدای گوشی)» بهترین گزینه است."
+        ]}
+      />
 
       {/* Phone-to-PC Audio Relay Feature Card */}
       <div className="rounded-3xl glass-panel p-6 border border-cyan-500/30 bg-gradient-to-b from-cyan-950/20 to-slate-900/60 space-y-5">

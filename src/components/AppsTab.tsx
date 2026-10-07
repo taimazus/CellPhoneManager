@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Device, DeviceApp } from '../types';
 import { AppIcon } from './AppIcon';
+import { TabGuideCard } from './TabGuideCard';
 
 interface AppsTabProps {
   device: Device | null;
@@ -212,6 +213,21 @@ export const AppsTab: React.FC<AppsTabProps> = ({ device }) => {
           </label>
         </div>
       </div>
+
+      {/* In-Tab User Guide */}
+      <TabGuideCard
+        title="راهنمای کار با بخش مدیریت و استخراج برنامه‌ها"
+        description="نکات مهم در مورد نصب آسان فایل‌های نصبی، فریز کردن برنامه‌های سنگین و استخراج فایل خام به کامپیوتر"
+        steps={[
+          "برای نصب مستقیم برنامه روی گوشی، روی دکمه «انتخاب و نصب فایل برنامه» کلیک کرده و فایل APK یا IPA را از کامپیوتر انتخاب کنید.",
+          "جهت استخراج فایل خام نصبی هر برنامه‌ای که روی گوشی نصب است، آیکون دانلود (استخراج) مقابل نام برنامه را بزنید تا مستقیماً در مرورگر کامپیوتر دانلود شود.",
+          "با فیلترهای بالا می‌توانید برنامه‌های کاربری را از برنامه‌های سیستمی تفکیک کنید یا برنامه‌های غیرفعال (Frozen) را مدیریت نمایید."
+        ]}
+        tips={[
+          "در گوشی‌های شیائومی، برای نصب از طریق کامپیوتر، گزینه «Install via USB» در تنظیمات برنامه‌نویس باید فعال باشد.",
+          "برنامه‌های سیستمی حیاتی را حذف یا غیرفعال نکنید تا در عملکرد سیستم مشکلی پیش نیاید."
+        ]}
+      />
 
       {/* Filter and Search Controls */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
