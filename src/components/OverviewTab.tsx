@@ -156,16 +156,16 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
       )}
 
       {/* 1. Welcome Banner / Device Identity Hero */}
-      <div className="relative overflow-hidden rounded-2xl glass-panel-glow p-6 border border-cyan-500/30">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+      <div className="relative overflow-hidden rounded-2xl glass-panel-glow p-6 border border-amber-500/30">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
           <div className="flex items-center gap-5">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-blue-600/30 border border-cyan-500/40 flex items-center justify-center text-cyan-300 shadow-xl shadow-cyan-950/50">
-              <Smartphone className="w-10 h-10 text-cyan-400" />
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-amber-500/20 via-yellow-500/25 to-amber-600/30 border border-amber-500/40 flex items-center justify-center text-yellow-300 shadow-xl shadow-amber-950/50">
+              <Smartphone className="w-10 h-10 text-yellow-400" />
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-yellow-300 border border-amber-500/35">
                   {device.type}
                 </span>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
@@ -175,12 +175,12 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
               <h2 className="text-2xl font-black text-white font-sans tracking-wide">
                 {device.name}
               </h2>
-              <p className="text-sm text-slate-400 mt-0.5 flex items-center gap-3">
-                <span>سازنده: <strong className="text-slate-200">{device.manufacturer || 'Apple / Google'}</strong></span>
+              <p className="text-sm text-stone-400 mt-0.5 flex items-center gap-3">
+                <span>سازنده: <strong className="text-stone-200">{device.manufacturer || 'Apple / Google'}</strong></span>
                 <span>•</span>
-                <span>مدل: <strong className="text-slate-200">{device.model}</strong></span>
+                <span>مدل: <strong className="text-stone-200">{device.model}</strong></span>
                 <span>•</span>
-                <span>سیستم‌عامل: <strong className="text-cyan-400">{device.osVersion}</strong></span>
+                <span>سیستم‌عامل: <strong className="text-yellow-400">{device.osVersion}</strong></span>
               </p>
             </div>
           </div>
@@ -188,16 +188,17 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
           <div className="flex items-center gap-3">
             <button
               onClick={() => onNavigateTab('mirror')}
-              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-sm shadow-lg shadow-cyan-500/25 transition-all transform hover:-translate-y-0.5"
+              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 hover:from-amber-300 hover:to-yellow-400 text-stone-950 font-black text-sm shadow-lg shadow-amber-500/25 transition-all transform hover:-translate-y-0.5"
             >
               <Zap className="w-4 h-4 fill-current" />
               <span>شروع کنترل و تصویر زنده</span>
             </button>
             <button
               onClick={() => onNavigateTab('tweaks')}
-              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 text-sm font-semibold transition-all"
+              className="flex items-center gap-2 px-4 py-3 rounded-xl bg-[#1a1b22] hover:bg-[#22242d] text-stone-200 border border-amber-500/25 text-sm font-semibold transition-all hover:text-yellow-300"
             >
-              <Sliders className="w-4 h-4 text-cyan-400" />
+              <Sliders className="w-4 h-4 text-yellow-400" />
+
               <span>تنظیمات مخفی</span>
             </button>
           </div>

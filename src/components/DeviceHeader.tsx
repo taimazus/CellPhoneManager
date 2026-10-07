@@ -16,7 +16,8 @@ import {
   BookOpen,
   Menu,
   Shield,
-  Activity
+  Activity,
+  Crown
 } from 'lucide-react';
 import { Device } from '../types';
 
@@ -46,37 +47,37 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
   const getOemBadge = () => {
     if (!selectedDevice) return null;
     if (selectedDevice.type === 'ios') {
-      return { label: 'Apple iOS', color: 'bg-slate-800/90 text-slate-200 border-slate-700' };
+      return { label: 'Apple iOS', color: 'bg-stone-800/90 text-stone-200 border-amber-500/20' };
     }
     const all = `${selectedDevice.name} ${selectedDevice.model || ''} ${selectedDevice.manufacturer || ''}`.toLowerCase();
     if (all.includes('xiaomi') || all.includes('redmi') || all.includes('poco') || all.includes('2201116')) {
-      return { label: 'Xiaomi HyperOS / MIUI', color: 'bg-amber-500/10 text-amber-300 border-amber-500/30' };
+      return { label: 'Xiaomi HyperOS / MIUI', color: 'bg-amber-500/15 text-yellow-300 border-amber-500/35' };
     }
     if (all.includes('samsung') || all.includes('galaxy') || all.includes('sm-')) {
-      return { label: 'Samsung One UI', color: 'bg-blue-500/10 text-blue-300 border-blue-500/30' };
+      return { label: 'Samsung One UI', color: 'bg-yellow-500/15 text-amber-200 border-yellow-500/30' };
     }
     if (all.includes('huawei') || all.includes('honor')) {
-      return { label: 'Huawei EMUI', color: 'bg-red-500/10 text-red-300 border-red-500/30' };
+      return { label: 'Huawei EMUI', color: 'bg-amber-600/15 text-amber-300 border-amber-600/30' };
     }
     if (all.includes('oppo') || all.includes('realme') || all.includes('oneplus')) {
-      return { label: 'ColorOS / OxygenOS', color: 'bg-rose-500/10 text-rose-300 border-rose-500/30' };
+      return { label: 'ColorOS / OxygenOS', color: 'bg-amber-500/15 text-yellow-200 border-amber-500/30' };
     }
     if (all.includes('pixel') || all.includes('google')) {
-      return { label: 'Google Pixel', color: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' };
+      return { label: 'Google Pixel', color: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' };
     }
-    return { label: 'Android AOSP', color: 'bg-slate-800 text-slate-300 border-slate-700' };
+    return { label: 'Android AOSP', color: 'bg-stone-800 text-stone-300 border-stone-700' };
   };
 
   const oemBadge = getOemBadge();
 
   return (
-    <header className="h-16 bg-[#0c1220]/90 border-b border-slate-800/80 px-4 sm:px-6 flex items-center justify-between backdrop-blur-xl sticky top-0 z-30 select-none">
+    <header className="h-16 bg-[#0d0e13]/95 border-b border-amber-500/15 px-4 sm:px-6 flex items-center justify-between backdrop-blur-2xl sticky top-0 z-30 select-none">
       {/* Device Selector & Left Controls */}
       <div className="flex items-center gap-2 sm:gap-3">
         {onToggleSidebar && (
           <button
             onClick={onToggleSidebar}
-            className="md:hidden p-2 rounded-xl bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+            className="md:hidden p-2 rounded-xl bg-[#14151b] text-stone-400 hover:text-yellow-300 border border-amber-500/20"
             title="منوی ناوبری"
           >
             <Menu className="w-4 h-4" />
@@ -85,24 +86,24 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
 
         {/* Device Dropdown Card */}
         <div className="relative group">
-          <div className="flex items-center gap-2.5 bg-slate-900/90 hover:bg-slate-800/90 px-3 py-1.5 rounded-xl border border-slate-800 hover:border-slate-700 cursor-pointer transition-all shadow-sm">
+          <div className="flex items-center gap-2.5 bg-[#14151b] hover:bg-[#1a1b22] px-3 py-1.5 rounded-xl border border-amber-500/25 hover:border-amber-500/50 cursor-pointer transition-all shadow-sm">
             <div className={`p-1.5 rounded-lg ${
-              selectedDevice?.type === 'ios' ? 'bg-slate-800 text-slate-100' : 'bg-blue-500/15 text-blue-400'
+              selectedDevice?.type === 'ios' ? 'bg-stone-800 text-stone-100' : 'bg-amber-500/20 text-yellow-300'
             }`}>
               {selectedDevice?.type === 'ios' ? <Apple className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
             </div>
             
             <div className="text-right">
               <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                <span className="truncate max-w-[130px] sm:max-w-[200px]">
+                <span className="truncate max-w-[130px] sm:max-w-[200px] text-amber-100">
                   {selectedDevice ? selectedDevice.name : 'در حال جستجو...'}
                 </span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white transition-colors" />
+                <ChevronDown className="w-3.5 h-3.5 text-stone-400 group-hover:text-yellow-300 transition-colors" />
               </div>
-              <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1.5">
-                <span>{selectedDevice?.osVersion || 'Android'}</span>
+              <div className="text-[10px] text-stone-400 font-mono flex items-center gap-1.5">
+                <span className="text-amber-300/80">{selectedDevice?.osVersion || 'Android'}</span>
                 <span>•</span>
-                <span className="text-blue-400 truncate max-w-[90px]">{selectedDevice?.serial || 'Disconnected'}</span>
+                <span className="text-yellow-400/90 truncate max-w-[90px]">{selectedDevice?.serial || 'Disconnected'}</span>
               </div>
             </div>
 
@@ -118,7 +119,7 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
               {devices.map((d) => {
                 const isWifiDev = d.id.includes(':') || d.id.includes('.');
                 return (
-                  <option key={d.id} value={d.id} className="bg-slate-900 text-white">
+                  <option key={d.id} value={d.id} className="bg-[#14151b] text-stone-100">
                     {d.type.toUpperCase()}: {d.name} ({isWifiDev ? 'Wi-Fi' : 'USB'}) - {d.serial}
                   </option>
                 );
@@ -130,6 +131,7 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
         {/* OEM Badge */}
         {oemBadge && (
           <div className={`hidden xl:flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border ${oemBadge.color}`}>
+            <Crown className="w-3.5 h-3.5 text-yellow-400/80" />
             <span>{oemBadge.label}</span>
           </div>
         )}
@@ -138,12 +140,12 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
         {selectedDevice && (
           <div className={`hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border ${
             selectedDevice.id.includes(':') || selectedDevice.id.includes('.')
-              ? 'bg-blue-500/10 text-blue-300 border-blue-500/25'
-              : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25'
+              ? 'bg-amber-500/15 text-yellow-300 border-amber-500/30'
+              : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
           }`}>
             {selectedDevice.id.includes(':') || selectedDevice.id.includes('.') ? (
               <>
-                <Wifi className="w-3.5 h-3.5 text-blue-400" />
+                <Wifi className="w-3.5 h-3.5 text-yellow-400" />
                 <span>بی‌سیم (Wi-Fi)</span>
               </>
             ) : (
@@ -159,19 +161,19 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
         <button
           onClick={onRefreshDevices}
           disabled={isRefreshing}
-          className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-all disabled:opacity-50"
+          className="p-2 rounded-xl bg-[#14151b] hover:bg-[#1a1b22] text-stone-400 hover:text-yellow-300 border border-amber-500/20 transition-all disabled:opacity-50"
           title="بروزرسانی وضعیت و اتصال‌ها"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-blue-400' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-yellow-400' : ''}`} />
         </button>
 
         {/* Add Wireless Device */}
         <button
           onClick={onOpenWirelessModal}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600/10 hover:bg-blue-600/20 text-blue-300 border border-blue-500/30 text-xs font-bold transition-all group"
+          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-yellow-300 border border-amber-500/30 text-xs font-bold transition-all group"
           title="اتصال دستگاه جدید با وای‌فای"
         >
-          <Wifi className="w-3.5 h-3.5 text-blue-400 group-hover:scale-110 transition-transform" />
+          <Wifi className="w-3.5 h-3.5 text-yellow-400 group-hover:scale-110 transition-transform" />
           <span>اتصال Wi-Fi</span>
         </button>
       </div>
@@ -179,43 +181,43 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
       {/* Telemetry Badges & Quick Action Tools */}
       <div className="flex items-center gap-2 sm:gap-2.5">
         {selectedDevice?.battery && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-200">
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#14151b] border border-amber-500/20 text-xs text-stone-200">
             {selectedDevice.battery.status === 'Charging' ? (
-              <BatteryCharging className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+              <BatteryCharging className="w-3.5 h-3.5 text-yellow-400 animate-pulse" />
             ) : (
-              <Battery className="w-3.5 h-3.5 text-slate-400" />
+              <Battery className="w-3.5 h-3.5 text-stone-400" />
             )}
-            <span className="font-mono font-bold text-xs text-emerald-400">
+            <span className="font-mono font-bold text-xs text-yellow-400">
               {selectedDevice.battery.level}%
             </span>
-            <span className="text-slate-500 text-[10px] hidden md:inline">| {selectedDevice.battery.temperature}°C</span>
+            <span className="text-stone-500 text-[10px] hidden md:inline">| {selectedDevice.battery.temperature}°C</span>
           </div>
         )}
 
         {/* User Guide Button */}
         <button
           onClick={() => onOpenGuideModal()}
-          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-bold transition-all shadow-sm"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-yellow-300 border border-amber-500/35 text-xs font-bold transition-all shadow-sm"
           title="مرکز راهنما و آموزش جامع"
         >
-          <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+          <BookOpen className="w-3.5 h-3.5 text-yellow-400" />
           <span className="hidden md:inline">راهنما</span>
         </button>
 
         {/* Quick Screenshot */}
         <button
           onClick={() => onQuickAction('screenshot')}
-          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-slate-700 text-xs font-semibold transition-all shadow-sm"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-[#14151b] hover:bg-[#1a1b22] text-stone-300 hover:text-yellow-300 border border-amber-500/20 hover:border-amber-500/40 text-xs font-semibold transition-all shadow-sm"
           title="اسکرین‌شات و ذخیره در سیستم"
         >
-          <Camera className="w-3.5 h-3.5 text-slate-400" />
+          <Camera className="w-3.5 h-3.5 text-yellow-400/80" />
           <span className="hidden md:inline">اسکرین‌شات</span>
         </button>
 
         {/* Quick Reboot */}
         <button
           onClick={() => onQuickAction('reboot')}
-          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-semibold transition-all shadow-sm"
+          className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-all shadow-sm"
           title="راه‌اندازی مجدد (Reboot)"
         >
           <Power className="w-3.5 h-3.5 text-rose-400" />

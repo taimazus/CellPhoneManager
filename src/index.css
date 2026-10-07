@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Outfit:wght@400;500;600;700;800;900&family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -16,11 +16,12 @@
   }
 
   body {
-    @apply bg-[#0a0e17] text-slate-100 selection:bg-blue-600 selection:text-white;
+    @apply bg-[#0c0d11] text-stone-100 selection:bg-amber-500 selection:text-black;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     background-image: 
-      radial-gradient(1200px circle at 50% -10%, rgba(30, 58, 138, 0.15), transparent 70%),
-      radial-gradient(800px circle at 90% 90%, rgba(15, 23, 42, 0.4), transparent 60%);
+      radial-gradient(1200px circle at 50% -10%, rgba(212, 175, 55, 0.12), transparent 70%),
+      radial-gradient(900px circle at 90% 90%, rgba(36, 38, 50, 0.45), transparent 65%),
+      radial-gradient(600px circle at 10% 80%, rgba(212, 160, 40, 0.06), transparent 60%);
     background-attachment: fixed;
   }
 
@@ -28,42 +29,58 @@
     font-family: inherit;
   }
 
-  /* Sleek Studio Native Scrollbar */
+  /* Royal Luxury Native Scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: rgba(11, 15, 25, 0.5);
+    background: rgba(12, 13, 17, 0.7);
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(148, 163, 184, 0.2);
+    background: rgba(212, 175, 55, 0.25);
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(148, 163, 184, 0.4);
+    background: rgba(212, 175, 55, 0.55);
   }
 }
 
-/* Professional Studio Panels & Elevation */
+/* Royal Imperial Glass Panels & Elevation */
 .glass-panel {
-  background: rgba(17, 24, 39, 0.72);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35);
+  background: rgba(18, 19, 25, 0.82);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(212, 175, 55, 0.14);
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.5);
 }
 
 .glass-panel-glow {
-  background: linear-gradient(145deg, rgba(24, 34, 53, 0.8) 0%, rgba(15, 23, 42, 0.85) 100%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  box-shadow: 0 10px 30px -4px rgba(0, 0, 0, 0.5), 0 0 1px 1px rgba(59, 130, 246, 0.15);
+  background: linear-gradient(145deg, rgba(28, 29, 38, 0.9) 0%, rgba(18, 19, 25, 0.95) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  box-shadow: 0 10px 32px -4px rgba(0, 0, 0, 0.65), 0 0 16px rgba(212, 175, 55, 0.15);
+}
+
+.royal-gold-gradient {
+  background: linear-gradient(135deg, #fef08a 0%, #eab308 40%, #ca8a04 80%, #a16207 100%);
+}
+
+.royal-gold-badge {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(161, 98, 7, 0.1) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: #fde047;
+}
+
+.royal-gold-text {
+  background: linear-gradient(135deg, #fffbeb 0%, #fde047 35%, #eab308 70%, #ca8a04 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .cyber-gradient-text {
-  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #fef08a 40%, #eab308 80%, #a16207 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -71,28 +88,34 @@
 .cyber-grid {
   background-size: 40px 40px;
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    linear-gradient(to right, rgba(212, 175, 55, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(212, 175, 55, 0.02) 1px, transparent 1px);
 }
 
-/* Studio Native Utility Classes */
+/* Royal Studio Native Utility Classes */
 .studio-card {
-  background: rgba(17, 24, 39, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(20, 21, 28, 0.88);
+  border: 1px solid rgba(212, 175, 55, 0.12);
   border-radius: 1rem;
-  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45);
+}
+
+.studio-card:hover {
+  border-color: rgba(212, 175, 55, 0.3);
+  box-shadow: 0 6px 24px -2px rgba(0, 0, 0, 0.6), 0 0 12px rgba(212, 175, 55, 0.08);
 }
 
 .studio-input {
-  background: rgba(11, 15, 25, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(12, 13, 17, 0.85);
+  border: 1px solid rgba(212, 175, 55, 0.18);
   border-radius: 0.75rem;
+  color: #fdf6e2;
   transition: all 0.2s ease-in-out;
 }
 
 .studio-input:focus {
-  border-color: rgba(59, 130, 246, 0.5);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+  border-color: rgba(234, 179, 8, 0.6);
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
 }
 
 @keyframes fadeIn {
