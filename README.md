@@ -1,6 +1,7 @@
 # 📱 CellPhoneManager v3.0 — Ultimate Smartphone Management Suite
 
 [![Sahand Electronic Solutions](https://img.shields.io/badge/Powered%20by-Sahand%20Electronic%20Solutions%20(irres.ir)-00f0ff?style=for-the-badge&logo=android)](https://irres.ir)
+[![GitHub Repository](https://img.shields.io/badge/GitHub-taimazus%2FCellPhoneManager-181717?style=for-the-badge&logo=github)](https://github.com/taimazus/CellPhoneManager)
 [![License](https://img.shields.io/badge/License-MIT-emerald?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20(x64)-blue?style=for-the-badge&logo=windows)](https://irres.ir)
 [![Android & iOS](https://img.shields.io/badge/Devices-Android%20%26%20iOS%20Supported-purple?style=for-the-badge&logo=apple)](https://irres.ir)
@@ -13,13 +14,13 @@
 
 ---
 
-## 🌟 Executive Overview
+## 🌟 Overview
 
-**CellPhoneManager v3.0** is an enterprise-grade, high-performance desktop control suite for **Android** and **iOS** devices. Built for engineers, power users, and everyday mobile management, it seamlessly bridges desktop hardware with smartphone capabilities over low-latency wired USB or wireless Wi-Fi connections.
+**CellPhoneManager v3.0** is an all-in-one, high-performance desktop control suite for **Android** and **iOS** devices. It seamlessly bridges desktop hardware with smartphone capabilities over wired USB or wireless Wi-Fi connections.
 
 ---
 
-## 🚀 Key Modules & Capabilities
+## 🗺️ System Architecture Diagram
 
 ```mermaid
 graph TD
@@ -55,82 +56,83 @@ graph TD
     G --> G3[APK Security Risk Scanner]
 ```
 
-### 1. 🖥️ Screen Mirroring & Fleet Control
-- **In-Browser WebRTC/Canvas Stream:** Instant live stream without external dependencies.
-- **Scrcpy Engine:** 60fps / 120Hz high-frame rate video with dynamic bitrates.
-- **Multi-Device Farm:** Synchronized multi-device taps, navigation, and bulk rebooting.
-
-### 2. 🔥 Rooting, ROM Updates & Recovery Studio
-- **Safe Root Workflow:** Magisk v27+ & KernelSU integration.
-- **Temporary Fastboot Boot (`fastboot boot`):** Test root in RAM with 0 risk of bricking.
-- **1-Click Complete Unroot:** Wipes su traces and flashes stock boot image to restore OTA.
-- **Official & Custom ROM Flasher:** LineageOS, PixelOS, GSI, Fastboot Super/Partition flasher, and AVB verity disabler.
-
-### 3. 🌐 Phone VPN & Network Sharing
-- **1-Click USB Tethering:** RNDIS wired connection for lowest latency PC internet.
-- **Phone VPN to Windows Proxy:** ADB reverse forwarding + automatic Windows system proxy routing (v2rayNG, Clash, Mihomo, EveryProxy).
-
-### 4. 🎙️ 4K Webcam & Studio Microphone Bridge
-- **OBS / Zoom / Meet Webcam:** Turns rear/front camera into ultra-high-definition PC webcam.
-- **Virtual Microphone:** Low-latency Opus audio streaming for Discord, Teams, and voice calls.
-
-### 5. 📦 Universal Backup & Cross-Platform Restore
-- **Universal Formats:** vCard 3.0 (`.vcf`) & JSON exports for contacts, SMS, call logs, and apps.
-- **Cross-Platform Restore:** Restore backups seamlessly between Android, iPhone (iOS), and PC.
-
-### 6. 🔐 Password Vault & Wi-Fi Keys Hub
-- **Saved Wi-Fi Passwords Viewer:** Extracts and displays plain-text Wi-Fi passwords with 1-click clipboard copy.
-- **Credentials Export:** Export password vault to CSV (Bitwarden / 1Password compatible).
-- **Entropy Password Generator:** Customizable high-security generator.
-
 ---
 
-## 🛠️ Architecture & Technology Stack
+## 🚀 Easy Download & Installation from GitHub
 
-- **Frontend:** React 19, TypeScript, Vite 6, TailwindCSS 4, Lucide Icons.
-- **Backend:** Node.js (v18+), Express 4.x, WebSocket (`ws`), Child Process CLI Bridge.
-- **Hardware Bridges:** Android Debug Bridge (`adb`), Fastboot CLI, Scrcpy, pymobiledevice3 (iOS usbmuxd).
-
----
-
-## ⚡ Quick Start & Installation
-
-### Option 1: Automatic 1-Click Launcher (Recommended)
-Simply double click [`start.bat`](start.bat) on Windows. The launcher will:
-1. Verify Node.js runtime (or automatically install it via Winget).
-2. Install npm dependencies with progress indicators.
-3. Perform system preflight checks on ADB, Scrcpy, and ports.
-4. Launch backend, frontend, and open your default browser to `http://localhost:5173`.
-
-### Option 2: Manual Terminal Setup
+### Method 1: Clone with Git (Recommended)
 ```bash
-# 1. Clone repository
+# 1. Clone the repository from GitHub
 git clone https://github.com/taimazus/CellPhoneManager.git
+
+# 2. Enter directory
 cd CellPhoneManager
 
-# 2. Install dependencies
-npm install
-
-# 3. Run Preflight verification
-node server/preflight.js
-
-# 4. Start concurrent development server
-npm run dev
-
-# 5. Run automated test suite
-npm test
+# 3. Run the smart auto-installer & launcher
+start.bat
 ```
 
 ---
 
+### Method 2: Download ZIP from GitHub Website
+1. Visit **[github.com/taimazus/CellPhoneManager](https://github.com/taimazus/CellPhoneManager)**.
+2. Click the green **Code** button and select **Download ZIP**.
+3. Extract the downloaded `.zip` file.
+4. Double-click **`start.bat`**.
+
+> 💡 **Smart Launcher:** `start.bat` automatically verifies Node.js, installs dependencies, runs preflight diagnostics, and launches the app in your default browser at `http://localhost:5173`.
+
+---
+
+## 📱 Connecting Your Phone (3 Simple Steps)
+
+### For Android Phones (Samsung, Xiaomi, Pixel, Huawei, etc.):
+1. On your phone, go to **Settings** > **About Phone**.
+2. Tap **Build Number** (or MIUI/HyperOS Version) **7 times** until "Developer mode is turned on" appears.
+3. Go to **Settings** > **Developer Options** and enable **USB Debugging**.
+4. Connect phone via USB cable and tap **Allow / Always Allow** on the phone screen.
+
+### For Apple iPhone (iOS):
+- Connect iPhone via cable and tap **Trust This Computer** on your phone screen.
+
+---
+
+## 🎯 Quick Feature Guide
+
+| Module | What It Does |
+|---|---|
+| 🖥️ **Live Screen & Control** | Mirror and control your phone with mouse & keyboard at 60fps |
+| 🌐 **VPN & Network Sharing** | Route PC applications (Discord, Telegram, Browsers) through active phone VPN |
+| 📦 **Universal Backup** | 1-Click backup of Contacts, SMS, and Calls; restore across Android & iPhone |
+| 🔑 **Password & Wi-Fi Vault** | View saved Wi-Fi passwords with 1-click clipboard copy and export |
+| 📸 **4K Webcam Studio** | Use your phone camera as a crystal-clear webcam for OBS and Zoom |
+| 🎙️ **Microphone Bridge** | Use phone microphone on PC for gaming, Discord, and streaming |
+| 🔥 **Root & Unroot Studio** | Test root safely in RAM (`fastboot boot`) or 1-click unroot for banking apps |
+| ⚡ **ROM Flasher Studio** | Flash official updates, LineageOS, PixelOS, or GSI partitions |
+| 🗑️ **Debloater** | 1-Click removal of pre-installed bloatware apps |
+
+---
+
+## 🗑️ How to Completely Uninstall & Clean Up
+
+To remove CellPhoneManager completely from your PC:
+1. **Close the Application:** Press `Ctrl + C` in the launcher terminal or close the window.
+2. **Stop ADB Background Daemon (Optional):** Open CMD and run:
+   ```cmd
+   taskkill /F /IM adb.exe
+   ```
+3. **Delete Folder:** Delete the `CellPhoneManager` folder. No background registry entries or hidden files remain on your system.
+
+---
+
 ## 🏢 About Sahand Electronic Solutions
-**Sahand Electronic Solutions Co.** (**شرکت راهکار الکترونیک سهند**) specializes in advanced electronic systems, software design, embedded hardware, and enterprise mobile toolchains.
+Developed by **Sahand Electronic Solutions Co.** (**شرکت راهکار الکترونیک سهند**).
 
 - 🌐 **Website:** [https://irres.ir](https://irres.ir)
-- 📍 **GitHub Repository:** [taimazus/CellPhoneManager](https://github.com/taimazus/CellPhoneManager)
-- ✉️ **Contact:** [info@irres.ir](mailto:info@irres.ir)
+- 📍 **GitHub:** [https://github.com/taimazus/CellPhoneManager](https://github.com/taimazus/CellPhoneManager)
+- ✉️ **Email:** [info@irres.ir](mailto:info@irres.ir)
 
 ---
 
 ## 📄 License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License** - see [LICENSE](LICENSE) for details.
