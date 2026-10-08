@@ -54,6 +54,7 @@ export const AudioFxTab: React.FC<AudioFxTabProps> = ({ device }) => {
   const [pcSpeakerClients, setPcSpeakerClients] = useState<number>(0);
 
   const [loading, setLoading] = useState<boolean>(false);
+  const [isSyncingVolumes, setIsSyncingVolumes] = useState<boolean>(false);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
@@ -61,8 +62,9 @@ export const AudioFxTab: React.FC<AudioFxTabProps> = ({ device }) => {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const fetchVolumes = async () => {
+  const fetchVolumes = async (showFeedback = false) => {
     if (!device) return;
+    if (showFeedback) setIsSyncingVolumes(true);
     try {
       const res = await fetch(`/api/devices/${encodeURIComponent(device.id)}/audio/volumes`);
       const data = await res.json();
@@ -71,9 +73,17 @@ export const AudioFxTab: React.FC<AudioFxTabProps> = ({ device }) => {
         if (data.volumes.ring !== undefined) setRingVol(data.volumes.ring);
         if (data.volumes.alarm !== undefined) setAlarmVol(data.volumes.alarm);
         if (data.volumes.notification !== undefined) setNotifVol(data.volumes.notification);
+        if (showFeedback) {
+          showToast('سطوح صدای واقعی مستقیماً از گوشی بازخوانی شدند.', 'success');
+        }
       }
     } catch (err) {
       console.error('Error fetching volumes:', err);
+      if (showFeedback) {
+        showToast('خطا در خواندن سطوح صدا از گوشی', 'error');
+      }
+    } finally {
+      if (showFeedback) setIsSyncingVolumes(false);
     }
   };
 
@@ -149,6 +159,8 @@ export const AudioFxTab: React.FC<AudioFxTabProps> = ({ device }) => {
       const data = await res.json();
       if (data.success) {
         showToast(data.message, 'success');
+        // Re-sync live from device
+        await fetchVolumes();
       } else {
         showToast(`خطا: ${data.error || 'خطا در تغییر صدا'}`, 'error');
       }
@@ -520,10 +532,21 @@ export const AudioFxTab: React.FC<AudioFxTabProps> = ({ device }) => {
         
         {/* Multi-Stream Volume Controls */}
         <div className="rounded-3xl glass-panel p-6 border border-slate-800 space-y-5">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <Sliders className="w-5 h-5 text-blue-400" />
-            <span>تنظیم تفکیکی سطح بلندی صداهای گوشی</span>
-          </h3>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Sliders className="w-5 h-5 text-blue-400" />
+              <span>تنظیم تفکیکی سطح بلندی صداهای گوشی</span>
+            </h3>
+            <button
+              onClick={() => fetchVolumes(true)}
+              disabled={isSyncingVolumes}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-bold transition-all shrink-0 active:scale-95 disabled:opacity-50 cursor-pointer shadow-sm"
+              title="خواندن زنده سطوح ولوم از سخت‌افزار گوشی"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncingVolumes ? 'animate-spin text-blue-400' : ''}`} />
+              <span>{isSyncingVolumes ? 'در حال خواندن...' : 'همگام‌سازی ولوم‌ها'}</span>
+            </button>
+          </div>
 
           <div className="space-y-3.5">
             {/* Media Stream (Stream 3) */}

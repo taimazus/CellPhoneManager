@@ -1,6 +1,7 @@
 import { spawn } from 'child_process';
 import { adbManager } from './adbManager.js';
 import { toolManager } from './toolManager.js';
+import { mockDeviceManager } from './mockDeviceManager.js';
 
 export class AudioFxManager {
   constructor() {
@@ -11,35 +12,58 @@ export class AudioFxManager {
     if (serial && serial.startsWith('mock-')) {
       return {
         success: true,
-        volumes: {
-          media: 12,
-          ring: 10,
-          alarm: 15,
-          notification: 8,
-          call: 5
-        }
+        volumes: mockDeviceManager.getVolumes(serial)
       };
     }
 
     try {
       const streams = [
-        { id: 3, key: 'media' },
-        { id: 2, key: 'ring' },
-        { id: 4, key: 'alarm' },
-        { id: 5, key: 'notification' },
-        { id: 0, key: 'call' }
+        { id: 3, key: 'media', setting: 'volume_music_speaker' },
+        { id: 2, key: 'ring', setting: 'volume_ring_speaker' },
+        { id: 4, key: 'alarm', setting: 'volume_alarm_speaker' },
+        { id: 5, key: 'notification', setting: 'volume_notification_speaker' },
+        { id: 0, key: 'call', setting: 'volume_voice_earpiece' }
       ];
 
       const volumes = { media: 10, ring: 10, alarm: 15, notification: 8, call: 5 };
 
+      // Strategy 1: cmd media_session volume --stream X --get
       for (const s of streams) {
         const res = await adbManager.runAdb(`shell "cmd media_session volume --stream ${s.id} --get"`, serial);
         if (res.success && res.stdout) {
           const match = res.stdout.match(/volume is (\d+)/i);
           if (match) {
             volumes[s.key] = parseInt(match[1], 10);
+            continue;
           }
         }
+
+        // Strategy 2: settings get system volume_*
+        const settRes = await adbManager.runAdb(`shell "settings get system ${s.setting}"`, serial);
+        if (settRes.success && settRes.stdout && !isNaN(parseInt(settRes.stdout.trim(), 10))) {
+          volumes[s.key] = parseInt(settRes.stdout.trim(), 10);
+        }
+      }
+
+      // Strategy 3: dumpsys audio fallback if everything returned default
+      try {
+        const dumpsysRes = await adbManager.runAdb('shell "dumpsys audio"', serial);
+        if (dumpsysRes.success && dumpsysRes.stdout) {
+          const dump = dumpsysRes.stdout;
+          const streamMusicMatch = dump.match(/STREAM_MUSIC:[\s\S]*?Current:\s*(\d+)/i) || dump.match(/- STREAM_MUSIC:\s*[\r\n]+(?:\s+.*[\r\n]+)*?\s*Current:\s*(\d+)/i);
+          const streamRingMatch = dump.match(/STREAM_RING:[\s\S]*?Current:\s*(\d+)/i);
+          const streamAlarmMatch = dump.match(/STREAM_ALARM:[\s\S]*?Current:\s*(\d+)/i);
+          const streamNotifMatch = dump.match(/STREAM_NOTIFICATION:[\s\S]*?Current:\s*(\d+)/i);
+          const streamCallMatch = dump.match(/STREAM_VOICE_CALL:[\s\S]*?Current:\s*(\d+)/i);
+
+          if (streamMusicMatch) volumes.media = parseInt(streamMusicMatch[1], 10);
+          if (streamRingMatch) volumes.ring = parseInt(streamRingMatch[1], 10);
+          if (streamAlarmMatch) volumes.alarm = parseInt(streamAlarmMatch[1], 10);
+          if (streamNotifMatch) volumes.notification = parseInt(streamNotifMatch[1], 10);
+          if (streamCallMatch) volumes.call = parseInt(streamCallMatch[1], 10);
+        }
+      } catch {
+        // Keep volumes from strategy 1 or 2
       }
 
       return { success: true, volumes };
@@ -50,21 +74,42 @@ export class AudioFxManager {
 
   async setVolume(serial, { stream = 3, level = 15 }) {
     if (serial && serial.startsWith('mock-')) {
-      return { success: true, message: `میزان بلندی صدای استریم ${stream} روی سطح ${level} تنظیم شد.` };
+      mockDeviceManager.setVolume(serial, stream, level);
+      return { success: true, message: `میزان بلندی صدای استریم ${stream} روی سطح ${level} تنظیم شد.`, level };
     }
 
     try {
       const lvl = Math.max(0, Math.min(15, parseInt(level, 10)));
+      
+      const streamIdMap = {
+        'media': 3,
+        'ring': 2,
+        'alarm': 4,
+        'notification': 5,
+        'call': 0
+      };
+      const actualStreamId = streamIdMap[String(stream).toLowerCase()] !== undefined ? streamIdMap[String(stream).toLowerCase()] : stream;
+
       // Run modern cmd media_session
-      let res = await adbManager.runAdb(`shell "cmd media_session volume --stream ${stream} --set ${lvl} --show"`, serial);
+      let res = await adbManager.runAdb(`shell "cmd media_session volume --stream ${actualStreamId} --set ${lvl} --show"`, serial);
       
       // Fallback if needed
       if (!res.success || (res.stderr && res.stderr.includes('inaccessible'))) {
-        await adbManager.runAdb(`shell "media volume --stream ${stream} --set ${lvl}"`, serial);
+        await adbManager.runAdb(`shell "media volume --stream ${actualStreamId} --set ${lvl}"`, serial);
       }
 
-      if (stream === 3) {
+      if (actualStreamId === 3 || stream === 'media') {
         await adbManager.runAdb(`shell "settings put system volume_music_speaker ${lvl}"`, serial);
+        await adbManager.runAdb(`shell "settings put system volume_music ${lvl}"`, serial);
+      } else if (actualStreamId === 2 || stream === 'ring') {
+        await adbManager.runAdb(`shell "settings put system volume_ring_speaker ${lvl}"`, serial);
+        await adbManager.runAdb(`shell "settings put system volume_ring ${lvl}"`, serial);
+      } else if (actualStreamId === 4 || stream === 'alarm') {
+        await adbManager.runAdb(`shell "settings put system volume_alarm_speaker ${lvl}"`, serial);
+      } else if (actualStreamId === 5 || stream === 'notification') {
+        await adbManager.runAdb(`shell "settings put system volume_notification_speaker ${lvl}"`, serial);
+      } else if (actualStreamId === 0 || stream === 'call') {
+        await adbManager.runAdb(`shell "settings put system volume_voice_earpiece ${lvl}"`, serial);
       }
 
       return { success: true, message: `میزان بلندی صدا روی سطح ${lvl} تنظیم شد.`, level: lvl };

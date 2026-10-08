@@ -412,6 +412,7 @@ app.post('/api/devices/:id/tweaks', async (req, res) => {
 
   try {
     if (id.startsWith('mock-')) {
+      mockDeviceManager.updateTweak(id, action, value);
       mockDeviceManager.updateSetting(id, action, value);
       return res.json({ success: true, message: 'تنظیمات با موفقیت اعمال گردید' });
     }

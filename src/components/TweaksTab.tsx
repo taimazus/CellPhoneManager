@@ -56,6 +56,8 @@ export const TweaksTab: React.FC<TweaksTabProps> = ({ device }) => {
   const [lat, setLat] = useState<string>('35.6892');
   const [lng, setLng] = useState<string>('51.3890');
 
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+
   // Terminal
   const [customCmd, setCustomCmd] = useState<string>('getprop ro.build.version.release');
   const [cmdOutput, setCmdOutput] = useState<string>('');
@@ -67,35 +69,45 @@ export const TweaksTab: React.FC<TweaksTabProps> = ({ device }) => {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // Load real device tweaks on mount
-  useEffect(() => {
+  // Load real device tweaks on mount & sync
+  const fetchCurrentTweaks = React.useCallback(async (showFeedback = false) => {
     if (!device) return;
-    const fetchCurrentTweaks = async () => {
-      try {
-        const res = await fetch(`/api/devices/${device.id}/tweaks`);
-        const data = await res.json();
-        if (data.success && data.tweaks) {
-          const t = data.tweaks;
-          if (t.dpi) setDpi(t.dpi);
-          if (t.animScale !== undefined) setAnimScale(t.animScale);
-          if (t.refreshRate) setRefreshRate(t.refreshRate);
-          if (t.customRes) setCustomRes(t.customRes);
-          if (t.privateDns) setSelectedDns(t.privateDns);
-          if (t.showTouches !== undefined) setShowTouches(t.showTouches);
-          if (t.pointerLocation !== undefined) setPointerLocation(t.pointerLocation);
-          if (t.showFps !== undefined) setShowFps(t.showFps);
-          if (t.stayAwake !== undefined) setStayAwake(t.stayAwake);
-          if (t.clockSeconds !== undefined) setClockSeconds(t.clockSeconds);
-          if (t.darkMode !== undefined) setDarkMode(t.darkMode);
-          if (t.demoMode !== undefined) setDemoMode(t.demoMode);
-          if (t.forceMsaa !== undefined) setForceMsaa(t.forceMsaa);
+    if (showFeedback) setIsSyncing(true);
+    try {
+      const res = await fetch(`/api/devices/${device.id}/tweaks`);
+      const data = await res.json();
+      if (data.success && data.tweaks) {
+        const t = data.tweaks;
+        if (t.dpi) setDpi(t.dpi);
+        if (t.animScale !== undefined) setAnimScale(t.animScale);
+        if (t.refreshRate) setRefreshRate(t.refreshRate);
+        if (t.customRes) setCustomRes(t.customRes);
+        if (t.privateDns) setSelectedDns(t.privateDns);
+        if (t.showTouches !== undefined) setShowTouches(t.showTouches);
+        if (t.pointerLocation !== undefined) setPointerLocation(t.pointerLocation);
+        if (t.showFps !== undefined) setShowFps(t.showFps);
+        if (t.stayAwake !== undefined) setStayAwake(t.stayAwake);
+        if (t.clockSeconds !== undefined) setClockSeconds(t.clockSeconds);
+        if (t.darkMode !== undefined) setDarkMode(t.darkMode);
+        if (t.demoMode !== undefined) setDemoMode(t.demoMode);
+        if (t.forceMsaa !== undefined) setForceMsaa(t.forceMsaa);
+        if (showFeedback) {
+          showToast('تنظیمات واقعی با موفقیت مستقیماً از گوشی بازخوانی شدند.', 'success');
         }
-      } catch (e) {
-        console.error('Error fetching current tweaks:', e);
       }
-    };
+    } catch (e) {
+      console.error('Error fetching current tweaks:', e);
+      if (showFeedback) {
+        showToast('خطا در خواندن تنظیمات از گوشی', 'error');
+      }
+    } finally {
+      if (showFeedback) setIsSyncing(false);
+    }
+  }, [device]);
+
+  useEffect(() => {
     fetchCurrentTweaks();
-  }, [device?.id]);
+  }, [fetchCurrentTweaks]);
 
   const applyTweak = async (action: string, value: any) => {
     if (!device) return;
@@ -108,6 +120,8 @@ export const TweaksTab: React.FC<TweaksTabProps> = ({ device }) => {
       const data = await res.json();
       if (data.success) {
         showToast(data.message || 'تنظیم با موفقیت روی دستگاه اعمال شد!', 'success');
+        // Live verify from device
+        await fetchCurrentTweaks();
       } else {
         showToast(`خطا: ${data.error || 'عدم دسترسی'}`, 'error');
       }
@@ -171,6 +185,15 @@ export const TweaksTab: React.FC<TweaksTabProps> = ({ device }) => {
             تغییر پارامترهای گرافیکی، نرخ نوسازی 120Hz، دی‌ان‌اس ضدتحریم و ضدتبلیغ، بهینه‌سازی باتری و خط فرمان ADB
           </p>
         </div>
+        <button
+          onClick={() => fetchCurrentTweaks(true)}
+          disabled={isSyncing}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-bold transition-all shrink-0 active:scale-95 disabled:opacity-50 cursor-pointer shadow-lg shadow-purple-500/5"
+          title="بازخوانی زنده مقادیر واقعی از گوشی"
+        >
+          <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-purple-400' : ''}`} />
+          <span>{isSyncing ? 'در حال همگام‌سازی با گوشی...' : 'همگام‌سازی زنده از گوشی'}</span>
+        </button>
       </div>
 
       {/* Guidance Card */}

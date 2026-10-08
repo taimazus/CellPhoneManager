@@ -73,12 +73,16 @@ export class AdbManager {
 
   async getDeviceDetails(serial) {
     try {
-      const [osRes, apiRes, brandRes, batteryRes, wmRes] = await Promise.all([
+      const [osRes, apiRes, brandRes, batteryRes, wmSizeRes, wmDensityRes, dfRes, memRes, refreshRes] = await Promise.all([
         this.runAdb('shell getprop ro.build.version.release', serial),
         this.runAdb('shell getprop ro.build.version.sdk', serial),
         this.runAdb('shell getprop ro.product.brand', serial),
         this.runAdb('shell dumpsys battery', serial),
-        this.runAdb('shell wm size', serial)
+        this.runAdb('shell wm size 2>/dev/null || echo 1080x2400', serial),
+        this.runAdb('shell wm density 2>/dev/null || echo 420', serial),
+        this.runAdb('shell "df -k /data /sdcard 2>/dev/null || df -k 2>/dev/null || true"', serial),
+        this.runAdb('shell "cat /proc/meminfo 2>/dev/null || true"', serial),
+        this.runAdb('shell "settings get system user_refresh_rate 2>/dev/null || settings get global peak_refresh_rate 2>/dev/null || echo Auto"', serial)
       ]);
 
       const osVersion = osRes.success ? `Android ${osRes.stdout.trim()}` : 'Android';
@@ -87,12 +91,13 @@ export class AdbManager {
       
       // Parse battery
       let battery = { level: 80, status: 'Normal', temperature: 30, health: 'Good', voltage: 4000, cycles: 0 };
-      if (batteryRes.success) {
+      if (batteryRes.success && batteryRes.stdout) {
         const text = batteryRes.stdout;
-        const levelMatch = text.match(/level:\s*(\d+)/);
-        const tempMatch = text.match(/temperature:\s*(\d+)/);
-        const voltMatch = text.match(/voltage:\s*(\d+)/);
-        const statusMatch = text.match(/status:\s*(\d+)/);
+        const levelMatch = text.match(/level:\s*(\d+)/i);
+        const tempMatch = text.match(/temperature:\s*(\d+)/i);
+        const voltMatch = text.match(/voltage:\s*(\d+)/i);
+        const statusMatch = text.match(/status:\s*(\d+)/i);
+        const healthMatch = text.match(/health:\s*(\d+)/i);
         
         if (levelMatch) battery.level = parseInt(levelMatch[1], 10);
         if (tempMatch) battery.temperature = parseInt(tempMatch[1], 10) / 10;
@@ -100,13 +105,81 @@ export class AdbManager {
         if (statusMatch) {
           battery.status = statusMatch[1] === '2' ? 'Charging' : 'Discharging';
         }
+        if (healthMatch) {
+          const healthCode = parseInt(healthMatch[1], 10);
+          battery.health = healthCode === 2 ? 'Good (عالی)' : (healthCode === 3 ? 'Overheat' : 'Normal');
+        }
       }
 
-      // Parse resolution
+      // Parse resolution & density
       let resolution = '1080x2400';
-      if (wmRes.success) {
-        const m = wmRes.stdout.match(/Physical size:\s*(\d+x\d+)/);
-        if (m) resolution = m[1];
+      if (wmSizeRes.success && wmSizeRes.stdout) {
+        const overrideSize = wmSizeRes.stdout.match(/Override size:\s*(\d+x\d+)/i);
+        const physSize = wmSizeRes.stdout.match(/Physical size:\s*(\d+x\d+)/i);
+        if (overrideSize) resolution = overrideSize[1];
+        else if (physSize) resolution = physSize[1];
+      }
+
+      let density = 420;
+      if (wmDensityRes.success && wmDensityRes.stdout) {
+        const overrideDpi = wmDensityRes.stdout.match(/Override density:\s*(\d+)/i);
+        const physDpi = wmDensityRes.stdout.match(/Physical density:\s*(\d+)/i);
+        if (overrideDpi) density = parseInt(overrideDpi[1], 10);
+        else if (physDpi) density = parseInt(physDpi[1], 10);
+      }
+
+      let refreshRate = 'Auto';
+      const rawHz = (refreshRes.stdout || '').trim();
+      if (rawHz && rawHz !== 'null' && rawHz !== 'Auto') {
+        const parsedHz = parseInt(rawHz, 10);
+        if (!isNaN(parsedHz) && parsedHz > 0) refreshRate = `${parsedHz}Hz`;
+      }
+
+      // Parse real storage from df
+      let storage = { total: '128 GB', used: '64 GB', free: '64 GB', usedPercentage: 50 };
+      if (dfRes.success && dfRes.stdout) {
+        const lines = dfRes.stdout.trim().split('\n');
+        for (const line of lines) {
+          const parts = line.trim().split(/\s+/);
+          if (parts.length >= 5 && (parts[0].includes('/data') || parts[5]?.includes('/data') || parts[0].includes('/sdcard') || parts[5]?.includes('/sdcard'))) {
+            const totalK = parseInt(parts[1], 10);
+            const usedK = parseInt(parts[2], 10);
+            const freeK = parseInt(parts[3], 10);
+            if (totalK > 0) {
+              const totalGB = (totalK / 1024 / 1024).toFixed(1);
+              const usedGB = (usedK / 1024 / 1024).toFixed(1);
+              const freeGB = (freeK / 1024 / 1024).toFixed(1);
+              const pct = Math.round((usedK / totalK) * 100);
+              storage = {
+                total: `${totalGB} GB`,
+                used: `${usedGB} GB`,
+                free: `${freeGB} GB`,
+                usedPercentage: pct
+              };
+              break;
+            }
+          }
+        }
+      }
+
+      // Parse real RAM from meminfo
+      let ram = { total: '8 GB', used: '4.2 GB', free: '3.8 GB' };
+      if (memRes.success && memRes.stdout) {
+        const totalMatch = memRes.stdout.match(/MemTotal:\s*(\d+)/i);
+        const availMatch = memRes.stdout.match(/MemAvailable:\s*(\d+)/i) || memRes.stdout.match(/MemFree:\s*(\d+)/i);
+        if (totalMatch) {
+          const totalK = parseInt(totalMatch[1], 10);
+          const availK = availMatch ? parseInt(availMatch[1], 10) : totalK * 0.4;
+          const usedK = Math.max(0, totalK - availK);
+          const totalGB = (totalK / 1024 / 1024).toFixed(1);
+          const usedGB = (usedK / 1024 / 1024).toFixed(1);
+          const freeGB = (availK / 1024 / 1024).toFixed(1);
+          ram = {
+            total: `${totalGB} GB`,
+            used: `${usedGB} GB`,
+            free: `${freeGB} GB`
+          };
+        }
       }
 
       return {
@@ -114,9 +187,9 @@ export class AdbManager {
         apiLevel,
         manufacturer,
         battery,
-        display: { resolution, density: 420, refreshRate: 'Auto' },
-        storage: { total: '128 GB', used: '64 GB', free: '64 GB', usedPercentage: 50 },
-        ram: { total: '8 GB', used: '4.2 GB', free: '3.8 GB' }
+        display: { resolution, density, refreshRate },
+        storage,
+        ram
       };
     } catch {
       return {
@@ -210,21 +283,8 @@ export class AdbManager {
 
   async getCurrentTweaks(serial) {
     if (serial && serial.startsWith('mock-')) {
-      return {
-        dpi: 420,
-        animScale: 1.0,
-        refreshRate: 'auto',
-        privateDns: 'off',
-        customRes: '1080x2400',
-        showTouches: false,
-        pointerLocation: false,
-        showFps: false,
-        darkMode: true,
-        stayAwake: false,
-        clockSeconds: false,
-        forceMsaa: false,
-        demoMode: false
-      };
+      const { mockDeviceManager } = await import('./mockDeviceManager.js');
+      return mockDeviceManager.getTweaks(serial);
     }
 
     try {
@@ -234,14 +294,18 @@ export class AdbManager {
         fpsRes,
         dnsModeRes,
         dnsSpecRes,
-        animRes,
+        animWinRes,
+        animTransRes,
+        animDurRes,
         wmDensityRes,
         wmSizeRes,
         stayAwakeRes,
         clockRes,
         userHzRes,
         peakHzRes,
+        minHzRes,
         uiModeRes,
+        nightModeSettingRes,
         demoRes,
         msaaRes
       ] = await Promise.all([
@@ -251,53 +315,81 @@ export class AdbManager {
         this.runAdb('shell "settings get global private_dns_mode 2>/dev/null || echo off"', serial),
         this.runAdb('shell "settings get global private_dns_specifier 2>/dev/null || echo off"', serial),
         this.runAdb('shell "settings get global window_animation_scale 2>/dev/null || echo 1.0"', serial),
+        this.runAdb('shell "settings get global transition_animation_scale 2>/dev/null || echo 1.0"', serial),
+        this.runAdb('shell "settings get global animator_duration_scale 2>/dev/null || echo 1.0"', serial),
         this.runAdb('shell "wm density 2>/dev/null || echo 420"', serial),
         this.runAdb('shell "wm size 2>/dev/null || echo 1080x2400"', serial),
         this.runAdb('shell "settings get global stay_on_while_plugged_in 2>/dev/null || echo 0"', serial),
         this.runAdb('shell "settings get secure clock_seconds 2>/dev/null || echo 0"', serial),
         this.runAdb('shell "settings get system user_refresh_rate 2>/dev/null || echo auto"', serial),
         this.runAdb('shell "settings get global peak_refresh_rate 2>/dev/null || echo auto"', serial),
+        this.runAdb('shell "settings get global min_refresh_rate 2>/dev/null || echo auto"', serial),
         this.runAdb('shell "cmd uimode night 2>/dev/null || echo no"', serial),
+        this.runAdb('shell "settings get secure ui_night_mode 2>/dev/null || echo 0"', serial),
         this.runAdb('shell "settings get global sysui_demo_allowed 2>/dev/null || echo 0"', serial),
-        this.runAdb('shell "getprop debug.egl.force_msaa 2>/dev/null || echo 0"', serial)
+        this.runAdb('shell "getprop debug.egl.force_msaa 2>/dev/null || settings get global force_msaa 2>/dev/null || echo 0"', serial)
       ]);
 
       const showTouches = (touchesRes.stdout || '').trim() === '1';
       const pointerLocation = (pointerRes.stdout || '').trim() === '1';
       const showFps = (fpsRes.stdout || '').trim() === '1';
-      const dnsMode = (dnsModeRes.stdout || '').trim();
+      const dnsMode = (dnsModeRes.stdout || '').trim().toLowerCase();
       const dnsSpec = (dnsSpecRes.stdout || '').trim();
-      const animScale = parseFloat((animRes.stdout || '1.0').trim()) || 1.0;
-      const stayAwake = (stayAwakeRes.stdout || '').trim() === '3';
+      
+      // Parse animation scale (prefer window, fallback to transition or 1.0)
+      let animScale = 1.0;
+      const rawWin = (animWinRes.stdout || '').trim();
+      const rawTrans = (animTransRes.stdout || '').trim();
+      if (rawWin && rawWin !== 'null' && !isNaN(parseFloat(rawWin))) {
+        animScale = parseFloat(rawWin);
+      } else if (rawTrans && rawTrans !== 'null' && !isNaN(parseFloat(rawTrans))) {
+        animScale = parseFloat(rawTrans);
+      }
+
+      // Stay awake: values 1, 2, 3, 7 represent different plug-in states
+      const stayAwakeVal = parseInt((stayAwakeRes.stdout || '0').trim(), 10) || 0;
+      const stayAwake = stayAwakeVal > 0;
+
       const clockSeconds = (clockRes.stdout || '').trim() === '1';
-      const darkMode = (uiModeRes.stdout || '').toLowerCase().includes('yes');
+      
+      // Dark mode: check both uimode and secure ui_night_mode
+      const nightOut = (uiModeRes.stdout || '').toLowerCase();
+      const nightSetting = (nightModeSettingRes.stdout || '').trim();
+      const darkMode = nightOut.includes('yes') || nightSetting === '2';
+
       const demoMode = (demoRes.stdout || '').trim() === '1';
       const forceMsaa = (msaaRes.stdout || '').trim() === '1';
 
       let dpi = 420;
-      const densityMatch = (wmDensityRes.stdout || '').match(/Override density:\s*(\d+)/) || (wmDensityRes.stdout || '').match(/Physical density:\s*(\d+)/);
-      if (densityMatch) {
-        dpi = parseInt(densityMatch[1], 10);
+      if (wmDensityRes.stdout) {
+        const overrideDpi = wmDensityRes.stdout.match(/Override density:\s*(\d+)/i);
+        const physDpi = wmDensityRes.stdout.match(/Physical density:\s*(\d+)/i);
+        if (overrideDpi) dpi = parseInt(overrideDpi[1], 10);
+        else if (physDpi) dpi = parseInt(physDpi[1], 10);
       }
 
       let customRes = '1080x2400';
-      const sizeMatch = (wmSizeRes.stdout || '').match(/Override size:\s*(\d+x\d+)/) || (wmSizeRes.stdout || '').match(/Physical size:\s*(\d+x\d+)/);
-      if (sizeMatch) {
-        customRes = sizeMatch[1];
+      if (wmSizeRes.stdout) {
+        const overrideSize = wmSizeRes.stdout.match(/Override size:\s*(\d+x\d+)/i);
+        const physSize = wmSizeRes.stdout.match(/Physical size:\s*(\d+x\d+)/i);
+        if (overrideSize) customRes = overrideSize[1];
+        else if (physSize) customRes = physSize[1];
       }
 
       let refreshRate = 'auto';
       const userHz = (userHzRes.stdout || '').trim();
       const peakHz = (peakHzRes.stdout || '').trim();
-      if (userHz === '60' || userHz === '90' || userHz === '120') {
+      if (userHz === '60' || userHz === '90' || userHz === '120' || userHz === '144') {
         refreshRate = userHz;
-      } else if (peakHz.startsWith('60') || peakHz.startsWith('90') || peakHz.startsWith('120')) {
+      } else if (peakHz.startsWith('60') || peakHz.startsWith('90') || peakHz.startsWith('120') || peakHz.startsWith('144')) {
         refreshRate = parseInt(peakHz, 10).toString();
       }
 
       let privateDns = 'off';
       if (dnsMode === 'hostname' && dnsSpec && dnsSpec !== 'null' && dnsSpec !== 'off') {
         privateDns = dnsSpec;
+      } else if (dnsMode === 'opportunistic' || dnsMode === 'auto') {
+        privateDns = 'auto';
       }
 
       return {
@@ -316,7 +408,7 @@ export class AdbManager {
         demoMode
       };
     } catch (err) {
-      return { dpi: 420, animScale: 1.0, privateDns: 'off', showTouches: false, pointerLocation: false, showFps: false };
+      return { dpi: 420, animScale: 1.0, refreshRate: 'auto', privateDns: 'off', customRes: '1080x2400', showTouches: false, pointerLocation: false, showFps: false };
     }
   }
 

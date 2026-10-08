@@ -19,19 +19,24 @@
      1. 🔊 **اسپیکرفون خودکار (Auto-Speakerphone):** Activates Android speakerphone via ADB telecom routing upon dialing.
      2. 🎧 **هندزفری ویندوز (Windows Hands-free):** Routes bidirectional phone call audio and PC microphone directly through Windows using Bluetooth Hands-Free Profile (HFP/HSP) without picking up the phone.
      3. 📱 **گوشی معمولی (Standard Earpiece):** Standard mobile phone routing.
-4. **Anti-Freeze & High-Volume DOM Virtualization (`PaginationBar.tsx`):**
+8. **Live Device Settings & Telemetry Synchronization Engine (`adbManager.js`, `audioFxManager.js`, `mockDeviceManager.js`, `TweaksTab.tsx`, `AudioFxTab.tsx`, `BatteryHealthTab.tsx`):**
+   - Eliminated hardcoded frontend defaults on reload/startup by querying exact hardware and OS state directly from connected phone (`df -k`, `/proc/meminfo`, `wm density`, `wm size`, `dumpsys battery`, `dumpsys audio`, `cmd media_session`, `settings get/put`).
+   - Added live re-sync after applying any tweak or volume slider adjustment with animated feedback.
+   - Added manual «همگام‌سازی زنده از گوشی» (Live Sync from Device) buttons in TweaksTab, AudioFxTab, and BatteryHealthTab.
+   - Implemented full mock persistence in `mockDeviceManager` so virtual demo devices retain all modified tweaks, DPI, scales, dark mode, and volume streams across views and reloads.
+9. **Anti-Freeze & High-Volume DOM Virtualization (`PaginationBar.tsx`):**
    - Sliced large lists (6,304+ contacts, hundreds of call logs and apps) into fast, paginated pages (15, 30, 50, 100, 200 items).
    - Eliminated browser thread lockup and Chrome "Page Unresponsive" timeouts completely.
    - Added global `ActionOverlay` with animated dual-ring indicator, progress pulse, and user action locking to prevent accidental multi-clicking during heavy ADB/sync operations.
-5. **SMS Parsing Engine & Smart Categorization (`adbManager.js` & `MessagesTab.tsx`):**
-   - Fixed regex truncation on bank SMS messages containing commas, numbers, and newlines by moving `body` to the tail of projection and block-based chunking in `adbManager.js`.
-   - Added SMS categories: Inbox (ورودی), Sent (ارسال‌شده), Banking & OTP (بانکی و رمز), Spam & Ads (اسپم و تبلیغات), Blocked (مسدودشده), Drafts & Failed (پیش‌نویس).
-   - Added 1-click text copy button and smart badges on SMS bubbles in `MessagesTab.tsx`.
-6. **Real APK Icon Extractor (`appIconManager.js` & `AppIcon.tsx`):**
-   - Implemented real APK icon extraction from installed apps with caching in `data/app_icons/` and dynamic SVG fallback badges.
-7. **Project Documentation & GitHub Publication (`project-docs` & `git-release-sync`):**
-   - Version bumped to **v3.5.0 Royal Edition** across manifests, source code, and docs.
-   - Committed and pushed to GitHub repository [taimazus/CellPhoneManager](https://github.com/taimazus/CellPhoneManager) on branch `main`.
+10. **SMS Parsing Engine & Smart Categorization (`adbManager.js` & `MessagesTab.tsx`):**
+    - Fixed regex truncation on bank SMS messages containing commas, numbers, and newlines by moving `body` to the tail of projection and block-based chunking in `adbManager.js`.
+    - Added SMS categories: Inbox (ورودی), Sent (ارسال‌شده), Banking & OTP (بانکی و رمز), Spam & Ads (اسپم و تبلیغات), Blocked (مسدودشده), Drafts & Failed (پیش‌نویس).
+    - Added 1-click text copy button and smart badges on SMS bubbles in `MessagesTab.tsx`.
+11. **Real APK Icon Extractor (`appIconManager.js` & `AppIcon.tsx`):**
+    - Implemented real APK icon extraction from installed apps with caching in `data/app_icons/` and dynamic SVG fallback badges.
+12. **Project Documentation & GitHub Publication (`project-docs` & `git-release-sync`):**
+    - Version bumped to **v3.5.0 Royal Edition** across manifests, source code, and docs.
+    - Committed and pushed to GitHub repository [taimazus/CellPhoneManager](https://github.com/taimazus/CellPhoneManager) on branch `main`.
 
 ## Complete Checklist
 - [x] Functional Specification Created (`SPEC.md`)

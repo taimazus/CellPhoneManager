@@ -152,6 +152,102 @@ export class MockDeviceManager {
     return true;
   }
 
+  getTweaks(deviceId) {
+    const dev = this.getDevice(deviceId);
+    if (!dev) {
+      return {
+        dpi: 420,
+        animScale: 1.0,
+        refreshRate: 'auto',
+        privateDns: 'off',
+        customRes: '1080x2400',
+        showTouches: false,
+        pointerLocation: false,
+        showFps: false,
+        darkMode: true,
+        stayAwake: false,
+        clockSeconds: false,
+        forceMsaa: false,
+        demoMode: false
+      };
+    }
+    if (!dev.tweaks) {
+      dev.tweaks = {
+        dpi: dev.display?.density || 500,
+        animScale: dev.developerOptions?.animScale || 1.0,
+        refreshRate: '120',
+        privateDns: 'off',
+        customRes: dev.display?.resolution || '1440x3120',
+        showTouches: dev.developerOptions?.pointerLocation || false,
+        pointerLocation: dev.developerOptions?.pointerLocation || false,
+        showFps: false,
+        darkMode: true,
+        stayAwake: dev.developerOptions?.stayAwake || false,
+        clockSeconds: false,
+        forceMsaa: false,
+        demoMode: dev.developerOptions?.demoMode || false
+      };
+    }
+    return dev.tweaks;
+  }
+
+  updateTweak(deviceId, action, value) {
+    const tweaks = this.getTweaks(deviceId);
+    if (!tweaks) return false;
+    if (action === 'density') tweaks.dpi = value === 'reset' ? 500 : parseInt(value, 10);
+    if (action === 'animation') tweaks.animScale = parseFloat(value);
+    if (action === 'refresh_rate') tweaks.refreshRate = value;
+    if (action === 'custom_resolution') tweaks.customRes = value === 'reset' ? '1440x3120' : value;
+    if (action === 'private_dns') tweaks.privateDns = value;
+    if (action === 'show_touches') tweaks.showTouches = Boolean(value);
+    if (action === 'pointer_location') tweaks.pointerLocation = Boolean(value);
+    if (action === 'show_fps') tweaks.showFps = Boolean(value);
+    if (action === 'stay_awake') tweaks.stayAwake = Boolean(value);
+    if (action === 'clock_seconds') tweaks.clockSeconds = Boolean(value);
+    if (action === 'dark_mode') tweaks.darkMode = Boolean(value);
+    if (action === 'demo_mode') tweaks.demoMode = Boolean(value);
+    if (action === 'force_msaa') tweaks.forceMsaa = Boolean(value);
+    return true;
+  }
+
+  getVolumes(deviceId) {
+    const dev = this.getDevice(deviceId);
+    if (!dev) return { media: 10, ring: 10, alarm: 15, notification: 8, call: 5 };
+    if (!dev.volumes) {
+      dev.volumes = {
+        media: 12,
+        ring: 10,
+        alarm: 15,
+        notification: 8,
+        call: 5
+      };
+    }
+    return dev.volumes;
+  }
+
+  setVolume(deviceId, stream, level) {
+    const dev = this.getDevice(deviceId);
+    if (!dev) return false;
+    if (!dev.volumes) {
+      dev.volumes = { media: 12, ring: 10, alarm: 15, notification: 8, call: 5 };
+    }
+    const streamMap = {
+      '3': 'media',
+      '2': 'ring',
+      '4': 'alarm',
+      '5': 'notification',
+      '0': 'call',
+      media: 'media',
+      ring: 'ring',
+      alarm: 'alarm',
+      notification: 'notification',
+      call: 'call'
+    };
+    const key = streamMap[String(stream)] || 'media';
+    dev.volumes[key] = Math.max(0, Math.min(15, parseInt(level, 10) || 0));
+    return true;
+  }
+
   setAppStatus(deviceId, packageName, enabled) {
     const dev = this.getDevice(deviceId);
     if (!dev) return false;
