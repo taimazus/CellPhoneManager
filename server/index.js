@@ -42,6 +42,7 @@ import { profileManager } from './profileManager.js';
 import { firmwareGuardManager } from './firmwareGuardManager.js';
 import { capabilityManager } from './capabilityManager.js';
 import bluetoothCallManager from './bluetoothCallManager.js';
+import { taskProcessManager } from './taskProcessManager.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -3224,8 +3225,59 @@ app.get('/api/security/audit/logs', (req, res) => {
   });
 });
 
-app.post('/api/security/audit/clear', (req, res) => {
-  res.json(securityManager.clearAuditLogs());
+// -------------------------------------------------------------
+// 38. Task & Startup Process Manager APIs
+// -------------------------------------------------------------
+app.get('/api/devices/:id/tasks/running', async (req, res) => {
+  const { id } = req.params;
+  const result = await taskProcessManager.getRunningTasks(id);
+  res.json(result);
+});
+
+app.get('/api/devices/:id/tasks/startup', async (req, res) => {
+  const { id } = req.params;
+  const result = await taskProcessManager.getStartupApps(id);
+  res.json(result);
+});
+
+app.get('/api/devices/:id/tasks/background', async (req, res) => {
+  const { id } = req.params;
+  const result = await taskProcessManager.getBackgroundServices(id);
+  res.json(result);
+});
+
+app.post('/api/devices/:id/tasks/kill', async (req, res) => {
+  const { id } = req.params;
+  const { pid, packageName } = req.body;
+  const result = await taskProcessManager.killProcess(id, { pid, packageName });
+  res.json(result);
+});
+
+app.post('/api/devices/:id/tasks/kill-all', async (req, res) => {
+  const { id } = req.params;
+  const result = await taskProcessManager.killAllBackground(id);
+  res.json(result);
+});
+
+app.post('/api/devices/:id/tasks/startup/toggle', async (req, res) => {
+  const { id } = req.params;
+  const { packageName, receiver, enabled } = req.body;
+  const result = await taskProcessManager.setStartupState(id, { packageName, receiver, enabled });
+  res.json(result);
+});
+
+app.post('/api/devices/:id/tasks/background/limit', async (req, res) => {
+  const { id } = req.params;
+  const { packageName, allowBackground } = req.body;
+  const result = await taskProcessManager.setBackgroundLimit(id, { packageName, allowBackground });
+  res.json(result);
+});
+
+app.post('/api/devices/:id/tasks/battery/whitelist', async (req, res) => {
+  const { id } = req.params;
+  const { packageName, whitelist } = req.body;
+  const result = await taskProcessManager.setBatteryOptimization(id, { packageName, whitelist });
+  res.json(result);
 });
 
 // API 404 Handler - Never return HTML for /api/* requests

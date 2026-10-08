@@ -95,6 +95,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'gps', label: 'جعل موقعیت و حرکت GPS', icon: Navigation, desc: 'شبیه‌ساز حرکت خودرو و پیاده‌روی', platform: 'universal', category: 'media' },
 
     // Tools & Management
+    { id: 'taskmanager', label: 'تسک‌ها، استارت‌آپ و پردازش‌ها', icon: Activity, desc: 'مدیریت رم، برنامه‌های پس‌زمینه و بوت', platform: 'android', category: 'tools' },
     { id: 'apps', label: 'مدیریت برنامه‌ها', icon: Layers, desc: 'نصب، حذف و استخراج APK/IPA', platform: 'universal', category: 'tools' },
     { id: 'files', label: 'مدیریت و انتقال فایل‌ها', icon: HardDrive, desc: 'مرور حافظه، ارسال و دریافت', platform: 'universal', category: 'tools' },
     { id: 'recorder', label: 'ضبط صفحه و صدا 60fps', icon: Film, desc: 'فیلم‌برداری با صدای داخلی', platform: 'universal', category: 'tools' },
