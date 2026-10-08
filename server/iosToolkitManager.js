@@ -64,6 +64,13 @@ export class IosToolkitManager {
     return this.mockIosStore.get(udid);
   }
 
+  _validateUdid(udid) {
+    if (!udid || typeof udid !== 'string') return false;
+    const clean = udid.trim();
+    if (clean.startsWith('mock-') || clean.includes('demo')) return true;
+    return /^[a-zA-Z0-9\-_]{8,64}$/.test(clean);
+  }
+
   // 1. 3uTools-Style Hardware Component Authenticity Report
   async getHardwareAuthenticityReport(udid) {
     if (udid && (udid.startsWith('mock-') || udid.includes('demo'))) {
@@ -71,8 +78,12 @@ export class IosToolkitManager {
       return { success: true, ...store.authenticity };
     }
 
+    if (!this._validateUdid(udid)) {
+      return { success: false, error: 'فرمت شناسه UDID آیفون نامعتبر است' };
+    }
+
     try {
-      const infoRes = await iosManager.runPyMobileDevice(`lockdown info --udid ${udid}`);
+      const infoRes = await iosManager.runPyMobileDevice(['lockdown', 'info', '--udid', udid]);
       if (!infoRes.success) {
         return { success: false, error: 'عدم برقراری ارتباط با سرویس Lockdown اپل' };
       }
@@ -105,8 +116,12 @@ export class IosToolkitManager {
       return { success: true, battery: store.batteryDeep };
     }
 
+    if (!this._validateUdid(udid)) {
+      return { success: false, error: 'فرمت شناسه UDID آیفون نامعتبر است' };
+    }
+
     try {
-      const diagRes = await iosManager.runPyMobileDevice(`diagnostics battery --udid ${udid}`);
+      const diagRes = await iosManager.runPyMobileDevice(['diagnostics', 'battery', '--udid', udid]);
       let cycles = 140;
       let health = 96;
       let designCap = 4422;
@@ -144,7 +159,7 @@ export class IosToolkitManager {
 
   // 3. Apple CrashReporter & Panic Logs Analyzer
   async getPanicLogAnalysis(udid) {
-    if (udid && (udid.startsWith('mock-')) || udid.includes('demo')) {
+    if (udid && ((udid.startsWith('mock-')) || udid.includes('demo'))) {
       const store = this._getMockIosDetails(udid);
       return {
         success: true,
@@ -169,8 +184,12 @@ export class IosToolkitManager {
       };
     }
 
+    if (!this._validateUdid(udid)) {
+      return { success: false, error: 'فرمت شناسه UDID آیفون نامعتبر است' };
+    }
+
     try {
-      const res = await iosManager.runPyMobileDevice(`crash list --udid ${udid}`);
+      const res = await iosManager.runPyMobileDevice(['crash', 'list', '--udid', udid]);
       const logs = [];
 
       if (res.success && res.stdout) {
@@ -221,15 +240,19 @@ export class IosToolkitManager {
       };
     }
 
+    if (!this._validateUdid(udid)) {
+      return { success: false, error: 'فرمت شناسه UDID آیفون نامعتبر است' };
+    }
+
     try {
       if (action === 'exit') {
-        const res = await execAsync('idevicerecovery -n || python -m pymobiledevice3 recovery exit');
+        const res = await iosManager.runPyMobileDevice(['recovery', 'exit']);
         return {
           success: true,
-          message: 'دستور خروج از ریکاوری ارسال شد. آیفون ریستارت شده و بدون پاک شدن اطلاعات بالا می‌آید.'
+          message: 'دستور خروج از ریکاوری ارسال شد. آیفون ریستارت شده و بالا می‌آید.'
         };
       } else {
-        const res = await iosManager.runPyMobileDevice(`recovery enter --udid ${udid}`);
+        const res = await iosManager.runPyMobileDevice(['recovery', 'enter', '--udid', udid]);
         return {
           success: true,
           message: 'دستگاه به حالت ریکاوری رفت.'
@@ -247,8 +270,12 @@ export class IosToolkitManager {
       return { success: true, status: store.iCloudStatus };
     }
 
+    if (!this._validateUdid(udid)) {
+      return { success: false, error: 'فرمت شناسه UDID آیفون نامعتبر است' };
+    }
+
     try {
-      const res = await iosManager.runPyMobileDevice(`lockdown info --udid ${udid}`);
+      const res = await iosManager.runPyMobileDevice(['lockdown', 'info', '--udid', udid]);
       if (!res.success) return { success: false, error: 'عدم دسترسی به سرویس اپل' };
 
       const data = JSON.parse(res.stdout || '{}');
@@ -281,6 +308,10 @@ export class IosToolkitManager {
       };
     }
 
+    if (!this._validateUdid(udid)) {
+      return { success: false, error: 'فرمت شناسه UDID آیفون نامعتبر است' };
+    }
+
     try {
       return {
         success: true,
@@ -304,8 +335,12 @@ export class IosToolkitManager {
       };
     }
 
+    if (!this._validateUdid(udid)) {
+      return { success: false, error: 'فرمت شناسه UDID آیفون نامعتبر است' };
+    }
+
     try {
-      const res = await iosManager.runPyMobileDevice(`developer simulate-location set --udid ${udid} -- ${lat} ${lng}`);
+      const res = await iosManager.runPyMobileDevice(['developer', 'simulate-location', 'set', '--udid', udid, '--', String(lat), String(lng)]);
       return {
         success: true,
         message: `موقعیت جغرافیایی تمام برنامه‌های آیفون به [${lat}, ${lng}] تغییر یافت.`
@@ -317,7 +352,9 @@ export class IosToolkitManager {
 
   // 8. Direct IPA Sideloading
   async sideloadIpa(udid, ipaPath) {
-    if (!ipaPath) return { success: false, error: 'مسیر فایل IPA الزامی است.' };
+    if (!ipaPath || typeof ipaPath !== 'string') {
+      return { success: false, error: 'مسیر فایل IPA الزامی است.' };
+    }
 
     if (udid && (udid.startsWith('mock-') || udid.includes('demo'))) {
       return {
@@ -326,8 +363,19 @@ export class IosToolkitManager {
       };
     }
 
+    if (!this._validateUdid(udid)) {
+      return { success: false, error: 'فرمت شناسه UDID آیفون نامعتبر است' };
+    }
+
+    if (!fs.existsSync(ipaPath)) {
+      return { success: false, error: 'فایل IPA معتبر در مسیر مشخص‌شده یافت نشد.' };
+    }
+
     try {
-      const res = await execAsync(`ideviceinstaller -u ${udid} -i "${ipaPath}" || python -m pymobiledevice3 apps install --udid ${udid} "${ipaPath}"`);
+      const res = await iosManager.runPyMobileDevice(['apps', 'install', ipaPath, '--udid', udid]);
+      if (!res.success) {
+        return { success: false, error: res.error || 'خطا در سایدلود برنامه' };
+      }
       return {
         success: true,
         message: `برنامه با موفقیت روی آیفون نصب و آماده اجرا گردید.`

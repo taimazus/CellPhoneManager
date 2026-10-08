@@ -5,7 +5,10 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import multer from 'multer';
-import { spawn } from 'child_process';
+import { spawn, exec, execFile } from 'child_process';
+import util from 'util';
+const execAsync = util.promisify(exec);
+const execFileAsync = util.promisify(execFile);
 import { toolManager } from './toolManager.js';
 import { adbManager } from './adbManager.js';
 import { iosManager } from './iosManager.js';
@@ -69,7 +72,7 @@ wss.on('connection', (ws) => {
 });
 
 const PORT = process.env.PORT || 3001;
-const HOST = process.env.HOST || '0.0.0.0';
+const HOST = process.env.HOST || '127.0.0.1';
 
 // Restrict CORS to localhost, 127.0.0.1, and local private subnets (LAN)
 const allowedOrigins = [
@@ -960,19 +963,33 @@ app.post('/api/devices/:id/files/batch-download', async (req, res) => {
     return res.status(400).json({ error: 'حداقل یک فایل برای دانلود الزامی است' });
   }
 
-  const batchFolder = path.join(uploadsDir, `batch_${Date.now()}`);
+  // Validate remote paths to prevent injection
+  for (const p of paths) {
+    if (typeof p !== 'string' || !p.trim() || /[\0\r\n`$!;|&<>]/.test(p)) {
+      return res.status(400).json({ error: 'مسیر نامعتبر یا دارای کاراکترهای غیرمجاز است' });
+    }
+  }
+
+  const batchId = `batch_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const batchFolder = path.join(uploadsDir, batchId);
   const zipPath = path.join(uploadsDir, `bundle_${Date.now()}.zip`);
   fs.mkdirSync(batchFolder, { recursive: true });
 
   try {
     for (const remotePath of paths) {
-      const safeName = path.basename(remotePath).replace(/[^a-zA-Z0-9._-]/g, '_') || 'file';
+      const cleanRemotePath = remotePath.trim();
+      const safeName = path.basename(cleanRemotePath).replace(/[^a-zA-Z0-9._-]/g, '_') || 'file';
       const localFile = path.join(batchFolder, safeName);
-      await fileManager.pullFile(id, remotePath, localFile);
+      await fileManager.pullFile(id, cleanRemotePath, localFile);
     }
 
-    // Zip with powershell Compress-Archive on Windows
-    await execAsync(`powershell -Command "Compress-Archive -Path '${batchFolder}\\*' -DestinationPath '${zipPath}' -Force"`);
+    // Zip safely with execFile without shell interpolation
+    await execFileAsync('powershell.exe', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      `Compress-Archive -Path '${batchFolder}\\*' -DestinationPath '${zipPath}' -Force`
+    ]);
 
     if (fs.existsSync(zipPath)) {
       res.download(zipPath, `Selected_Files_${Date.now()}.zip`, () => {
@@ -2951,11 +2968,11 @@ app.get('/api/recordings/download/:filename', (req, res) => {
 // 30. Security Center & Audit Logging APIs
 // -------------------------------------------------------------
 app.get('/api/security/config', (req, res) => {
-  res.json({ success: true, config: securityManager.getAuthConfig() });
+  res.json({ success: true, config: securityManager.getSafeAuthConfig(req.user?.role === 'admin') });
 });
 
 app.post('/api/security/config', (req, res) => {
-  const result = securityManager.setAuthConfig(req.body);
+  const result = securityManager.setAuthConfig(req.body, req.ip || '127.0.0.1');
   res.json(result);
 });
 
@@ -3204,7 +3221,7 @@ app.get('/api/security/auth/status', (req, res) => {
 
 app.post('/api/security/auth/config', (req, res) => {
   const { authEnabled, apiKey } = req.body;
-  res.json(securityManager.setAuthConfig({ authEnabled, apiKey }));
+  res.json(securityManager.setAuthConfig({ authEnabled, apiKey }, req.ip || '127.0.0.1'));
 });
 
 app.post('/api/security/auth/login', (req, res) => {

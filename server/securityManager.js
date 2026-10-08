@@ -37,22 +37,39 @@ export class SecurityManager {
     }
   }
 
-  setAuthConfig({ authEnabled, apiKey }) {
+  isLoopbackIp(ip) {
+    if (!ip) return false;
+    const clean = String(ip).trim();
+    return clean === '127.0.0.1' || clean === '::1' || clean === '::ffff:127.0.0.1' || clean === 'localhost';
+  }
+
+  getSafeAuthConfig(isAuthenticated = false) {
+    const config = this.getAuthConfig();
+    return {
+      authEnabled: config.authEnabled,
+      apiKey: isAuthenticated ? config.apiKey : (config.apiKey ? '••••••••' + config.apiKey.slice(-4) : ''),
+      createdAt: config.createdAt,
+      updatedAt: config.updatedAt
+    };
+  }
+
+  setAuthConfig({ authEnabled, apiKey }, callerIp = '127.0.0.1') {
     try {
       const current = this.getAuthConfig();
       const updated = {
         ...current,
         authEnabled: typeof authEnabled === 'boolean' ? authEnabled : current.authEnabled,
-        apiKey: apiKey && typeof apiKey === 'string' ? apiKey.trim() : current.apiKey,
+        apiKey: apiKey && typeof apiKey === 'string' && apiKey.trim().length >= 8 ? apiKey.trim() : current.apiKey,
         updatedAt: new Date().toISOString()
       };
       fs.writeFileSync(this.authConfigFile, JSON.stringify(updated, null, 2));
       this.logEvent({
         action: 'SECURITY_CONFIG_UPDATE',
         status: 'SUCCESS',
-        details: `تنظیمات احراز هویت بروز شد (وضعیت: ${updated.authEnabled ? 'فعال' : 'غیرفعال'})`
+        details: `تنظیمات احراز هویت بروز شد (وضعیت: ${updated.authEnabled ? 'فعال' : 'غیرفعال'})`,
+        ip: callerIp
       });
-      return { success: true, config: updated };
+      return { success: true, config: this.getSafeAuthConfig(true) };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -77,7 +94,6 @@ export class SecurityManager {
 
   validateToken(token) {
     const config = this.getAuthConfig();
-    if (!config.authEnabled) return { valid: true, role: 'admin' };
     if (!token) return { valid: false, error: 'توکن امنیتی ارسال نشده است' };
 
     // Check Master API Key
@@ -86,6 +102,11 @@ export class SecurityManager {
     // Check Active Sessions
     const session = this.activeSessions.get(token);
     if (session) {
+      // 24h session expiration
+      if (Date.now() - session.lastActive > 24 * 60 * 60 * 1000) {
+        this.activeSessions.delete(token);
+        return { valid: false, error: 'نشست امنیتی منقضی شده است' };
+      }
       session.lastActive = Date.now();
       return { valid: true, role: session.role };
     }
@@ -125,9 +146,18 @@ export class SecurityManager {
     }
   }
 
+  clearAuditLogs() {
+    try {
+      fs.writeFileSync(this.auditLogFile, JSON.stringify([]));
+      return { success: true, message: 'لاگ‌های ممیزی پاکسازی شدند.' };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
   authenticate(key) {
     const config = this.getAuthConfig();
-    if (key === config.apiKey) {
+    if (key && (key === config.apiKey || (config.authEnabled === false && key === 'local_admin'))) {
       const session = this.createSession('admin');
       this.logEvent({
         action: 'LOGIN_SUCCESS',
@@ -146,19 +176,24 @@ export class SecurityManager {
 
   getAuthMiddleware() {
     return (req, res, next) => {
-      // Exclude public/health/auth routes and non-API paths
+      // Exclude public non-API assets, health check, and login endpoint
       const publicPaths = [
         '/api/health',
         '/api/security/auth/status',
-        '/api/security/auth/login',
-        '/api/security/auth/config'
+        '/api/security/auth/login'
       ];
       if (publicPaths.includes(req.path) || !req.path.startsWith('/api/')) {
         return next();
       }
 
+      const clientIp = req.ip || req.connection?.remoteAddress || '127.0.0.1';
+      const isLoopback = this.isLoopbackIp(clientIp);
       const config = this.getAuthConfig();
-      if (!config.authEnabled) {
+
+      // Non-loopback callers ALWAYS require authentication regardless of authEnabled
+      const requiresAuth = config.authEnabled || !isLoopback || req.path.includes('/security/auth/config') || req.path.includes('/security/config');
+
+      if (!requiresAuth) {
         return next();
       }
 
@@ -175,8 +210,8 @@ export class SecurityManager {
         this.logEvent({
           action: 'UNAUTHORIZED_API_CALL',
           status: 'BLOCKED',
-          details: `مسیر ${req.method} ${req.path} به دلیل نبود یا نامعتبر بودن توکن مسدود شد`,
-          ip: req.ip || '127.0.0.1'
+          details: `مسیر ${req.method} ${req.path} به دلیل نبود یا نامعتبر بودن توکن مسدود شد (IP: ${clientIp})`,
+          ip: clientIp
         });
         return res.status(401).json({
           success: false,

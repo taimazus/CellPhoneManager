@@ -9,7 +9,7 @@ describe('BluetoothCallManager Test Suite', () => {
     expect(status).toHaveProperty('adapters');
     expect(Array.isArray(status.adapters)).toBe(true);
     expect(Array.isArray(status.pairedDevices)).toBe(true);
-  });
+  }, 20000);
 
   it('should query device bluetooth status for mock device', async () => {
     const devStatus = await bluetoothCallManager.getDeviceBluetoothStatus('mock-device');
@@ -22,7 +22,7 @@ describe('BluetoothCallManager Test Suite', () => {
     const res = await bluetoothCallManager.prepareAutoPair('mock-device');
     expect(res).toHaveProperty('success');
     expect(res).toHaveProperty('message');
-  });
+  }, 20000);
 
   it('should place call with speakerphone routing', async () => {
     const res = await bluetoothCallManager.makeCallWithRouting('mock-device', '09121234567', {

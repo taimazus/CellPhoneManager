@@ -6,6 +6,7 @@ export class TaskQueueManager extends EventEmitter {
     this.concurrency = concurrency;
     this.queue = [];
     this.activeJobs = new Map(); // jobId -> job
+    this.activeTimers = new Map(); // jobId -> timerHandle
     this.history = [];
     this.isPaused = false;
   }
@@ -62,8 +63,11 @@ export class TaskQueueManager extends EventEmitter {
     this.activeJobs.set(job.id, job);
     this.emit('job_started', job);
 
-    // Simulated task execution or hook
-    setTimeout(async () => {
+    const timer = setTimeout(async () => {
+      this.activeTimers.delete(job.id);
+      if (job.status === 'cancelled') {
+        return;
+      }
       try {
         job.progress = 100;
         job.status = 'completed';
@@ -81,6 +85,8 @@ export class TaskQueueManager extends EventEmitter {
         this.processNext();
       }
     }, 1200);
+
+    this.activeTimers.set(job.id, timer);
   }
 
   cancelJob(jobId) {
@@ -96,6 +102,11 @@ export class TaskQueueManager extends EventEmitter {
 
     const active = this.activeJobs.get(jobId);
     if (active) {
+      const timer = this.activeTimers.get(jobId);
+      if (timer) {
+        clearTimeout(timer);
+        this.activeTimers.delete(jobId);
+      }
       active.status = 'cancelled';
       active.completedAt = new Date().toISOString();
       this.activeJobs.delete(jobId);

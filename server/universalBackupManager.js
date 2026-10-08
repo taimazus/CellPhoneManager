@@ -475,10 +475,14 @@ export class UniversalBackupManager {
       let encrypted = cipher.update(JSON.stringify(dataToEncrypt), 'utf8', 'hex');
       encrypted += cipher.final('hex');
 
+      // Compute HMAC-SHA256 integrity tag over ciphertext
+      const hmac = crypto.createHmac('sha256', key).update(encrypted).digest('hex');
+
       const payload = {
         salt: salt.toString('hex'),
         iv: iv.toString('hex'),
         data: encrypted,
+        hmac,
         encryptedAt: new Date().toISOString()
       };
 
@@ -512,19 +516,40 @@ export class UniversalBackupManager {
       const salt = Buffer.from(payload.salt, 'hex');
       const iv = Buffer.from(payload.iv, 'hex');
       const key = crypto.scryptSync(password, salt, 32);
+
+      // Verify HMAC integrity tag if present
+      if (payload.hmac) {
+        const expectedHmac = crypto.createHmac('sha256', key).update(payload.data).digest('hex');
+        const hmacBuf = Buffer.from(payload.hmac, 'hex');
+        const expectedBuf = Buffer.from(expectedHmac, 'hex');
+        if (hmacBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(hmacBuf, expectedBuf)) {
+          return { success: false, error: 'رمز عبور اشتباه است یا یکپارچگی فایل پشتیبان مخدوش شده است.' };
+        }
+      }
+
       const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
       let decrypted = decipher.update(payload.data, 'hex', 'utf8');
       decrypted += decipher.final('utf8');
 
       const restoredFiles = JSON.parse(decrypted);
+      const normalizedBackupDir = path.resolve(backupPath);
+
       for (const [filename, content] of Object.entries(restoredFiles)) {
-        fs.writeFileSync(path.join(backupPath, filename), content);
+        const safeFilename = path.basename(filename);
+        if (!safeFilename || safeFilename !== filename || safeFilename.includes('..') || safeFilename.includes('/') || safeFilename.includes('\\')) {
+          throw new Error(`نام فایل نامعتبر در محتوای رمزگشایی شده: ${filename}`);
+        }
+        const targetFilePath = path.resolve(backupPath, safeFilename);
+        if (!targetFilePath.startsWith(normalizedBackupDir + path.sep) && targetFilePath !== normalizedBackupDir) {
+          throw new Error('تشخیص تلاش برای خروج از مسیر مجاز (Path Traversal Detected)');
+        }
+        fs.writeFileSync(targetFilePath, content);
       }
 
       fs.unlinkSync(encFile);
       return { success: true, message: 'نسخه پشتیبان با موفقیت رمزگشایی شد.' };
     } catch (err) {
-      return { success: false, error: 'رمز عبور اشتباه است یا فایل مخدوش شده است.' };
+      return { success: false, error: err.message?.includes('Path Traversal') ? err.message : 'رمز عبور اشتباه است یا فایل مخدوش شده است.' };
     }
   }
 }

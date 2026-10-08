@@ -1,14 +1,33 @@
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import util from 'util';
 import fs from 'fs';
 
-const execAsync = util.promisify(exec);
+const execFileAsync = util.promisify(execFile);
+
+export function isValidIosUdid(udid) {
+  if (!udid || typeof udid !== 'string') return false;
+  return /^[a-zA-Z0-9\-_]{8,64}$/.test(udid.trim());
+}
 
 export class IosManager {
   async runPyMobileDevice(args) {
     try {
-      const cmd = `python -m pymobiledevice3 ${args}`;
-      const { stdout, stderr } = await execAsync(cmd, { maxBuffer: 10 * 1024 * 1024 });
+      let argsArray = [];
+      if (Array.isArray(args)) {
+        argsArray = args.map(a => String(a).trim());
+      } else if (typeof args === 'string') {
+        argsArray = args.match(/(?:[^\s"]+|"[^"]*")+/g)?.map(s => s.replace(/^"|"$/g, '')) || [];
+      }
+
+      // Validate all arguments against command injection
+      for (const arg of argsArray) {
+        if (/[\0\r\n`$;|&><]/.test(arg)) {
+          return { success: false, error: 'کاراکترهای غیرمجاز در پارامتر فرمان شناسایی شد' };
+        }
+      }
+
+      const fullArgs = ['-m', 'pymobiledevice3', ...argsArray];
+      const { stdout, stderr } = await execFileAsync('python', fullArgs, { maxBuffer: 10 * 1024 * 1024 });
       return { success: true, stdout, stderr };
     } catch (err) {
       return { success: false, error: err.message, stderr: err.stderr || '' };
@@ -16,7 +35,7 @@ export class IosManager {
   }
 
   async listDevices() {
-    const res = await this.runPyMobileDevice('usbmux list');
+    const res = await this.runPyMobileDevice(['usbmux', 'list']);
     if (!res.success) {
       return [];
     }
