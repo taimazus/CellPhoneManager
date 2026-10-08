@@ -44,6 +44,7 @@ import { capabilityManager } from './capabilityManager.js';
 import bluetoothCallManager from './bluetoothCallManager.js';
 import { taskProcessManager } from './taskProcessManager.js';
 import { repairWorkbenchManager } from './repairWorkbenchManager.js';
+import { iosToolkitManager } from './iosToolkitManager.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -3363,6 +3364,70 @@ app.post('/api/devices/:id/repair/glitch-fix', async (req, res) => {
   const { id } = req.params;
   const { glitchType } = req.body;
   const result = await repairWorkbenchManager.fixGlitch(id, glitchType);
+  res.json(result);
+});
+
+// ==========================================
+// 🍏 iOS Pro Studio Exclusive Endpoints
+// ==========================================
+
+// 1. Hardware Authenticity & 3uTools Verification Report
+app.get('/api/ios/authenticity/:id', async (req, res) => {
+  const { id } = req.params;
+  const result = await iosToolkitManager.getHardwareAuthenticityReport(id);
+  res.json(result);
+});
+
+// 2. Deep Battery Analytics & Factory Cycles
+app.get('/api/ios/battery/:id', async (req, res) => {
+  const { id } = req.params;
+  const result = await iosToolkitManager.getDetailedBatteryAnalytics(id);
+  res.json(result);
+});
+
+// 3. Panic Log Analyzer (Kernel Crash Hardware Diagnoser)
+app.get('/api/ios/panic-logs/:id', async (req, res) => {
+  const { id } = req.params;
+  const result = await iosToolkitManager.getPanicLogAnalysis(id);
+  res.json(result);
+});
+
+// 4. Recovery & DFU Mode Manager
+app.post('/api/ios/recovery/:id', async (req, res) => {
+  const { id } = req.params;
+  const { action } = req.body;
+  const result = await iosToolkitManager.manageRecoveryMode(id, action);
+  res.json(result);
+});
+
+// 5. iCloud, FMI & Carrier Lock Checker
+app.get('/api/ios/icloud-fmi/:id', async (req, res) => {
+  const { id } = req.params;
+  const result = await iosToolkitManager.checkICloudFmiStatus(id);
+  res.json(result);
+});
+
+// 6. OTA iOS Update Blocker
+app.post('/api/ios/ota-blocker/:id', async (req, res) => {
+  const { id } = req.params;
+  const { action } = req.body;
+  const result = await iosToolkitManager.manageOtaBlocker(id, action);
+  res.json(result);
+});
+
+// 7. System-wide Apple Virtual GPS Location Simulator
+app.post('/api/ios/virtual-gps/:id', async (req, res) => {
+  const { id } = req.params;
+  const { latitude, longitude, reset } = req.body;
+  const result = await iosToolkitManager.simulateLocation(id, latitude, longitude, reset);
+  res.json(result);
+});
+
+// 8. Direct IPA Sideloading
+app.post('/api/ios/sideload-ipa/:id', async (req, res) => {
+  const { id } = req.params;
+  const { ipaPath, options } = req.body;
+  const result = await iosToolkitManager.sideloadIpa(id, ipaPath, options);
   res.json(result);
 });
 

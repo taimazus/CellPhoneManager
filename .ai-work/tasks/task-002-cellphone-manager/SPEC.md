@@ -41,6 +41,15 @@ A unified Windows management control center for both **Android** and **iOS (iPho
       5. IMEI, Baseband & Radio Network Diagnostics (LTE/NR Lock, Modem Health)
       6. Charging & Power Meter Analyzer (mA, mV, Wattage, QC/PD Protocol detection)
       7. 1-Click Common Software Glitch Fixer (GMS Stopped, Storage Bootloop, Force MTP, Permissions)
+    - iOS Pro Studio & Apple Diagnostics Toolkit (`IosToolkitTab.tsx` / `iosToolkitManager.js`):
+      1. Hardware Authenticity & 3uTools Verification Score Report (Factory vs Read Serials)
+      2. Panic Log Analyzer with AI Hardware Fault Classifier (mic2/thermal flex, proximity flex, audio codec, NAND)
+      3. Deep Battery & Gas Gauge BMS Analytics (Design Capacity, Cycle Counts, True Chemical Health)
+      4. 1-Click Recovery & DFU Mode Manager (Exit Recovery Loop, Enter Recovery, DFU Timing Guide)
+      5. iCloud, Find My iPhone (FMI), Carrier SimLock & GSMA Blacklist Checker
+      6. Permanent iOS OTA Update Blocker (tvOS Developer Profile method without jailbreak)
+      7. System-Wide Apple DDI Virtual GPS Location Simulator (Developer Disk Image spoofing)
+      8. Direct IPA Sideloading via Apple InstallationProxy over USB
 
 
 ## 3. Acceptance Criteria

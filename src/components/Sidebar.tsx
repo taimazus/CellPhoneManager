@@ -109,6 +109,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'rescue', label: 'امداد قفل صفحه و ریکاوری', icon: Key, desc: 'بازگشایی اضطراری و Safe Mode', platform: 'android', category: 'tools' },
 
     // Pro & Advanced Toolkit
+    { id: 'iostoolkit', label: 'استودیو اختصاصی آیفون', icon: Apple, desc: 'اصالت ۳uTools، پنیک لاگ، ریکاوری و DFU', platform: 'universal', category: 'pro' },
     { id: 'repair', label: 'میزکار و عیب‌یابی تعمیرات', icon: Wrench, desc: 'قبض پذیرش، FRP، تاچ شکسته، کدهای تست', platform: 'universal', category: 'pro' },
     { id: 'backup', label: 'پشتیبان‌گیری و بازیابی جامع', icon: Archive, desc: 'بکاپ کامل/سفارشی روی PC یا گوشی', platform: 'universal', category: 'pro' },
     { id: 'hardware', label: 'آزمایشگاه تست سخت‌افزار', icon: Gauge, desc: 'تست ویبره، صدا، سنسور و شبکه', platform: 'universal', category: 'pro' },

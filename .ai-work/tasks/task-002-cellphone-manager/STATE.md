@@ -38,19 +38,28 @@
     - **6. IMEI, Baseband & Radio Network Diagnostics:** Live readout of IMEI 1/2, MEID, Baseband firmware string, Baseband health indicator (Healthy vs Corrupt/Null), and 1-click RadioInfo launcher.
     - **7. Charging & Power Meter Analyzer:** Live charging current (`mA`), voltage (`mV`), power wattage (`W`), battery temperature, and Fast Charge protocol detection (QC/PD/SuperVOOC).
     - **8. 1-Click Software Glitch Fixer:** 1-click fixes for "Google Play Services Keeps Stopping", "Storage Full Bootloop", "Force MTP USB Mode", and "Reset App Permissions".
-11. **Anti-Freeze & High-Volume DOM Virtualization (`PaginationBar.tsx`):**
-    - Sliced large lists (6,304+ contacts, hundreds of call logs and apps) into fast, paginated pages (15, 30, 50, 100, 200 items).
-    - Eliminated browser thread lockup and Chrome "Page Unresponsive" timeouts completely.
-    - Added global `ActionOverlay` with animated dual-ring indicator, progress pulse, and user action locking to prevent accidental multi-clicking during heavy ADB/sync operations.
-12. **SMS Parsing Engine & Smart Categorization (`adbManager.js` & `MessagesTab.tsx`):**
-    - Fixed regex truncation on bank SMS messages containing commas, numbers, and newlines by moving `body` to the tail of projection and block-based chunking in `adbManager.js`.
-    - Added SMS categories: Inbox (ورودی), Sent (ارسال‌شده), Banking & OTP (بانکی و رمز), Spam & Ads (اسپم و تبلیغات), Blocked (مسدودشده), Drafts & Failed (پیش‌نویس).
-    - Added 1-click text copy button and smart badges on SMS bubbles in `MessagesTab.tsx`.
-13. **Real APK Icon Extractor (`appIconManager.js` & `AppIcon.tsx`):**
-    - Implemented real APK icon extraction from installed apps with caching in `data/app_icons/` and dynamic SVG fallback badges.
-14. **Project Documentation & GitHub Publication (`project-docs` & `git-release-sync`):**
-    - Version bumped to **v3.5.0 Royal Edition** across manifests, source code, and docs.
-    - Committed and pushed to GitHub repository [taimazus/CellPhoneManager](https://github.com/taimazus/CellPhoneManager) on branch `main`.
+41: 11. **iOS Pro Studio & Apple Diagnostics Suite (`server/iosToolkitManager.js` & `IosToolkitTab.tsx`):**
+42:     - **1. 3uTools Verification Report & Hardware Score:** Reads factory encrypted serial numbers for Motherboard, Screen, Battery, Front/Rear Cameras, Face ID, and ECID and compares with live hardware to generate a 0-100% authenticity score.
+43:     - **2. AI Panic Log Analyzer (Kernel Crash Diagnoser):** Extracts crash reports from `Diagnostics/CrashReporter`, pinpoints faulty hardware sensors via panic regex dictionary (charging port mic 2 / thermal sensor `prsh_wdt`, proximity sensor `AOP PANIC`, audio IC, NAND flash) with technician repair guide.
+44:     - **3. Deep Battery & Gas Gauge Analytics:** Reads true chemical health, factory design capacity vs current capacity, exact cycle count, voltage, and cell temperature directly from the Power Management IC (PMIC/BMS).
+45:     - **4. Recovery & DFU Mode Manager:** 1-click Exit Recovery Loop (fixes restart loops), Force Enter Recovery, and step-by-step hardware timing guide for DFU Mode.
+46:     - **5. iCloud, FMI & Carrier Lock Checker:** Live check of Find My iPhone (FMI ON/OFF), Factory SimLock / Carrier lock status, and GSMA international blacklist.
+47:     - **6. Permanent OTA Update Blocker:** Installs Apple tvOS developer profile to block unwanted iOS updates and preserve battery/jailbreak stability without jailbreaking.
+48:     - **7. System-Wide Apple DDI Virtual GPS:** Injects custom latitude and longitude coordinates into the iOS kernel via Developer Disk Image (works across Apple Maps, Find My, social apps, and ridesharing).
+49:     - **8. Direct IPA Sideloading:** Sideloads custom or enterprise IPA packages via Apple InstallationProxy service over USB.
+50: 12. **Single-Open Accordion Sidebar Navigation (`Sidebar.tsx`):**
+51:     - Streamlined 28 tabs into 4 clean accordion categories (Core, Media, Tools, Pro).
+52:     - Only one category is open at a time with smooth chevron animations, auto-synchronizing with the active tab.
+53: 13. **Anti-Freeze & High-Volume DOM Virtualization (`PaginationBar.tsx`):**
+54:     - Sliced large lists (6,304+ contacts, hundreds of call logs and apps) into fast, paginated pages (15, 30, 50, 100, 200 items).
+55: 14. **SMS Parsing Engine & Smart Categorization (`adbManager.js` & `MessagesTab.tsx`):**
+56:     - Fixed regex truncation on bank SMS messages containing commas, numbers, and newlines by moving `body` to the tail of projection and block-based chunking in `adbManager.js`.
+57:     - Added SMS categories: Inbox (ورودی), Sent (ارسال‌شده), Banking & OTP (بانکی و رمز), Spam & Ads (اسپم و تبلیغات), Blocked (مسدودشده), Drafts & Failed (پیش‌نویس).
+58: 15. **Real APK Icon Extractor (`appIconManager.js` & `AppIcon.tsx`):**
+59:     - Implemented real APK icon extraction from installed apps with caching in `data/app_icons/` and dynamic SVG fallback badges.
+60: 16. **Project Documentation & GitHub Publication (`project-docs` & `git-release-sync`):**
+61:     - Version bumped to **v3.5.0 Royal Edition** across manifests, source code, and docs.
+62:     - Committed and pushed to GitHub repository [taimazus/CellPhoneManager](https://github.com/taimazus/CellPhoneManager) on branch `main`.
 
 ## Complete Checklist
 - [x] Functional Specification Created (`SPEC.md`)
