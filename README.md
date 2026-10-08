@@ -1,8 +1,8 @@
-# 👑 CellPhoneManager v3.5.0 — Royal Edition
+# 👑 CellPhoneManager v3.6.0 — Royal Edition
 
 [![Sahand Electronic Solutions Co.](https://img.shields.io/badge/Developed%20By-Sahand%20Electronic%20Solutions%20Co.%20(irres.ir)-d4af37?style=for-the-badge&logo=android)](https://irres.ir)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-taimazus%2FCellPhoneManager-181717?style=for-the-badge&logo=github)](https://github.com/taimazus/CellPhoneManager)
-[![Version](https://img.shields.io/badge/Version-v3.5.0%20Royal%20Edition-eab308?style=for-the-badge)](https://github.com/taimazus/CellPhoneManager)
+[![Version](https://img.shields.io/badge/Version-v3.6.0%20Royal%20Edition-eab308?style=for-the-badge)](https://github.com/taimazus/CellPhoneManager)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011%20(x64)-blue?style=for-the-badge&logo=windows)](https://irres.ir)
 [![Mobile Support](https://img.shields.io/badge/Devices-Android%20%26%20iOS-purple?style=for-the-badge&logo=apple)](https://irres.ir)
@@ -17,10 +17,31 @@
 
 ## 📌 Executive Overview
 
-**CellPhoneManager v3.5.0 Royal Edition** is an enterprise-grade, ultra-responsive Windows desktop management, diagnostics, rooting, flashing, media studio, and remote control suite featuring a bespoke 24K Royal Gold and Obsidian UI theme.
+**CellPhoneManager v3.6.0 Royal Edition** is an enterprise-grade, ultra-responsive Windows desktop management, diagnostics, rooting, flashing, media studio, mobile technician workbench, and iOS pro studio suite featuring a bespoke 24K Royal Gold and Obsidian UI theme.
 
 ### 🌟 Key Capabilities
 
+* **🍏 iOS Pro Studio (8-in-1 Apple Diagnostics & Tools):**
+  * **3uTools Hardware Verification Score:** Compares encrypted factory serials of Motherboard, Battery, Screen, Front/Rear Cameras, and Face ID against live hardware to calculate a 0-100% authenticity score.
+  * **AI Panic Log Analyzer:** Extracts `panic-full.ips` kernel crashes and pinpoints faulty hardware ICs (charging port flex `prsh_wdt`, proximity sensor `AOP PANIC`, NAND, audio codec) with technician repair guide.
+  * **Deep Battery & Gas Gauge BMS Analytics:** Reads true factory design capacity, current capacity, exact cycle count, voltage, and cell temperature directly from the Power Management IC (PMIC).
+  * **Recovery & DFU Hub:** 1-click Exit Recovery Loop (fixes restart loops), Force Enter Recovery, and step-by-step hardware timing guide for DFU Mode.
+  * **iCloud, FMI & Carrier Lock Checker:** Live check of Find My iPhone (FMI ON/OFF), Factory SimLock / Carrier lock status, and GSMA international blacklist.
+  * **Permanent OTA Update Blocker:** Installs Apple tvOS developer profile to block unwanted iOS updates and preserve battery/jailbreak stability without jailbreaking.
+  * **System-Wide Apple DDI Virtual GPS:** Injects custom latitude and longitude coordinates into the iOS kernel via Developer Disk Image (works across Apple Maps, Find My, social apps, and ridesharing).
+  * **Direct IPA Sideloading:** Sideloads custom or enterprise IPA packages via Apple InstallationProxy service over USB.
+* **🔧 Mobile Technician Workbench & Diagnostics Suite (8-in-1):**
+  * **Customer Job Sheet & Intake Generator:** Auto-fills connected phone info (Model, S/N, IMEI, Battery Health), manages customer name, phone, problem description, estimated cost, and deposit with persistent JSON storage.
+  * **Printable Official Repair Invoice & Receipt:** High-resolution printable receipt layout with shop branding, unique job barcode/ID, terms and conditions, and dual signature lines.
+  * **FRP & Account Bypass Helper:** MTP Open Browser launcher (YouTube/Chrome intent), Samsung `*#0*#` Mode AT Command ADB activator, and Xiaomi Bootloader/Mi Account lock status inspector.
+  * **Broken Screen & Touch Forensic Data Rescue:** 1-Click "Extract Everything" dumping DCIM Photos, Downloads, Contacts, and SMS directly to a customer folder on PC, with virtual PIN/pattern keypad injection for unresponsive digitizers.
+  * **Multi-Brand Secret Codes & Engineering Menus Database:** Database of hardware test codes for Samsung (*#0*#, *#0228#, *#0808#, *#1234#, *#9900#), Xiaomi (CIT *#*#6484#*#*), Huawei (ProjectMenu *#*#2846579#*#*), Oppo/Realme (Engineering *#899#) with direct ADB Intent execution without physical touch input.
+  * **IMEI, Baseband & Radio Network Diagnostics:** Live readout of IMEI 1/2, MEID, Baseband firmware string, Baseband health indicator (Healthy vs Corrupt/Null), and 1-click RadioInfo launcher.
+  * **Charging & Power Meter Analyzer:** Live charging current (`mA`), voltage (`mV`), power wattage (`W`), battery temperature, and Fast Charge protocol detection (QC/PD/SuperVOOC).
+  * **1-Click Software Glitch Fixer:** 1-click fixes for "Google Play Services Keeps Stopping", "Storage Full Bootloop", "Force MTP USB Mode", and "Reset App Permissions".
+* **📂 Single-Open Accordion Sidebar Navigation:** Streamlined 28 tabs into 4 organized accordion categories (Core, Media, Tools, Pro) with smooth auto-syncing with the active tab.
+* **⚡ Task, Startup & Background Process Manager:** Live RAM and CPU % meters, real-time PID table, 1-click RAM cleaner, Boot/Startup App manager (`BOOT_COMPLETED`), and background execution limits (`RUN_IN_BACKGROUND`).
+* **🎧 Bluetooth Dual Auto-Pairing & 3-Mode Call Audio Routing:** Dial and receive calls with 3 audio paths (Windows Hands-Free via PC mic & speakers, Auto-Speakerphone, or Standard Earpiece) with 1-click Bluetooth auto-pairing.
 * **⚡ Anti-Freeze Virtualization & Pagination:** Instant pagination bar (`PaginationBar.tsx`) and DOM optimization rendering 6,000+ contacts, hundreds of call logs, and installed apps in under 3ms without browser freezes.
 * **🌀 Global ActionOverlay & Multi-Click Lock:** Smooth frosted backdrop with dual rotating neon gold rings, progress pulsing bar, and temporary button locking during long ADB/Fastboot operations.
 * **📩 Smart SMS Classifier & Multi-line Parser:** Robust regex engine resolving bank SMS body truncation (e.g., Parsian Bank OTPs and multi-line comma-rich receipts), automated categorizer (**Inbox**, **Sent**, **Banking & OTP**, **Spam & Promo**, **Blocked**, **Drafts & Failed**), category pills, and 1-click clipboard copying.
