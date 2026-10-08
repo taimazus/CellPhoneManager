@@ -57,6 +57,7 @@ sequenceDiagram
 
 | Module | Location | Primary Responsibilities |
 | :--- | :--- | :--- |
+| **`bluetoothCallManager`** | `server/bluetoothCallManager.js` | Windows Bluetooth host status detection, device automated pairing prep, and 3-mode call audio routing (Speaker, Bluetooth Hands-free, Earpiece). |
 | **`appIconManager`** | `server/appIconManager.js` | Direct APK icon extraction, local server file caching, MIME streaming, and SVG fallbacks. |
 | **`fileManager`** | `server/fileManager.js` | Recursive file and folder push/pull, exact byte extraction (`sizeBytes`), human formatting, deletion, batch ZIP archiving, preview streaming. |
 | **`pcGamepadManager`** | `server/pcGamepadManager.js` | Real-time multi-player gamepad mapping (Player 1 & 2), profiles (FIFA, Racing, Action, Retro), and WebSocket routing. |

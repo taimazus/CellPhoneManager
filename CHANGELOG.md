@@ -9,6 +9,11 @@ Developed and maintained exclusively by **Sahand Electronic Solutions Co. (شر�
 ## [3.5.0] — 2026-10-08 (Anti-Freeze Virtualization & Pagination, Smart SMS Categorizer, Real App Icon Extractor, and Contact Merge Studio)
 
 ### 🌟 Added & Enhanced
+- **🎧 Bluetooth Hands-Free & Call Audio Routing Engine (`server/bluetoothCallManager.js` & `src/components/MessagesTab.tsx`):**
+  - **Automated Dual Bluetooth Status & Pairing Engine:** Real-time query of Windows Bluetooth adapters, paired devices, and Android Bluetooth state. Automated 1-click pairing prep (`/api/bluetooth/auto-pair`) turning on phone Bluetooth, launching phone pairing discovery, and opening Windows Bluetooth device dialog.
+  - **Hardware Failure Protection:** Automatically warns if the Windows PC lacks a Bluetooth adapter/dongle and guides the user.
+  - **3 Call Audio Modes:** 🔊 **اسپیکرفون خودکار (Auto-Speakerphone)** (activates Android speakerphone via ADB telecom routing upon dialing), 🎧 **هندزفری ویندوز (Windows Hands-free)** (routes bidirectional voice call through PC mic/speaker via Bluetooth HFP), and 📱 **گوشی معمولی (Default Earpiece)**.
+  - **Direct Sound & Bluetooth Shortcuts:** One-click triggers for `ms-settings:bluetooth` and `ms-settings:sound`.
 - **⚡ Anti-Freeze Virtualization & Pagination (`src/components/PaginationBar.tsx`):**
   - Instant page-based chunking across contacts, SMS messages, call logs, and installed applications.
   - Effortlessly handles 6,304+ contacts with under 3ms rendering latency and 0 browser DOM freezes.

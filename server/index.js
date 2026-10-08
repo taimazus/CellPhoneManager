@@ -41,6 +41,7 @@ import { telemetryManager } from './telemetryManager.js';
 import { profileManager } from './profileManager.js';
 import { firmwareGuardManager } from './firmwareGuardManager.js';
 import { capabilityManager } from './capabilityManager.js';
+import bluetoothCallManager from './bluetoothCallManager.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -1345,15 +1346,85 @@ app.get('/api/devices/:id/calls', async (req, res) => {
 
 app.post('/api/devices/:id/calls/make', async (req, res) => {
   const { id } = req.params;
-  const { number, name = 'تماس جدید', simSlot } = req.body;
+  const { number, name = 'تماس جدید', simSlot, mode = 'default', speakerphone } = req.body;
   if (!number) return res.status(400).json({ error: 'شماره تماس الزامی است' });
 
   try {
     if (id.startsWith('mock-')) {
       mockDeviceManager.addCallLog(id, { name, number, type: 'outgoing', duration: '1m 05s' });
-      return res.json({ success: true, message: `تماس با شماره ${number} برقرار شد` });
+      return res.json({
+        success: true,
+        mode: mode || (speakerphone ? 'speaker' : 'default'),
+        message: mode === 'speaker' || speakerphone
+          ? `تماس با شماره ${number} با بلندگوی خودکار (اسپیکرفون) برقرار شد (شبیه‌ساز)`
+          : (mode === 'bluetooth'
+             ? `تماس با شماره ${number} و هدایت صدا به هندزفری بلوتوث کامپیوتر برقرار شد (شبیه‌ساز)`
+             : `تماس با شماره ${number} برقرار شد`)
+      });
     }
-    const result = await adbManager.makeCall(id, number, { simSlot });
+    const result = await bluetoothCallManager.makeCallWithRouting(id, number, {
+      simSlot,
+      mode: mode || (speakerphone ? 'speaker' : 'default')
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Bluetooth Hands-Free & Pairing Endpoints
+app.get('/api/bluetooth/status', async (req, res) => {
+  const { deviceId } = req.query;
+  try {
+    const pcStatus = await bluetoothCallManager.getPcBluetoothStatus();
+    let deviceStatus = null;
+    if (deviceId) {
+      deviceStatus = await bluetoothCallManager.getDeviceBluetoothStatus(deviceId);
+    }
+    res.json({
+      success: true,
+      pc: pcStatus,
+      device: deviceStatus
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/bluetooth/auto-pair', async (req, res) => {
+  const { deviceId } = req.body;
+  if (!deviceId) return res.status(400).json({ error: 'شناسه دستگاه الزامی است' });
+  try {
+    const result = await bluetoothCallManager.prepareAutoPair(deviceId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/bluetooth/enable-device', async (req, res) => {
+  const { deviceId } = req.body;
+  if (!deviceId) return res.status(400).json({ error: 'شناسه دستگاه الزامی است' });
+  try {
+    const result = await bluetoothCallManager.enableDeviceBluetooth(deviceId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/bluetooth/open-pc-settings', async (req, res) => {
+  try {
+    const result = await bluetoothCallManager.openPcBluetoothSettings();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/bluetooth/open-pc-sound', async (req, res) => {
+  try {
+    const result = await bluetoothCallManager.openPcSoundSettings();
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

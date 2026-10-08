@@ -56,7 +56,12 @@ import {
   Inbox,
   FileEdit,
   Copy,
-  Check
+  Check,
+  Bluetooth,
+  Headphones,
+  Settings,
+  ExternalLink,
+  AlertTriangle
 } from 'lucide-react';
 import { Device } from '../types';
 import { safeFetchJson } from '../utils/api';
@@ -145,6 +150,14 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
   const [callLogs, setCallLogs] = useState<CallLog[]>([]);
   const [callFilter, setCallFilter] = useState<'all' | 'incoming' | 'outgoing' | 'missed'>('all');
   const [dialNumber, setDialNumber] = useState<string>('');
+  const [callAudioMode, setCallAudioMode] = useState<'speaker' | 'bluetooth' | 'default'>('speaker');
+  const [showBluetoothModal, setShowBluetoothModal] = useState<boolean>(false);
+  const [bluetoothInfo, setBluetoothInfo] = useState<{
+    loading: boolean;
+    pc?: { available: boolean; hasAdapter: boolean; adapters: string[]; pairedDevices: any[]; message?: string };
+    device?: { available: boolean; enabled: boolean; name: string; address: string; state: string };
+  }>({ loading: false });
+  const [autoPairingLoading, setAutoPairingLoading] = useState<boolean>(false);
   const [showDialerContactModal, setShowDialerContactModal] = useState<boolean>(false);
   const [dialerContactSearch, setDialerContactSearch] = useState<string>('');
   const [dialerContactName, setDialerContactName] = useState<string>('');
@@ -587,17 +600,84 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     }
   };
 
+  // --- Bluetooth Call & Audio Helpers ---
+  const fetchBluetoothStatus = async () => {
+    if (!device) return;
+    setBluetoothInfo(prev => ({ ...prev, loading: true }));
+    try {
+      const res = await safeFetchJson(`/api/bluetooth/status?deviceId=${encodeURIComponent(device.id)}`);
+      if (res && res.success) {
+        setBluetoothInfo({
+          loading: false,
+          pc: res.pc,
+          device: res.device
+        });
+      } else {
+        setBluetoothInfo(prev => ({ ...prev, loading: false }));
+      }
+    } catch (err) {
+      setBluetoothInfo(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleAutoPairBluetooth = async () => {
+    if (!device) return;
+    setAutoPairingLoading(true);
+    try {
+      const res = await safeFetchJson('/api/bluetooth/auto-pair', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deviceId: device.id })
+      });
+      if (res.success) {
+        showToast(res.message || 'جفت‌سازی آغاز شد', 'success');
+        await fetchBluetoothStatus();
+      } else {
+        showToast(res.message || res.error || 'خطا در جفت‌سازی', 'error');
+      }
+    } catch (err: any) {
+      showToast(`خطا: ${err.message}`, 'error');
+    } finally {
+      setAutoPairingLoading(false);
+    }
+  };
+
+  const handleOpenPcBluetoothSettings = async () => {
+    try {
+      await safeFetchJson('/api/bluetooth/open-pc-settings', { method: 'POST' });
+      showToast('تنظیمات بلوتوث ویندوز باز شد', 'success');
+    } catch (err: any) {
+      showToast(`خطا: ${err.message}`, 'error');
+    }
+  };
+
+  const handleOpenPcSoundSettings = async () => {
+    try {
+      await safeFetchJson('/api/bluetooth/open-pc-sound', { method: 'POST' });
+      showToast('تنظیمات صدای ویندوز باز شد', 'success');
+    } catch (err: any) {
+      showToast(`خطا: ${err.message}`, 'error');
+    }
+  };
+
   const handleMakeCall = async (numberToCall: string, name = 'تماس') => {
     if (!device || !numberToCall.trim()) return;
     try {
       const res = await fetch(`/api/devices/${device.id}/calls/make`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number: numberToCall, name, simSlot: preferredSim })
+        body: JSON.stringify({
+          number: numberToCall,
+          name,
+          simSlot: preferredSim,
+          mode: callAudioMode,
+          speakerphone: callAudioMode === 'speaker'
+        })
       });
       const data = await res.json();
       if (data.success) {
-        showToast(`در حال برقراری تماس با ${numberToCall}...`, 'success');
+        const modeLabel = callAudioMode === 'speaker' ? ' (با بلندگوی خودکار)' : (callAudioMode === 'bluetooth' ? ' (هندزفری بلوتوث کامپیوتر)' : '');
+        showToast(`در حال برقراری تماس با ${numberToCall}${modeLabel}...`, 'success');
         setCallState({
           state: 'offhook',
           incomingNumber: numberToCall,
@@ -1764,6 +1844,93 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                 </p>
               </div>
 
+              {/* Call Audio Routing Mode Selector */}
+              <div className="p-3 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 rounded-xl border border-slate-800/80 space-y-2.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-300 font-bold flex items-center gap-1.5">
+                    <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+                    مسیر انتقال صدا و مکالمه:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      fetchBluetoothStatus();
+                      setShowBluetoothModal(true);
+                    }}
+                    className="text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center gap-1 bg-cyan-500/10 hover:bg-cyan-500/20 px-2 py-0.5 rounded-lg border border-cyan-500/30 transition-all"
+                    title="راهنمای اتصال و جفت‌سازی بلوتوث با کامپیوتر"
+                  >
+                    <Bluetooth className="w-3 h-3 text-cyan-400" />
+                    <span>دستیار بلوتوث</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setCallAudioMode('speaker')}
+                    className={`py-2 px-1.5 rounded-xl text-xs font-bold flex flex-col items-center gap-1 transition-all ${
+                      callAudioMode === 'speaker'
+                        ? 'bg-gradient-to-b from-amber-500 to-amber-600 text-slate-950 shadow-md shadow-amber-500/20 ring-1 ring-amber-400'
+                        : 'bg-slate-950/70 text-slate-400 hover:text-slate-200 border border-slate-800/80'
+                    }`}
+                    title="به محض شماره‌گیری، بلندگوی گوشی خودکار روشن می‌شود"
+                  >
+                    <Volume2 className="w-4 h-4" />
+                    <span className="text-[11px] leading-none">اسپیکرفون خودکار</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCallAudioMode('bluetooth')}
+                    className={`py-2 px-1.5 rounded-xl text-xs font-bold flex flex-col items-center gap-1 transition-all ${
+                      callAudioMode === 'bluetooth'
+                        ? 'bg-gradient-to-b from-cyan-500 to-blue-600 text-slate-950 shadow-md shadow-cyan-500/20 ring-1 ring-cyan-400'
+                        : 'bg-slate-950/70 text-slate-400 hover:text-slate-200 border border-slate-800/80'
+                    }`}
+                    title="مکالمه مستقیم با میکروفون و هدست/اسپیکر ویندوز از طریق بلوتوث"
+                  >
+                    <Headphones className="w-4 h-4" />
+                    <span className="text-[11px] leading-none">هندزفری ویندوز</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCallAudioMode('default')}
+                    className={`py-2 px-1.5 rounded-xl text-xs font-bold flex flex-col items-center gap-1 transition-all ${
+                      callAudioMode === 'default'
+                        ? 'bg-gradient-to-b from-emerald-500 to-green-600 text-slate-950 shadow-md shadow-emerald-500/20 ring-1 ring-emerald-400'
+                        : 'bg-slate-950/70 text-slate-400 hover:text-slate-200 border border-slate-800/80'
+                    }`}
+                    title="تماس به شیوه معمولی گوشی (گوشی نزدیک گوش)"
+                  >
+                    <Smartphone className="w-4 h-4" />
+                    <span className="text-[11px] leading-none">گوشی معمولی</span>
+                  </button>
+                </div>
+
+                <div className="text-[10px] text-slate-400 bg-slate-950/60 p-2 rounded-lg border border-slate-800/50 flex items-start gap-1.5">
+                  {callAudioMode === 'speaker' && (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                      <span>صدای مکالمه بلافاصله از بلندگوی گوشی پخش می‌شود و نیازی به لمس گوشی نخواهید داشت.</span>
+                    </>
+                  )}
+                  {callAudioMode === 'bluetooth' && (
+                    <>
+                      <Bluetooth className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
+                      <span>صدا و میکروفون کامپیوتر به عنوان هندزفری عمل کرده و مکالمه مستقیماً از پشت سیستم انجام می‌شود.</span>
+                    </>
+                  )}
+                  {callAudioMode === 'default' && (
+                    <>
+                      <Smartphone className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                      <span>تماس خروجی شماره‌گیری شده و صدا روی بلندگوی مکالمه داخلی گوشی قرار می‌گیرد.</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
               {/* Number Input Screen with Contact Picker & Autocomplete */}
               <div className="relative">
                 {dialerContactName && (
@@ -1883,10 +2050,29 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                 <button
                   onClick={() => handleMakeCall(dialNumber)}
                   disabled={!dialNumber.trim()}
-                  className="flex items-center justify-center gap-2 py-3 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50"
+                  className={`flex items-center justify-center gap-2 py-3 px-3 rounded-xl font-bold text-xs shadow-lg transition-all disabled:opacity-50 ${
+                    callAudioMode === 'speaker'
+                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-amber-500/20'
+                      : (callAudioMode === 'bluetooth'
+                         ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 shadow-cyan-500/20'
+                         : 'bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-slate-950 shadow-emerald-500/20')
+                  }`}
+                  title={
+                    callAudioMode === 'speaker'
+                      ? 'برقراری تماس مستقیم و فعال‌سازی خودکار بلندگوی گوشی'
+                      : (callAudioMode === 'bluetooth'
+                         ? 'برقراری تماس و مکالمه از طریق بلوتوث و هندزفری ویندوز'
+                         : 'برقراری تماس مستقیم به حالت معمولی گوشی')
+                  }
                 >
                   <PhoneCall className="w-4 h-4" />
-                  <span>برقراری تماس مستقیم</span>
+                  <span>
+                    {callAudioMode === 'speaker'
+                      ? 'تماس با اسپیکرفون خودکار'
+                      : (callAudioMode === 'bluetooth'
+                         ? 'تماس با هندزفری ویندوز'
+                         : 'برقراری تماس مستقیم')}
+                  </span>
                 </button>
 
                 <button
@@ -3640,6 +3826,164 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                 className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-300 hover:text-white border border-slate-800"
               >
                 بستن پنجره
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- BLUETOOTH HANDSFREE ASSISTANT MODAL --- */}
+      {showBluetoothModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-[#0c142b] border border-cyan-500/40 rounded-3xl p-6 w-full max-w-xl text-right space-y-4 shadow-2xl animate-fadeInScale max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-cyan-600/30 to-blue-600/30 border border-cyan-500/40 text-cyan-400">
+                  <Bluetooth className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">دستیار جفت‌سازی بلوتوث و مکالمه مستقیم ویندوز</h3>
+                  <p className="text-[11px] text-slate-400">اتصال صوتی دوطرفه (میکروفون و بلندگو) جهت مکالمه بدون لمس گوشی</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowBluetoothModal(false)}
+                className="text-slate-400 hover:text-slate-200 p-1 rounded-xl hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {bluetoothInfo.loading ? (
+              <div className="p-8 text-center">
+                <LoadingSpinner size="md" variant="cyan" text="در حال ارزیابی وضعیت سخت‌افزار بلوتوث سیستم و گوشی..." />
+              </div>
+            ) : (
+              <div className="space-y-4 text-xs">
+                {/* Windows PC Bluetooth Status Card */}
+                <div className={`p-4 rounded-2xl border ${
+                  bluetoothInfo.pc?.hasAdapter
+                    ? 'bg-emerald-950/20 border-emerald-500/30 text-emerald-300'
+                    : 'bg-amber-950/20 border-amber-500/30 text-amber-300'
+                } space-y-2`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 font-bold text-white">
+                      <Settings className="w-4 h-4 text-cyan-400" />
+                      <span>وضعیت سخت‌افزار بلوتوث ویندوز (PC):</span>
+                    </div>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                      bluetoothInfo.pc?.hasAdapter
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                        : 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+                    }`}>
+                      {bluetoothInfo.pc?.hasAdapter ? 'سخت‌افزار آماده است' : 'عدم شناسایی سخت‌افزار بلوتوث'}
+                    </span>
+                  </div>
+
+                  {bluetoothInfo.pc?.hasAdapter ? (
+                    <div className="text-[11px] text-slate-300 space-y-1">
+                      <p>آداپتور شناسایی شده: <span className="text-white font-mono">{bluetoothInfo.pc.adapters?.join(', ')}</span></p>
+                      {bluetoothInfo.pc.pairedDevices && bluetoothInfo.pc.pairedDevices.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-emerald-500/20">
+                          <p className="text-[10px] text-slate-400 mb-1">دستگاه‌های شناخته‌شده ویندوز:</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {bluetoothInfo.pc.pairedDevices.map((d: any, idx: number) => (
+                              <span key={idx} className="px-2 py-0.5 rounded-lg bg-slate-900/90 text-cyan-300 text-[10px] border border-slate-800 font-mono">
+                                {d.FriendlyName}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-[11px] text-amber-200/90 space-y-1">
+                      <div className="flex items-start gap-1.5">
+                        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                        <span>کامپیوتر شما فاقد دانگل یا سخت‌افزار بلوتوث داخلی است. برای مکالمه مستقیم با میکروفون سیستم، یک دانگل بلوتوث USB متصل نمایید یا از گزینه «اسپیکرفون خودکار گوشی» استفاده کنید.</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Device Bluetooth Status Card */}
+                <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 font-bold text-white">
+                      <Smartphone className="w-4 h-4 text-cyan-400" />
+                      <span>وضعیت بلوتوث تلفن همراه (گوشی):</span>
+                    </div>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                      bluetoothInfo.device?.enabled
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                        : 'bg-slate-800 text-slate-400 border-slate-700'
+                    }`}>
+                      {bluetoothInfo.device?.enabled ? 'روشن (ON)' : 'خاموش (OFF)'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-300 pt-1">
+                    <div>نام بلوتوث دستگاه: <span className="text-white font-bold">{bluetoothInfo.device?.name || 'گوشی همراه'}</span></div>
+                    <div>آدرس مک: <span className="text-cyan-400 font-mono" dir="ltr">{bluetoothInfo.device?.address || '00:00:00:00:00:00'}</span></div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-2 pt-1">
+                  <button
+                    onClick={handleAutoPairBluetooth}
+                    disabled={autoPairingLoading}
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/25 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    <Bluetooth className={`w-4 h-4 ${autoPairingLoading ? 'animate-spin' : ''}`} />
+                    <span>{autoPairingLoading ? 'در حال آماده‌سازی و جفت‌سازی...' : '⚡ جفت‌سازی خودکار و آماده‌سازی مکالمه ویندوز'}</span>
+                  </button>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={handleOpenPcBluetoothSettings}
+                      className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-cyan-500/40 text-xs font-semibold transition-all"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>تنظیمات بلوتوث ویندوز</span>
+                    </button>
+
+                    <button
+                      onClick={handleOpenPcSoundSettings}
+                      className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-cyan-500/40 text-xs font-semibold transition-all"
+                    >
+                      <Volume2 className="w-3.5 h-3.5 text-amber-400" />
+                      <span>تنظیمات صدای سیستم</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Step-by-Step Educational Guide */}
+                <div className="p-3.5 rounded-2xl bg-slate-950/70 border border-slate-800/80 space-y-2">
+                  <h4 className="font-bold text-slate-200 flex items-center gap-1.5 text-xs">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>راهنمای ۳ مرحله‌ای مکالمه مستقیم بدون لمس گوشی:</span>
+                  </h4>
+                  <ol className="list-decimal list-inside space-y-1 text-[11px] text-slate-400 leading-relaxed pr-1">
+                    <li>روی دکمه <strong className="text-cyan-300">جفت‌سازی خودکار</strong> بالا کلیک کنید تا بلوتوث گوشی و صفحه بلوتوث ویندوز باز شود.</li>
+                    <li>در ویندوز روی <strong className="text-white">Add device</strong> کلیک کرده و نام گوشی‌تان (<strong className="text-white">{bluetoothInfo.device?.name}</strong>) را انتخاب و Pair کنید.</li>
+                    <li>در گوشی در بخش تنظیمات دستگاه جفت‌شده، گزینه <strong className="text-emerald-400">Phone Calls (تماس‌ها)</strong> را فعال کنید.</li>
+                  </ol>
+                  <p className="text-[10px] text-slate-500 pt-1 border-t border-slate-800">
+                    💡 نکته: در صورتی که کامپیوتر فاقد دانگل بلوتوث است، با انتخاب گزینه <strong className="text-amber-400">«اسپیکرفون خودکار»</strong> در شماره‌گیر، به محض تماس صدای بلندگوی گوشی روشن شده و باز هم نیازی به برداشتن گوشی نخواهید داشت.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowBluetoothModal(false)}
+                className="px-5 py-2 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-all"
+              >
+                متوجه شدم و بستن
               </button>
             </div>
           </div>

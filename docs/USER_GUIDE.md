@@ -60,6 +60,11 @@
 
 ### 🔹 MessagesTab & Anti-Freeze Pagination
 * **Anti-Freeze Virtualized Pagination (`PaginationBar.tsx`):** Effortlessly render and navigate across 6,000+ contacts, 1,000+ SMS threads, and call logs with page size toggles (15, 30, 50, 100, 200 items).
+* **3-Mode Call Audio Routing Engine (`bluetoothCallManager.js`):**
+  * 🔊 **Auto-Speakerphone (اسپیکرفون خودکار):** Automatically activates Android speakerphone via ADB telecom routing upon placing a call.
+  * 🎧 **Windows Hands-Free (هندزفری ویندوز):** Routes bidirectional phone call audio and PC microphone directly through Windows using Bluetooth Hands-Free Profile (HFP/HSP) without picking up the phone.
+  * 📱 **Standard Earpiece (گوشی معمولی):** Standard mobile phone routing.
+* **Automated Bluetooth Pairing Assistant:** 1-click status scan of Windows PC Bluetooth hardware and mobile Bluetooth state. Automatically enables device Bluetooth, makes it discoverable, and opens Windows Bluetooth/Sound control dialogs with failure warnings if PC lacks a Bluetooth adapter.
 * **Smart SMS Categorization:** Automated classification into **Inbox**, **Sent**, **Banking & OTP (Parsian, Mellat, Melli, Pasargad, etc.)**, **Spam & Ads**, **Blocked**, and **Drafts & Failed**.
 * **Un-truncated Multi-line Body Parser:** Completely preserves multi-line, comma-separated, and special character messages without body truncation.
 * **1-Click Message Copying:** Quick copy button for OTPs and transaction receipts directly to the Windows clipboard.
