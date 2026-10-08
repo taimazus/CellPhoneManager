@@ -15,6 +15,8 @@ import {
   Ban
 } from 'lucide-react';
 import { Device } from '../types';
+import { LoadingSpinner } from './LoadingSpinner';
+import { AppIcon } from './AppIcon';
 
 interface DebloaterTabProps {
   device: Device | null;
@@ -205,9 +207,13 @@ export const DebloaterTab: React.FC<DebloaterTabProps> = ({ device }) => {
       {/* List */}
       <div className="rounded-3xl glass-panel p-6 border border-slate-800 space-y-3">
         {loading ? (
-          <div className="p-16 text-center text-slate-400">
-            <RefreshCw className="w-6 h-6 animate-spin text-cyan-400 mx-auto mb-2" />
-            <span className="text-xs">در حال اسکن و بررسی سرویس‌های پس‌زمینه گوشی...</span>
+          <div className="p-16 text-center">
+            <LoadingSpinner
+              size="lg"
+              variant="cyan"
+              text="در حال اسکن و بررسی سرویس‌های پس‌زمینه و تبلیغاتی گوشی..."
+              subtext="شناسایی Bloatware و بسته‌های سیستمی غیرضروری"
+            />
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="p-16 text-center text-slate-500 text-sm">
@@ -222,27 +228,35 @@ export const DebloaterTab: React.FC<DebloaterTabProps> = ({ device }) => {
 
               return (
                 <div key={item.packageName} className="py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-bold text-white text-xs">{item.appName}</h4>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-cyan-300" dir="ltr">
-                        {item.packageName}
-                      </span>
-
-                      {isBlocked && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/30 flex items-center gap-1">
-                          <Ban className="w-3 h-3" />
-                          <span>غیرفعال و مسدود شده</span>
+                  <div className="flex items-center gap-3">
+                    <AppIcon 
+                      packageName={item.packageName} 
+                      appName={item.appName} 
+                      isSystem={true} 
+                      size="sm" 
+                      deviceId={device?.id} 
+                    />
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-bold text-white text-xs">{item.appName}</h4>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-cyan-300" dir="ltr">
+                          {item.packageName}
                         </span>
-                      )}
 
-                      {isActive && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
-                          <span>در حال اجرا روی گوشی</span>
-                        </span>
-                      )}
+                        {isBlocked && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/30 flex items-center gap-1">
+                            <Ban className="w-3 h-3" />
+                            <span>غیرفعال و مسدود شده</span>
+                          </span>
+                        )}
 
-                      {notFound && (
+                        {isActive && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                            <span>در حال اجرا روی گوشی</span>
+                          </span>
+                        )}
+
+                        {notFound && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-400">
                           روی این رام موجود نیست
                         </span>
@@ -250,8 +264,9 @@ export const DebloaterTab: React.FC<DebloaterTabProps> = ({ device }) => {
                     </div>
                     <p className="text-[11px] text-slate-400">{item.desc}</p>
                   </div>
+                </div>
 
-                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                     {isBlocked ? (
                       <button
                         onClick={() => handleRestore(item.packageName)}

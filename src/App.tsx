@@ -38,16 +38,16 @@ const LockscreenRescueTab = lazy(() => import('./components/LockscreenRescueTab'
 const RootToolkitTab = lazy(() => import('./components/RootToolkitTab').then(m => ({ default: m.RootToolkitTab })));
 const RomFlasherTab = lazy(() => import('./components/RomFlasherTab').then(m => ({ default: m.RomFlasherTab })));
 const PasswordVaultTab = lazy(() => import('./components/PasswordVaultTab').then(m => ({ default: m.PasswordVaultTab })));
+import { LoadingSpinner } from './components/LoadingSpinner';
 
 const TabLoadingSkeleton = () => (
-  <div className="flex flex-col items-center justify-center min-h-[400px] w-full gap-4 text-center">
-    <div className="w-12 h-12 rounded-2xl border-2 border-amber-500/30 border-t-amber-400 animate-spin flex items-center justify-center shadow-lg shadow-amber-500/10">
-      <div className="w-6 h-6 rounded-xl bg-amber-500/20" />
-    </div>
-    <div className="space-y-1">
-      <p className="text-sm font-medium text-amber-200/90">در حال بارگذاری ماژول...</p>
-      <p className="text-xs text-slate-400">سامانه مدیریت دستگاه‌های هوشمند سهند</p>
-    </div>
+  <div className="flex flex-col items-center justify-center min-h-[420px] w-full gap-4 text-center">
+    <LoadingSpinner
+      size="lg"
+      variant="gold"
+      text="در حال آماده‌سازی و بارگذاری ماژول..."
+      subtext="سامانه مدیریت دستگاه‌های هوشمند راهکار الکترونیک سهند"
+    />
   </div>
 );
 

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { exec } from 'child_process';
+import { spawn } from 'child_process';
 import { adbManager } from './adbManager.js';
 import { iosManager } from './iosManager.js';
 import { fileManager } from './fileManager.js';
@@ -373,16 +373,13 @@ export class UniversalBackupManager {
         return { success: false, error: `مسیر وجود ندارد: ${err.message}` };
       }
     }
-    return new Promise((resolve) => {
-      exec(`explorer.exe "${targetDir}"`, (err) => {
-        if (err) {
-          console.error('[UniversalBackupManager] explorer error:', err);
-          resolve({ success: false, error: err.message });
-        } else {
-          resolve({ success: true, message: 'پوشه بک‌آپ‌ها در ویندوز باز شد.', path: targetDir });
-        }
-      });
-    });
+    try {
+      spawn('explorer.exe', [targetDir], { detached: true, stdio: 'ignore' });
+      return { success: true, message: 'پوشه بک‌آپ‌ها در ویندوز باز شد.', path: targetDir };
+    } catch (err) {
+      console.error('[UniversalBackupManager] explorer error:', err);
+      return { success: false, error: err.message };
+    }
   }
 
   // Open specific backup sub-folder in Windows Explorer
@@ -391,16 +388,13 @@ export class UniversalBackupManager {
     if (!backupPath || !fs.existsSync(backupPath)) {
       return { success: false, error: 'پوشه نسخه پشتیبان یافت نشد.' };
     }
-    return new Promise((resolve) => {
-      exec(`explorer.exe "${backupPath}"`, (err) => {
-        if (err) {
-          console.error('[UniversalBackupManager] explorer error:', err);
-          resolve({ success: false, error: err.message });
-        } else {
-          resolve({ success: true, message: 'پوشه نسخه پشتیبان در ویندوز باز شد.', path: backupPath });
-        }
-      });
-    });
+    try {
+      spawn('explorer.exe', [backupPath], { detached: true, stdio: 'ignore' });
+      return { success: true, message: 'پوشه نسخه پشتیبان در ویندوز باز شد.', path: backupPath };
+    } catch (err) {
+      console.error('[UniversalBackupManager] explorer error:', err);
+      return { success: false, error: err.message };
+    }
   }
 
   // 6. Pre-Restore Backup Inspector & Integrity Validator

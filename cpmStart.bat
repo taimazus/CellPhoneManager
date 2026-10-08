@@ -112,6 +112,11 @@ echo Press Ctrl + C to exit or run cpmStop.bat to terminate.
 echo ===============================================================================
 echo.
 
-start "" http://localhost:5173
+if exist "%PROJECT_DIR%public\loading.html" (
+    start "" "%PROJECT_DIR%public\loading.html"
+) else (
+    start "" http://localhost:5173
+)
 
 npm run dev
+

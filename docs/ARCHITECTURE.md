@@ -1,4 +1,4 @@
-# 🏗️ CellPhoneManager v3.4.4 — Architectural Specifications
+# 🏗️ CellPhoneManager v3.5.0 — Architectural Specifications
 
 Developed exclusively for **Sahand Electronic Solutions Co. (شرکت راهکار الکترونیک سهند)** — [https://irres.ir](https://irres.ir).
 
@@ -19,6 +19,7 @@ sequenceDiagram
     participant Bridge as Native C# Input Bridge (winInputBridge.ps1)
     participant Win as Windows Host / DirectX Game (e.g. FIFA 18)
     participant FileMgr as File & Media Studio (fileManager)
+    participant IconMgr as App Icon Extractor (appIconManager)
     participant Mgr as Domain Managers (Backup, ROM, Tools)
     participant Dev as Mobile Device (Android / iOS)
 
@@ -28,6 +29,10 @@ sequenceDiagram
         GPad->>Bridge: Pipe "KEY_DOWN:0x53,0x1F,0" (VK + Hardware ScanCode)
         Bridge->>Win: Native keybd_event (DirectX ScanCode Injection)
         Win-->>User: In-Game Action (Pass / Shoot / Move)
+    else App Icon Extraction & Local Cache
+        UI->>IconMgr: GET /api/devices/:id/apps/:pkg/icon
+        IconMgr->>Dev: Pull APK & extract icon drawable via aapt/unzip
+        IconMgr-->>UI: Cache on disk & stream image/png (200 OK)
     else File Management & Recursive Drag-Drop Upload
         User->>UI: Drop Folders & Files / Batch Download ZIP
         UI->>FileMgr: POST /api/devices/:id/files/upload (Multipart with relativePaths)
@@ -52,6 +57,7 @@ sequenceDiagram
 
 | Module | Location | Primary Responsibilities |
 | :--- | :--- | :--- |
+| **`appIconManager`** | `server/appIconManager.js` | Direct APK icon extraction, local server file caching, MIME streaming, and SVG fallbacks. |
 | **`fileManager`** | `server/fileManager.js` | Recursive file and folder push/pull, exact byte extraction (`sizeBytes`), human formatting, deletion, batch ZIP archiving, preview streaming. |
 | **`pcGamepadManager`** | `server/pcGamepadManager.js` | Real-time multi-player gamepad mapping (Player 1 & 2), profiles (FIFA, Racing, Action, Retro), and WebSocket routing. |
 | **`winInputBridge`** | `server/winInputBridge.ps1` | Persistent native C# `keybd_event` Windows hardware ScanCode injection bypassing Windows keyboard layout (FA/EN). |

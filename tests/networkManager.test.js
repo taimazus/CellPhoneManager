@@ -33,4 +33,17 @@ describe('NetworkManager Test Suite', () => {
     const forwards = await networkManager.listForwardedPorts('mock-device');
     expect(Array.isArray(forwards)).toBe(true);
   });
+
+  it('should reject invalid hostnames and command injection in pingHost', async () => {
+    const inj1 = await networkManager.pingHost('127.0.0.1 & calc.exe');
+    expect(inj1.success).toBe(false);
+    expect(inj1.error).toContain('نامعتبر');
+
+    const inj2 = await networkManager.pingHost('127.0.0.1 | whoami');
+    expect(inj2.success).toBe(false);
+
+    const inj3 = await networkManager.pingHost('; notepad ;');
+    expect(inj3.success).toBe(false);
+  });
 });
+

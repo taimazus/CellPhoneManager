@@ -1,10 +1,11 @@
-# 👑 CellPhoneManager v3.4.4 — Royal Edition
+# 👑 CellPhoneManager v3.5.0 — Royal Edition
 
 [![Sahand Electronic Solutions Co.](https://img.shields.io/badge/Developed%20By-Sahand%20Electronic%20Solutions%20Co.%20(irres.ir)-d4af37?style=for-the-badge&logo=android)](https://irres.ir)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-taimazus%2FCellPhoneManager-181717?style=for-the-badge&logo=github)](https://github.com/taimazus/CellPhoneManager)
-[![Version](https://img.shields.io/badge/Version-v3.4.4%20Royal%20Edition-eab308?style=for-the-badge)](https://github.com/taimazus/CellPhoneManager)
+[![Version](https://img.shields.io/badge/Version-v3.5.0%20Royal%20Edition-eab308?style=for-the-badge)](https://github.com/taimazus/CellPhoneManager)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011%20(x64)-blue?style=for-the-badge&logo=windows)](https://irres.ir)
+[![Mobile Support](https://img.shields.io/badge/Devices-Android%20%26%20iOS-purple?style=for-the-badge&logo=apple)](https://irres.ir)
 
 <div align="center">
   <img src="banner.jpg" alt="CellPhoneManager Royal Edition Banner" width="100%" style="border-radius: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.6);" />
@@ -16,10 +17,15 @@
 
 ## 📌 Executive Overview
 
-**CellPhoneManager v3.4.4 Royal Edition** is an enterprise-grade, ultra-responsive Windows desktop management, diagnostics, rooting, flashing, media studio, and remote control suite featuring a bespoke 24K Royal Gold and Obsidian UI theme.
+**CellPhoneManager v3.5.0 Royal Edition** is an enterprise-grade, ultra-responsive Windows desktop management, diagnostics, rooting, flashing, media studio, and remote control suite featuring a bespoke 24K Royal Gold and Obsidian UI theme.
 
 ### 🌟 Key Capabilities
 
+* **⚡ Anti-Freeze Virtualization & Pagination:** Instant pagination bar (`PaginationBar.tsx`) and DOM optimization rendering 6,000+ contacts, hundreds of call logs, and installed apps in under 3ms without browser freezes.
+* **🌀 Global ActionOverlay & Multi-Click Lock:** Smooth frosted backdrop with dual rotating neon gold rings, progress pulsing bar, and temporary button locking during long ADB/Fastboot operations.
+* **📩 Smart SMS Classifier & Multi-line Parser:** Robust regex engine resolving bank SMS body truncation (e.g., Parsian Bank OTPs and multi-line comma-rich receipts), automated categorizer (**Inbox**, **Sent**, **Banking & OTP**, **Spam & Promo**, **Blocked**, **Drafts & Failed**), category pills, and 1-click clipboard copying.
+* **🎨 Real APK Icon Extractor (`appIconManager.js` & `AppIcon.tsx`):** On-the-fly extraction of high-resolution application icons directly from Android APKs with server-side caching and dynamic SVG fallback badges.
+* **👥 Contact Merge & Avatar Studio:** Intelligent duplicate detection (by shared phone number or name), multi-account source distinction, avatar photo support, job titles/notes, and standardized vCard 3.0 export.
 * **📁 Advanced File Explorer & Media Studio:**
   * **Recursive Drag & Drop:** Seamlessly drop multiple files or entire folder trees from Windows explorer with recursive subfolder hierarchy preserved on mobile storage.
   * **Publish & Upload Suite:** Dedicated actions for multi-file upload and entire folder tree upload with real-time percentage progress bars.
@@ -27,7 +33,7 @@
   * **Prominent Size Badging:** High-contrast emerald badge size indicators across all 5 view layouts (**Compact**, **Standard Grid**, **Large Showcase**, **Horizontal Tiles**, and **Detailed List**).
   * **Intelligent Selection:** Shift-click range selection, Select All, Invert Selection, and dynamic Floating Action Bar.
   * **Batch ZIP Download:** Pack and stream all selected files and directories into a single `.zip` archive on demand.
-  * **Live Media Studio Preview:** Live video player with interactive controls, in-app music player, image viewer with rotation/zoom, code/text inspector, and embedded PDF viewer.
+  * **Live Media & Office Studio Preview:** Live video player, in-app music player, image viewer with rotation/zoom, Word/Excel/PowerPoint preview, web/code syntax inspector, and embedded PDF viewer.
 * **🎮 Wireless PC Gamepad Engine:** Zero-latency (< 2ms) mobile-to-PC controller with direct C# hardware ScanCode injection (PS/2 scan codes), independent of Windows active IME/keyboard layout (Persian/English), supporting 2 concurrent players (Player 1 & Player 2), haptic vibration, and tactile sound feedback.
 * **🛡️ 5-State Capability Evaluation Matrix (`capabilityManager`):** Real-time prerequisite validation (`READY`, `NEEDS_CONFIG`, `NEEDS_TOOL`, `UNSUPPORTED_OS`, `INDETERMINATE`) with actionable guidance.
 * **📦 100% Offline Air-Gapped Ready (`bin/wheels/`):** Bundled native toolkits (ADB, Fastboot, Scrcpy) and offline Python wheels.

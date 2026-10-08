@@ -2,7 +2,7 @@
 
 <div align="center">
   <p><strong>شرکت راهکار الکترونیک سهند</strong> (Sahand Electronic Solutions Co.) — <a href="https://irres.ir">https://irres.ir</a></p>
-  <p><strong>نسخه نرم‌افزار:</strong> <code>v3.4.4 Royal Edition</code> | <strong>سامانه جامع مدیریت و عیب‌یابی تلفن همراه</strong></p>
+  <p><strong>نسخه نرم‌افزار:</strong> <code>v3.5.0 Royal Edition</code> | <strong>سامانه جامع مدیریت و عیب‌یابی تلفن همراه</strong></p>
   <p><strong><a href="OFFLINE_DEPLOYMENT.md">🇬🇧 For English Version Click Here</a></strong></p>
 </div>
 

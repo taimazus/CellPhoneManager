@@ -1,4 +1,4 @@
-# 🏗️ مشخصات و ساختار معماری سامانه — CellPhoneManager v3.4.4 Royal Edition
+# 🏗️ مشخصات و ساختار معماری سامانه — CellPhoneManager v3.5.0 Royal Edition
 
 <div align="center">
   <p><strong>شرکت راهکار الکترونیک سهند</strong> (Sahand Electronic Solutions Co.) — <a href="https://irres.ir">https://irres.ir</a></p>
@@ -22,6 +22,7 @@ sequenceDiagram
     participant گیم‌پد as موتور گیم‌پد (pcGamepadManager)
     participant پل as پل تزریق ورودی بومی (winInputBridge.ps1)
     participant ویندوز as میزبان ویندوز / بازی DirectX (مانند FIFA 18)
+    participant آیکون as استخراج آیکون (appIconManager)
     participant مدیران as مدیران دامنه (بکاپ، رام، فایل، ابزار)
     participant دستگاه as گوشی تلفن همراه (اندروید / iOS)
 
@@ -31,6 +32,10 @@ sequenceDiagram
         گیم‌پد->>پل: ارسال خط فرمان بومی "KEY_DOWN:0x53,0x1F,0" (VK + Hardware ScanCode)
         پل->>ویندوز: تزریق سخت‌افزاری مستقیم keybd_event به بازی
         ویندوز-->>کاربر: اجرای فوری اکشن در بازی (پاس / شوت / دویدن)
+    else استخراج و کش خودکار آیکون‌های APK
+        رابط->>آیکون: درخواست GET /api/devices/:id/apps/:pkg/icon
+        آیکون->>دستگاه: واکشی پکیج و استخراج فایل آیکون رزولوشن بالا
+        آیکون-->>رابط: کش روی دیسک سرور و استریم سریع به کلاینت (200 OK)
     else مدیریت و عیب‌یابی عمومی
         کاربر->>رابط: انتخاب عملیات / اتصال دستگاه
         رابط->>ارزیاب: بررسی ماتریس ۵ وضعیتی قابلیت‌ها
@@ -49,6 +54,8 @@ sequenceDiagram
 
 | نام ماژول | مسیر فایل | مسئولیت‌های اصلی |
 | :--- | :--- | :--- |
+| **`appIconManager`** | `server/appIconManager.js` | استخراج زنده آیکون‌های APK، کشینگ بهینه در سرور و ارسال تصاویر به فرانت‌اند. |
+| **`fileManager`** | `server/fileManager.js` | آپلود و دانلود بازگشتی پوشه‌ها، استخراج اندازه بایت، استریم مدیا و اسناد، ایجاد آرشیو فشرده ZIP. |
 | **`pcGamepadManager`** | `server/pcGamepadManager.js` | مدیریت ورودی‌های دسته بازی، نگاشت چندنفره (بازیکن ۱ و ۲)، پروفایل‌های بازی و هدایت وب‌سوکت. |
 | **`winInputBridge`** | `server/winInputBridge.ps1` | فرآیند پایدار C# با تابع `keybd_event` برای تزریق مستقیم اسکن‌کد سخت‌افزاری مستقل از زبان کیبورد ویندوز. |
 | **`capabilityManager`** | `server/capabilityManager.js` | ماتریس ۵ وضعیتی سنجش پیش‌نیازها، اعتبارسنجی نسخه سیستم‌عامل و ارائه راهنمای گام‌به‌گام. |

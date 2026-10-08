@@ -336,8 +336,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
           {/* Power / Wake */}
           <button
             onClick={() => handleDeviceControl('key', { keycode: 26 })}
-            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/90 hover:bg-rose-500/10 border border-slate-800 hover:border-rose-500/40 text-slate-200 hover:text-rose-400 transition-all group"
+            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/90 hover:bg-rose-500/10 border border-slate-800 hover:border-rose-500/40 text-slate-200 hover:text-rose-400 transition-all group focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
             title="روشن / خاموش کردن صفحه نمایش"
+            aria-label="روشن یا خاموش کردن صفحه نمایش"
           >
             <Power className="w-4 h-4 mb-1.5 text-rose-400 group-hover:scale-110 transition-transform" />
             <span className="text-xs font-semibold">صفحه / پاور</span>
@@ -346,8 +347,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
           {/* Home */}
           <button
             onClick={() => handleDeviceControl('key', { keycode: 3 })}
-            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/90 hover:bg-cyan-500/10 border border-slate-800 hover:border-cyan-500/40 text-slate-200 hover:text-cyan-400 transition-all group"
+            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/90 hover:bg-cyan-500/10 border border-slate-800 hover:border-cyan-500/40 text-slate-200 hover:text-cyan-400 transition-all group focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
             title="رفتن به صفحه اصلی (Home)"
+            aria-label="رفتن به صفحه اصلی"
           >
             <Home className="w-4 h-4 mb-1.5 text-cyan-400 group-hover:scale-110 transition-transform" />
             <span className="text-xs font-semibold">صفحه اصلی</span>
@@ -356,8 +358,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
           {/* Back */}
           <button
             onClick={() => handleDeviceControl('key', { keycode: 4 })}
-            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/90 hover:bg-cyan-500/10 border border-slate-800 hover:border-cyan-500/40 text-slate-200 hover:text-cyan-400 transition-all group"
+            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/90 hover:bg-cyan-500/10 border border-slate-800 hover:border-cyan-500/40 text-slate-200 hover:text-cyan-400 transition-all group focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
             title="بازگشت (Back)"
+            aria-label="کلید بازگشت"
           >
             <ArrowLeft className="w-4 h-4 mb-1.5 text-cyan-400 group-hover:scale-110 transition-transform" />
             <span className="text-xs font-semibold">بازگشت</span>
@@ -366,8 +369,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
           {/* App Switcher / Recents */}
           <button
             onClick={() => handleDeviceControl('key', { keycode: 187 })}
-            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/90 hover:bg-purple-500/10 border border-slate-800 hover:border-purple-500/40 text-slate-200 hover:text-purple-400 transition-all group"
+            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/90 hover:bg-purple-500/10 border border-slate-800 hover:border-purple-500/40 text-slate-200 hover:text-purple-400 transition-all group focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:outline-none"
             title="برنامه‌های اخیر (App Switcher)"
+            aria-label="برنامه‌های باز و اخیر"
           >
             <Square className="w-4 h-4 mb-1.5 text-purple-400 group-hover:scale-110 transition-transform" />
             <span className="text-xs font-semibold">برنامه‌های باز</span>
@@ -376,8 +380,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
           {/* Volume Up */}
           <button
             onClick={() => handleDeviceControl('key', { keycode: 24 })}
-            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/90 hover:bg-emerald-500/10 border border-slate-800 hover:border-emerald-500/40 text-slate-200 hover:text-emerald-400 transition-all group"
+            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/90 hover:bg-emerald-500/10 border border-slate-800 hover:border-emerald-500/40 text-slate-200 hover:text-emerald-400 transition-all group focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
             title="افزایش صدا"
+            aria-label="افزایش صدا"
           >
             <Volume2 className="w-4 h-4 mb-1.5 text-emerald-400 group-hover:scale-110 transition-transform" />
             <span className="text-xs font-semibold">افزایش صدا</span>
@@ -386,8 +391,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
           {/* Volume Down */}
           <button
             onClick={() => handleDeviceControl('key', { keycode: 25 })}
-            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/90 hover:bg-emerald-500/10 border border-slate-800 hover:border-emerald-500/40 text-slate-200 hover:text-emerald-400 transition-all group"
+            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/90 hover:bg-emerald-500/10 border border-slate-800 hover:border-emerald-500/40 text-slate-200 hover:text-emerald-400 transition-all group focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
             title="کاهش صدا"
+            aria-label="کاهش صدا"
           >
             <Volume1 className="w-4 h-4 mb-1.5 text-emerald-400 group-hover:scale-110 transition-transform" />
             <span className="text-xs font-semibold">کاهش صدا</span>
@@ -396,8 +402,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
           {/* Notifications Shade */}
           <button
             onClick={() => handleDeviceControl('expand_notifications')}
-            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/90 hover:bg-amber-500/10 border border-slate-800 hover:border-amber-500/40 text-slate-200 hover:text-amber-400 transition-all group"
+            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/90 hover:bg-amber-500/10 border border-slate-800 hover:border-amber-500/40 text-slate-200 hover:text-amber-400 transition-all group focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
             title="باز کردن پنل اعلان‌ها"
+            aria-label="باز کردن پنل اعلان‌ها"
           >
             <Bell className="w-4 h-4 mb-1.5 text-amber-400 group-hover:scale-110 transition-transform" />
             <span className="text-xs font-semibold">پنل اعلان‌ها</span>
@@ -406,8 +413,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
           {/* Quick Settings */}
           <button
             onClick={() => handleDeviceControl('expand_settings')}
-            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/90 hover:bg-blue-500/10 border border-slate-800 hover:border-blue-500/40 text-slate-200 hover:text-blue-400 transition-all group"
+            className="flex flex-col items-center justify-center p-3 rounded-xl bg-slate-900/90 hover:bg-blue-500/10 border border-slate-800 hover:border-blue-500/40 text-slate-200 hover:text-blue-400 transition-all group focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none"
             title="باز کردن تنظیمات سریع نوار وضعیت"
+            aria-label="باز کردن تنظیمات سریع نوار وضعیت"
           >
             <Settings2 className="w-4 h-4 mb-1.5 text-blue-400 group-hover:scale-110 transition-transform" />
             <span className="text-xs font-semibold">تنظیمات سریع</span>
@@ -553,7 +561,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
               className="flex flex-col items-center justify-center p-3 rounded-xl bg-[#14151b] hover:bg-[#1c1e28] border border-amber-500/15 hover:border-amber-500/40 transition-all text-center group shadow-sm hover:shadow-amber-500/10"
             >
               <div className="mb-2 group-hover:scale-110 transition-transform">
-                <AppIcon packageName={app.pkg} appName={app.name} size="sm" />
+                <AppIcon packageName={app.pkg} appName={app.name} size="sm" deviceId={device?.id} />
               </div>
               <span className="text-xs font-bold text-stone-300 group-hover:text-yellow-300 truncate max-w-full">
                 {app.name}

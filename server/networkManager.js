@@ -214,14 +214,18 @@ export class NetworkManager {
   // 4. Ping & Diagnostics
   async pingHost(host = '8.8.8.8') {
     const isWin = process.platform === 'win32';
-    const cmd = isWin ? `ping -n 3 ${host}` : `ping -c 3 ${host}`;
+    if (!host || typeof host !== 'string' || !/^[a-zA-Z0-9.\-_]+$/.test(host.trim())) {
+      return { success: false, host, error: 'آدرس هاست نامعتبر است' };
+    }
+    const cleanHost = host.trim();
+    const args = isWin ? ['-n', '3', cleanHost] : ['-c', '3', cleanHost];
     try {
-      const { stdout } = await execAsync(cmd);
+      const { stdout } = await execFileAsync('ping', args);
       let timeMatch = stdout.match(/Average = (\d+)ms/) || stdout.match(/avg\/.*?=.*?\/(.*?)\//);
       let avgTime = timeMatch ? `${timeMatch[1]} ms` : 'پاسخ دریافت شد';
-      return { success: true, host, output: stdout, avgTime };
+      return { success: true, host: cleanHost, output: stdout, avgTime };
     } catch (err) {
-      return { success: false, host, error: 'تایم‌اوت یا عدم برقراری ارتباط' };
+      return { success: false, host: cleanHost, error: 'تایم‌اوت یا عدم برقراری ارتباط' };
     }
   }
 

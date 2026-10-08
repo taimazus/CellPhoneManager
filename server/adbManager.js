@@ -661,7 +661,9 @@ export class AdbManager {
 
 
   async openUrl(serial, url) {
-    return await this.runAdb(`shell am start -a android.intent.action.VIEW -d "${url}"`, serial);
+    if (!url || typeof url !== 'string') return { success: false, error: 'آدرس اینترنتی نامعتبر است' };
+    const safeUrl = url.trim().replace(/["\r\n`$!&;]/g, '');
+    return await this.runAdb(`shell am start -a android.intent.action.VIEW -d "${safeUrl}"`, serial);
   }
 
   async expandNotifications(serial) {
@@ -1004,7 +1006,8 @@ export class AdbManager {
           }
         }
 
-        await this.runAdb(`shell input text "${text.trim()}"`, serial);
+        const escapedText = (text || '').trim().replace(/([\\"'`$!#&*()|;<>\s])/g, '\\$1');
+        await this.runAdb(`shell input text "${escapedText}"`, serial);
         await new Promise(r => setTimeout(r, 200));
 
         // Tap the Send/OK button if present
@@ -1286,40 +1289,105 @@ export class AdbManager {
     }
   }
 
+  async mergeContacts(serial, { targetContact, duplicateIds = [] }) {
+    try {
+      if (targetContact) {
+        await this.updateContact(serial, targetContact);
+      }
+      if (duplicateIds && duplicateIds.length > 0) {
+        await this.deleteContactsBatch(serial, { contactIds: duplicateIds, rawContactIds: duplicateIds });
+      }
+      return { success: true, message: 'مخاطبین هم‌پوشان با موفقیت ادغام شدند' };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
   async getSms(serial) {
     try {
-      const res = await this.runAdb('shell content query --uri content://sms --projection _id:thread_id:address:body:date:type:read', serial);
+      // Put body at the end of projection so commas/newlines inside SMS text don't corrupt previous columns
+      const res = await this.runAdb('shell content query --uri content://sms --projection _id:thread_id:address:date:type:read:body', serial);
       if (!res.success || !res.stdout || res.stdout.includes('No result found')) {
         return [];
       }
-      const rows = res.stdout.trim().split('\n');
+
+      // Check blocked numbers from content://blocked_number/blocked if accessible
+      const blockedNumbers = new Set();
+      try {
+        const blockedRes = await this.runAdb('shell content query --uri content://blocked_number/blocked --projection original_number', serial);
+        if (blockedRes.success && blockedRes.stdout && !blockedRes.stdout.includes('No result found')) {
+          const bMatches = blockedRes.stdout.match(/original_number=([^,\s\n]+)/g);
+          if (bMatches) {
+            bMatches.forEach(m => {
+              const num = m.replace('original_number=', '').trim();
+              if (num && num !== 'NULL' && num !== 'null') blockedNumbers.add(num);
+            });
+          }
+        }
+      } catch {
+        // Safe fallback
+      }
+
+      // Split output into row blocks starting with "Row: <number>"
+      const rowBlocks = res.stdout.split(/(?=^Row:\s*\d+\s+)/m).filter(b => b.trim().startsWith('Row:'));
       const messages = [];
 
-      for (const row of rows) {
-        if (!row.startsWith('Row:')) continue;
-        const idMatch = row.match(/_id=(\d+)/);
-        const threadMatch = row.match(/thread_id=(\d+)/);
-        const addrMatch = row.match(/address=([^,]+)/);
-        const bodyMatch = row.match(/body=([^,]+)/);
-        const dateMatch = row.match(/date=(\d+)/);
-        const typeMatch = row.match(/type=(\d+)/);
+      for (const block of rowBlocks) {
+        const idMatch = block.match(/_id=(\d+)/);
+        const threadMatch = block.match(/thread_id=(\d+)/);
+        const addrMatch = block.match(/address=([^,]+)/);
+        const dateMatch = block.match(/date=(\d+)/);
+        const typeMatch = block.match(/type=(\d+)/);
+        const readMatch = block.match(/read=(\d+)/);
+
+        // Body is everything after "body=" to the end of the block
+        let body = '';
+        const bodyIdx = block.indexOf('body=');
+        if (bodyIdx !== -1) {
+          body = block.substring(bodyIdx + 5).trim();
+          if (body === 'NULL' || body === 'null') {
+            body = '';
+          }
+        }
 
         const typeCode = typeMatch ? parseInt(typeMatch[1], 10) : 1;
         const dateNum = dateMatch ? parseInt(dateMatch[1], 10) : Date.now();
         const rawDate = new Date(dateNum);
+        const rawNumber = addrMatch ? addrMatch[1].trim() : 'Unknown';
+        const address = rawNumber === 'NULL' || rawNumber === 'null' ? 'Unknown' : rawNumber;
+
+        // Android type codes:
+        // 1: Inbox, 2: Sent, 3: Draft, 4: Outbox, 5: Failed, 6: Queued
+        let msgType = 'inbox';
+        if (typeCode === 2) msgType = 'sent';
+        else if (typeCode === 3) msgType = 'draft';
+        else if (typeCode === 4 || typeCode === 6) msgType = 'outbox';
+        else if (typeCode === 5) msgType = 'failed';
+
+        // Categorize Banking / OTP / Spam / Promotions / Blocked
+        const fullContent = (address + ' ' + body).toLowerCase();
+        const isBank = /بانک|bank|parsian|melli|mellat|saderat|sepah|tejarat|keshavarzi|pasargad|saman|blubank|resalat|shahr|maskan|refah|karafarin|sina|postbank|ghavamin|صندوق|واریز|برداشت|مانده|انتقال|کارت به کارت|شاپرک|پایا|ساتنا/i.test(fullContent);
+        const isOtp = /کد تایید|کد فعال‌سازی|کد ورود|رمز یکبار مصرف|رمز پویا|otp|verification code|security code|verify code|pin code/i.test(fullContent);
+        const isSpam = /تبلیغ|لغو11|لغو 11|ارسال ۱|ارسال 1|تخفیف|برنده|جایزه|تور لحظه|ویژه|اقساط|کدتخفیف|حراج|فروش ویژه|وام فوری|شارژ رایگان|ad:|adv:/i.test(fullContent) || (/^\d{4,6}$/.test(address) && !isBank && !isOtp);
+        const isBlocked = blockedNumbers.has(address);
 
         messages.push({
           id: idMatch ? idMatch[1] : String(Math.random()),
-          threadId: threadMatch ? `t_${threadMatch[1]}` : 't_default',
-          number: addrMatch ? addrMatch[1].trim() : 'Unknown',
-          sender: typeCode === 2 ? 'شما' : (addrMatch ? addrMatch[1].trim() : 'ناشناس'),
-          body: bodyMatch ? bodyMatch[1].trim() : '',
+          threadId: threadMatch ? `t_${threadMatch[1]}` : (address ? `t_${address}` : 't_default'),
+          number: address,
+          sender: typeCode === 2 ? 'شما' : address,
+          body: body,
           timestamp: rawDate.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }),
           date: rawDate.toLocaleDateString('fa-IR'),
           rawDate: dateNum,
           isoDate: rawDate.toISOString(),
-          type: typeCode === 2 ? 'sent' : 'inbox',
-          read: true
+          type: msgType,
+          typeCode: typeCode,
+          isBank,
+          isOtp,
+          isSpam,
+          isBlocked,
+          read: readMatch ? readMatch[1] === '1' : true
         });
       }
 

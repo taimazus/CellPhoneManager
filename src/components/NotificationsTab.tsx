@@ -14,6 +14,7 @@ import {
   Volume2
 } from 'lucide-react';
 import { Device } from '../types';
+import { LoadingSpinner } from './LoadingSpinner';
 
 interface NotificationsTabProps {
   device: Device | null;
@@ -142,9 +143,13 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({ device }) =>
       {/* Notifications List */}
       <div className="rounded-3xl glass-panel p-6 border border-slate-800 space-y-4">
         {loading && notifications.length === 0 ? (
-          <div className="p-16 text-center text-slate-400">
-            <RefreshCw className="w-8 h-8 animate-spin text-cyan-400 mx-auto mb-3" />
-            <p className="text-xs">در حال رصد اعلان‌های فعال گوشی...</p>
+          <div className="p-16 text-center">
+            <LoadingSpinner
+              size="lg"
+              variant="cyan"
+              text="در حال شنود و استخراج اعلان‌های زنده گوشی..."
+              subtext="اتصال به سرویس اعلان‌های ویندوز"
+            />
           </div>
         ) : notifications.length === 0 ? (
           <div className="p-16 text-center text-slate-500 space-y-2">

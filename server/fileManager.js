@@ -37,7 +37,8 @@ export class FileManager {
     try {
       const adbPath = await toolManager.getAdbPath();
       const serialFlag = serial ? `-s ${serial}` : '';
-      const safePath = targetPath.endsWith('/') ? targetPath : targetPath + '/';
+      const cleanPath = (targetPath || '/sdcard/').replace(/["`$!]/g, '');
+      const safePath = cleanPath.endsWith('/') ? cleanPath : cleanPath + '/';
       const cmd = `"${adbPath}" ${serialFlag} shell ls -l "${safePath}"`;
       
       const { stdout } = await execAsync(cmd);

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>در حال راه‌اندازی | CellPhoneManager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;800&family=Vazirmatn:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #0c0d11;
+      color: #f5f5f4;
+      font-family: 'Vazirmatn', 'Outfit', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      background-image: 
+        radial-gradient(1000px circle at 50% -10%, rgba(212, 175, 55, 0.15), transparent 70%),
+        radial-gradient(800px circle at 90% 90%, rgba(36, 38, 50, 0.45), transparent 65%),
+        radial-gradient(600px circle at 10% 80%, rgba(212, 160, 40, 0.08), transparent 60%);
+    }
+
+    .glass-card {
+      background: rgba(18, 19, 26, 0.85);
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      border: 1px solid rgba(212, 175, 55, 0.22);
+      box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.8), 0 0 25px rgba(212, 175, 55, 0.1);
+      border-radius: 2rem;
+      padding: 3rem 2.5rem;
+      width: 90%;
+      max-width: 520px;
+      text-align: center;
+      position: relative;
+      z-index: 10;
+      animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .crown-glow {
+      width: 76px;
+      height: 76px;
+      margin: 0 auto 1.5rem auto;
+      border-radius: 1.5rem;
+      background: linear-gradient(135deg, #fef08a 0%, #eab308 40%, #ca8a04 80%, #a16207 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 25px rgba(234, 179, 8, 0.3), 0 0 40px rgba(212, 175, 55, 0.2);
+      animation: pulseGlow 2.4s infinite ease-in-out;
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1); box-shadow: 0 10px 25px rgba(234, 179, 8, 0.3); }
+      50% { transform: scale(1.05); box-shadow: 0 15px 35px rgba(234, 179, 8, 0.5), 0 0 50px rgba(212, 175, 55, 0.35); }
+    }
+
+    .crown-glow svg {
+      width: 42px;
+      height: 42px;
+      fill: #0c0d11;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.35rem;
+      color: #ffffff;
+      font-family: 'Outfit', 'Vazirmatn', sans-serif;
+    }
+
+    h1 span {
+      background: linear-gradient(135deg, #fef08a 0%, #eab308 50%, #ca8a04 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: #d6d3d1;
+      margin-bottom: 2rem;
+      font-weight: 500;
+    }
+
+    /* Progress bar */
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-bottom: 1.25rem;
+      position: relative;
+      border: 1px solid rgba(212, 175, 55, 0.15);
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 25%;
+      background: linear-gradient(90deg, #ca8a04 0%, #eab308 50%, #fef08a 100%);
+      border-radius: 9999px;
+      transition: width 0.3s ease;
+      box-shadow: 0 0 12px rgba(234, 179, 8, 0.6);
+      animation: shimmer 1.8s infinite linear;
+    }
+
+    .status-text {
+      font-size: 0.85rem;
+      color: #fde047;
+      font-weight: 600;
+      min-height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(253, 224, 71, 0.25);
+      border-top-color: #fde047;
+      border-radius: 50%;
+      animation: spin 0.8s infinite linear;
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .steps-log {
+      margin-top: 1.5rem;
+      padding: 0.85rem 1rem;
+      background: rgba(12, 13, 17, 0.7);
+      border: 1px solid rgba(212, 175, 55, 0.12);
+      border-radius: 1rem;
+      font-size: 0.75rem;
+      color: #a8a29e;
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .step-item.active {
+      color: #fef08a;
+      font-weight: 700;
+    }
+
+    .step-item.done {
+      color: #4ade80;
+    }
+
+    .footer-brand {
+      margin-top: 2rem;
+      font-size: 0.75rem;
+      color: #a8a29e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+    }
+
+    .footer-brand a {
+      color: #fde047;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .footer-brand a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="glass-card">
+    <div class="crown-glow">
+      <svg viewBox="0 0 24 24">
+        <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z"/>
+      </svg>
+    </div>
+
+    <h1>CellPhone<span>Manager</span></h1>
+    <div class="subtitle">شرکت راهکار الکترونیک سهند • نسخه سلطنتی ۳.۴</div>
+
+    <div class="progress-track">
+      <div id="progressFill" class="progress-fill"></div>
+    </div>
+
+    <div class="status-text">
+      <span class="spinner"></span>
+      <span id="statusLabel">در حال بارگذاری و راه‌اندازی هسته سیستم...</span>
+    </div>
+
+    <div class="steps-log">
+      <div id="step1" class="step-item active">
+        <span>⚡</span>
+        <span>بررسی موتور Node.js و بسته‌های سیستمی</span>
+      </div>
+      <div id="step2" class="step-item">
+        <span>🔄</span>
+        <span>راه‌اندازی پل ارتباطی ADB، Scrcpy و درایورها</span>
+      </div>
+      <div id="step3" class="step-item">
+        <span>🌐</span>
+        <span>بارگذاری سرور داخلی و واسط کاربری تحت وب</span>
+      </div>
+    </div>
+
+    <div class="footer-brand">
+      <span>توسعه اختصاصی:</span>
+      <a href="https://irres.ir" target="_blank" rel="noreferrer">شرکت راهکار الکترونیک سهند (irres.ir)</a>
+    </div>
+  </div>
+
+  <script>
+    const TARGET_URL = 'http://localhost:5173/';
+    const HEALTH_URL = 'http://localhost:3001/api/health';
+    const progressFill = document.getElementById('progressFill');
+    const statusLabel = document.getElementById('statusLabel');
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const step3 = document.getElementById('step3');
+
+    let percent = 25;
+    let attempts = 0;
+    const maxAttempts = 60; // Up to 30 seconds
+
+    // Progress animation ticker
+    const timer = setInterval(() => {
+      attempts++;
+      if (percent < 90) {
+        percent += (attempts < 5 ? 12 : (attempts < 15 ? 4 : 1));
+        progressFill.style.width = percent + '%';
+      }
+
+      if (attempts === 2) {
+        step1.className = 'step-item done';
+        step1.querySelector('span').textContent = '✔';
+        step2.className = 'step-item active';
+        statusLabel.textContent = 'در حال راه‌اندازی ابزارهای ارتباط سخت‌افزاری...';
+      } else if (attempts === 5) {
+        step2.className = 'step-item done';
+        step2.querySelector('span').textContent = '✔';
+        step3.className = 'step-item active';
+        statusLabel.textContent = 'در حال اتصال به سرور و رابط کاربری...';
+      }
+
+      // Check if Vite UI is ready
+      checkReadiness();
+    }, 500);
+
+    async function checkReadiness() {
+      try {
+        // Try pinging Vite frontend
+        const res = await fetch(TARGET_URL, { mode: 'no-cors', cache: 'no-cache' });
+        // If we reach here without network error, server is listening!
+        onReady();
+      } catch (err) {
+        // Still loading, retry on next tick
+      }
+    }
+
+    function onReady() {
+      clearInterval(timer);
+      progressFill.style.width = '100%';
+      step3.className = 'step-item done';
+      step3.querySelector('span').textContent = '✔';
+      statusLabel.textContent = 'آماده‌سازی با موفقیت انجام شد! در حال انتقال...';
+      setTimeout(() => {
+        window.location.replace(TARGET_URL);
+      }, 400);
+    }
+
+    // Safety timeout: if after 20 seconds, attempt direct redirect
+    setTimeout(() => {
+      window.location.replace(TARGET_URL);
+    }, 20000);
+  </script>
+</body>
+</html>

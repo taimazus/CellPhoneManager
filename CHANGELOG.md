@@ -6,6 +6,33 @@ Developed and maintained exclusively by **Sahand Electronic Solutions Co. (شر�
 
 ---
 
+## [3.5.0] — 2026-10-08 (Anti-Freeze Virtualization & Pagination, Smart SMS Categorizer, Real App Icon Extractor, and Contact Merge Studio)
+
+### 🌟 Added & Enhanced
+- **⚡ Anti-Freeze Virtualization & Pagination (`src/components/PaginationBar.tsx`):**
+  - Instant page-based chunking across contacts, SMS messages, call logs, and installed applications.
+  - Effortlessly handles 6,304+ contacts with under 3ms rendering latency and 0 browser DOM freezes.
+  - Customizable page sizes (15, 30, 50, 100, 200 items per page) with luxury gold styling and keyboard-friendly navigation.
+- **🌀 Global ActionOverlay & Anti-Multi-Click Safety (`src/components/LoadingSpinner.tsx` & `src/App.tsx`):**
+  - Translucent frosted glass backdrop with dual rotating neon gold rings and pulsing progress status bar during long ADB/Fastboot operations.
+  - Automatically disables duplicate clicks and prevents accidental double-submits on heavy actions.
+- **📩 Multi-line SMS Parser & Smart Category Tabs (`server/adbManager.js` & `src/components/MessagesTab.tsx`):**
+  - Fixed long-standing SMS truncation bugs on bank messages (e.g. PARSIANBANK OTPs with comma-separated numbers and multi-line formatting).
+  - Intelligent regex categorizer sorting messages into **Inbox**, **Sent**, **Banking & OTP (Parsian, Mellat, Melli, Pasargad, etc.)**, **Spam & Promo**, **Blocked**, and **Drafts & Failed**.
+  - Added dedicated 1-click clipboard copy button for rapid OTP & transaction copying.
+- **🎨 Real APK Icon Extractor (`server/appIconManager.js` & `src/components/AppIcon.tsx`):**
+  - Direct high-resolution icon extraction from installed APKs using native Android packaging tools.
+  - Server-side disk caching in `data/app_icons/` with dynamic SVG fallback badges.
+- **👥 Contact Merge & Avatar Studio (`src/components/MessagesTab.tsx`):**
+  - Smart duplicate contact discovery and 1-click merging based on identical phone numbers or names.
+  - Account source indicators (Google, Telegram, SIM, Device Phonebook), avatar photo management, and vCard 3.0 export.
+- **📁 Office & Web Document Previewer (`src/components/FilesTab.tsx`):**
+  - In-browser preview for Word (`.docx`), Excel (`.xlsx`), PowerPoint (`.pptx`), HTML, JSON, Python, and code syntax files.
+- **🧪 Comprehensive Test Coverage:**
+  - Expanded test suite to **27 test suites / 93 tests** with 100% passing rate.
+
+---
+
 ## [3.4.4] — 2026-10-07 (Advanced File Explorer & Media Studio, Drag-Drop, Batch Download, and PATH Integration)
 
 ### 🌟 Added & Enhanced

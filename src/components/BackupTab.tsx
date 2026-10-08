@@ -1037,7 +1037,7 @@ export const BackupTab: React.FC<BackupTabProps> = ({ device }) => {
                     className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 flex items-center justify-between gap-3 transition-all"
                   >
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <AppIcon icon={app.icon} name={displayName} className="w-9 h-9 shrink-0" />
+                      <AppIcon packageName={app.packageName} appName={displayName} deviceId={device?.id} className="w-9 h-9 shrink-0" />
                       <div className="overflow-hidden">
                         <p className="text-xs font-bold text-white truncate">{displayName}</p>
                         <p className="text-[10px] text-slate-400 font-mono truncate">{app.packageName}</p>

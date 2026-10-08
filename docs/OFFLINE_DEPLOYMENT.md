@@ -2,7 +2,7 @@
 
 <div align="center">
   <p><strong>Sahand Electronic Solutions Co. (شرکت راهکار الکترونیک سهند)</strong> — <a href="https://irres.ir">https://irres.ir</a></p>
-  <p><strong>Software Version:</strong> <code>v3.4.4 Royal Edition</code> | <strong>Universal Smartphone Management Suite</strong></p>
+  <p><strong>Software Version:</strong> <code>v3.5.0 Royal Edition</code> | <strong>Universal Smartphone Management Suite</strong></p>
   <p><strong><a href="OFFLINE_DEPLOYMENT.fa.md">🇮🇷 برای مشاهده نسخه فارسی اینجا کلیک کنید</a></strong></p>
 </div>
 

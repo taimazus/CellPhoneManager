@@ -48,6 +48,11 @@ Write-Host "`n[3/4] 🛠️ اجرای بررسی پیش‌پرواز و آما�
 node server/preflight.js
 
 # 4. Launch
-Write-Host "`n[4/4] 🚀 در حال باز کردن برنامه در مرورگر و شروع سرور..." -ForegroundColor Green
-Start-Process "http://localhost:5173"
+Write-Host "`n[4/4] 🚀 در حال آماده‌سازی و باز کردن برنامه..." -ForegroundColor Green
+$loadingHtml = Join-Path $PSScriptRoot "public\loading.html"
+if (Test-Path $loadingHtml) {
+    Start-Process $loadingHtml
+} else {
+    Start-Process "http://localhost:5173"
+}
 npm run dev

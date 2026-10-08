@@ -297,18 +297,69 @@ export class ToolManager {
   }
 
   async installFromLocalFile(toolId, localFilePath, logCallback = () => {}) {
-    if (!fs.existsSync(localFilePath)) {
+    if (!localFilePath || typeof localFilePath !== 'string') {
+      return { success: false, error: 'مسیر فایل مشخص نشده است.' };
+    }
+    const resolvedPath = path.resolve(localFilePath);
+    if (!fs.existsSync(resolvedPath)) {
       return { success: false, error: 'فایل نصبی محلی در مسیر مشخص‌شده یافت نشد.' };
     }
-    logCallback(`در حال استقرار ${toolId} از فایل محلی: ${localFilePath}`);
     try {
-      if (localFilePath.endsWith('.zip')) {
-        await execAsync(`powershell -Command "Expand-Archive -Path '${localFilePath}' -DestinationPath '${this.binDir}' -Force"`);
+      const stats = fs.statSync(resolvedPath);
+      if (!stats.isFile()) {
+        return { success: false, error: 'مسیر مشخص‌شده یک فایل معتبر نیست.' };
+      }
+    } catch (e) {
+      return { success: false, error: `خطا در بررسی فایل: ${e.message}` };
+    }
+
+    logCallback(`در حال استقرار ${toolId} از فایل محلی: ${resolvedPath}`);
+    try {
+      const lower = resolvedPath.toLowerCase();
+      if (lower.endsWith('.zip')) {
+        await new Promise((resolve, reject) => {
+          const ps = spawn('powershell.exe', [
+            '-NoProfile',
+            '-NonInteractive',
+            '-Command',
+            'Expand-Archive',
+            '-LiteralPath',
+            resolvedPath,
+            '-DestinationPath',
+            this.binDir,
+            '-Force'
+          ]);
+          let stderr = '';
+          ps.stderr.on('data', (d) => { stderr += d.toString(); });
+          ps.on('close', (code) => {
+            if (code === 0) resolve();
+            else reject(new Error(stderr || `استخراج فایل فشرده با کد ${code} ناموفق بود`));
+          });
+          ps.on('error', reject);
+        });
         logCallback(`فایل فشرده با موفقیت در ${this.binDir} استخراج شد.`);
         return { success: true, message: 'ابزار با موفقیت از پکیج محلی آفلاین نصب گردید.' };
       }
-      if (localFilePath.endsWith('.exe')) {
-        await execAsync(`powershell -NoProfile -Command "Start-Process -FilePath '${localFilePath}' -Verb RunAs"`);
+      if (lower.endsWith('.exe')) {
+        await new Promise((resolve, reject) => {
+          const ps = spawn('powershell.exe', [
+            '-NoProfile',
+            '-NonInteractive',
+            '-Command',
+            'Start-Process',
+            '-FilePath',
+            resolvedPath,
+            '-Verb',
+            'RunAs'
+          ]);
+          let stderr = '';
+          ps.stderr.on('data', (d) => { stderr += d.toString(); });
+          ps.on('close', (code) => {
+            if (code === 0) resolve();
+            else reject(new Error(stderr || `اجرای نصاب با کد ${code} ناموفق بود`));
+          });
+          ps.on('error', reject);
+        });
         return { success: true, message: 'نصاب محلی با دسترسی مدیر اجرا شد.' };
       }
       return { success: false, error: 'فرمت فایل محلی پشتیبانی نمی‌شود (فقط zip و exe).' };

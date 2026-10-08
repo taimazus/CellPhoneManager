@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Layers, 
   Upload, 
@@ -20,6 +20,8 @@ import {
 import { Device, DeviceApp } from '../types';
 import { AppIcon } from './AppIcon';
 import { TabGuideCard } from './TabGuideCard';
+import { LoadingSpinner, ActionOverlay } from './LoadingSpinner';
+import { PaginationBar } from './PaginationBar';
 
 interface AppsTabProps {
   device: Device | null;
@@ -34,6 +36,14 @@ export const AppsTab: React.FC<AppsTabProps> = ({ device }) => {
   const [isInstalling, setIsInstalling] = useState(false);
   const [extractingPkg, setExtractingPkg] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [appPage, setAppPage] = useState<number>(1);
+  const [appPageSize, setAppPageSize] = useState<number>(60);
+  const [actionProgress, setActionProgress] = useState<{
+    active: boolean;
+    title?: string;
+    subtitle?: string;
+    variant?: 'gold' | 'cyan' | 'purple' | 'emerald';
+  }>({ active: false });
 
   const fetchApps = async () => {
     if (!device) return;
@@ -65,6 +75,12 @@ export const AppsTab: React.FC<AppsTabProps> = ({ device }) => {
     if (!file || !device) return;
 
     setIsInstalling(true);
+    setActionProgress({
+      active: true,
+      title: 'در حال نصب بسته نرم‌افزاری بر روی گوشی...',
+      subtitle: `انتقال و نصب فایل ${file.name} روی دستگاه`,
+      variant: 'emerald'
+    });
     const formData = new FormData();
     formData.append('packageFile', file);
 
@@ -84,6 +100,7 @@ export const AppsTab: React.FC<AppsTabProps> = ({ device }) => {
       showToast(`خطا در آپلود: ${err.message}`, 'error');
     } finally {
       setIsInstalling(false);
+      setActionProgress({ active: false });
       e.target.value = '';
     }
   };
@@ -91,6 +108,13 @@ export const AppsTab: React.FC<AppsTabProps> = ({ device }) => {
   const handleUninstall = async (packageName: string) => {
     if (!device) return;
     if (!confirm(`آیا از حذف کامل برنامه ${packageName} اطمینان دارید؟`)) return;
+
+    setActionProgress({
+      active: true,
+      title: 'در حال حذف برنامه از روی دستگاه...',
+      subtitle: `ارسال فرمان حذف پکیج ${packageName}`,
+      variant: 'gold'
+    });
 
     try {
       const res = await fetch(`/api/devices/${device.id}/apps/uninstall`, {
@@ -107,12 +131,21 @@ export const AppsTab: React.FC<AppsTabProps> = ({ device }) => {
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
+    } finally {
+      setActionProgress({ active: false });
     }
   };
 
   const handleToggleFreeze = async (packageName: string, currentEnabled: boolean) => {
     if (!device) return;
     const targetEnable = !currentEnabled;
+
+    setActionProgress({
+      active: true,
+      title: targetEnable ? 'در حال فعال‌سازی برنامه...' : 'در حال فریز و غیرفعال‌سازی برنامه...',
+      subtitle: `تغییر وضعیت اجرایی پکیج ${packageName}`,
+      variant: 'cyan'
+    });
 
     try {
       const res = await fetch(`/api/devices/${device.id}/apps/toggle-freeze`, {
@@ -129,6 +162,8 @@ export const AppsTab: React.FC<AppsTabProps> = ({ device }) => {
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
+    } finally {
+      setActionProgress({ active: false });
     }
   };
 
@@ -138,33 +173,54 @@ export const AppsTab: React.FC<AppsTabProps> = ({ device }) => {
   const handleExtractApp = async (packageName: string) => {
     if (!device) return;
     setExtractingPkg(packageName);
+    setActionProgress({
+      active: true,
+      title: `در حال استخراج بسته نصبی ${pkgFormat}...`,
+      subtitle: `استخراج و ارسال فایل پکیج ${packageName}`,
+      variant: 'cyan'
+    });
     try {
       window.open(`/api/devices/${device.id}/apps/extract?packageName=${encodeURIComponent(packageName)}&type=${device.type || 'android'}`);
       showToast(`استخراج بسته ${packageName}.${isIos ? 'ipa' : 'apk'} آغاز شد!`, 'success');
     } catch (err: any) {
       showToast(`خطا در استخراج: ${err.message}`, 'error');
     } finally {
-      setTimeout(() => setExtractingPkg(null), 1500);
+      setTimeout(() => {
+        setExtractingPkg(null);
+        setActionProgress({ active: false });
+      }, 1500);
     }
   };
 
-  const filteredApps = apps
-    .filter((app) => {
-      const matchesSearch = app.appName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            app.packageName.toLowerCase().includes(searchQuery.toLowerCase());
-      if (!matchesSearch) return false;
+  const filteredApps = useMemo(() => {
+    return apps
+      .filter((app) => {
+        const matchesSearch = app.appName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                              app.packageName.toLowerCase().includes(searchQuery.toLowerCase());
+        if (!matchesSearch) return false;
 
-      if (filterType === 'user') return !app.isSystem;
-      if (filterType === 'system') return app.isSystem;
-      if (filterType === 'frozen') return !app.enabled;
-      return true;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'name_asc') return a.appName.localeCompare(b.appName, 'fa');
-      if (sortBy === 'name_desc') return b.appName.localeCompare(a.appName, 'fa');
-      if (sortBy === 'pkg_asc') return a.packageName.localeCompare(b.packageName);
-      return 0;
-    });
+        if (filterType === 'user') return !app.isSystem;
+        if (filterType === 'system') return app.isSystem;
+        if (filterType === 'frozen') return !app.enabled;
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'name_asc') return a.appName.localeCompare(b.appName, 'fa');
+        if (sortBy === 'name_desc') return b.appName.localeCompare(a.appName, 'fa');
+        if (sortBy === 'pkg_asc') return a.packageName.localeCompare(b.packageName);
+        return 0;
+      });
+  }, [apps, searchQuery, filterType, sortBy]);
+
+  // Paginated Apps calculation for high speed DOM rendering
+  const totalAppPages = Math.ceil(filteredApps.length / appPageSize) || 1;
+  const safeAppPage = Math.min(Math.max(1, appPage), totalAppPages);
+  const paginatedApps = useMemo(() => {
+    return filteredApps.slice(
+      (safeAppPage - 1) * appPageSize,
+      safeAppPage * appPageSize
+    );
+  }, [filteredApps, safeAppPage, appPageSize]);
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -291,11 +347,32 @@ export const AppsTab: React.FC<AppsTabProps> = ({ device }) => {
         </div>
       </div>
 
+      {/* Apps Pagination Bar (Top) */}
+      {filteredApps.length > appPageSize && (
+        <PaginationBar
+          currentPage={safeAppPage}
+          totalPages={totalAppPages}
+          totalItems={filteredApps.length}
+          pageSize={appPageSize}
+          onPageChange={setAppPage}
+          onPageSizeChange={(newSize) => {
+            setAppPageSize(newSize);
+            setAppPage(1);
+          }}
+          itemLabel="برنامه"
+          variant="cyan"
+        />
+      )}
+
       {/* Apps Grid */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center p-12 text-slate-400">
-          <RefreshCw className="w-8 h-8 animate-spin text-cyan-400 mb-3" />
-          <span className="text-sm">در حال بارگذاری لیست بسته‌ها...</span>
+        <div className="flex flex-col items-center justify-center p-14">
+          <LoadingSpinner
+            size="lg"
+            variant="cyan"
+            text="در حال بارگذاری و آنالیز برنامه‌های نصب‌شده..."
+            subtext="دریافت لیست پکیج‌ها و وضعیت فریز بودن برنامه‌ها"
+          />
         </div>
       ) : filteredApps.length === 0 ? (
         <div className="rounded-2xl glass-panel p-12 text-center text-slate-400 border border-slate-800">
@@ -303,88 +380,116 @@ export const AppsTab: React.FC<AppsTabProps> = ({ device }) => {
           <p className="text-sm">برنامه‌ای با این مشخصات یافت نشد.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredApps.map((app) => (
-            <div
-              key={app.packageName}
-              className={`rounded-2xl p-4 glass-panel border transition-all flex flex-col justify-between ${
-                !app.enabled 
-                  ? 'border-cyan-500/30 bg-slate-950/40 opacity-70' 
-                  : 'border-slate-800/80 hover:border-cyan-500/30'
-              }`}
-            >
-              <div className="flex items-start gap-3.5 mb-3">
-                <AppIcon 
-                  packageName={app.packageName} 
-                  appName={app.appName} 
-                  isSystem={app.isSystem} 
-                  size="md" 
-                />
-                <div className="flex-1 min-w-0 text-right">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <h4 className="text-sm font-bold text-white truncate">
-                      {app.appName}
-                    </h4>
-                    {app.isSystem ? (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                        System
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                        User
-                      </span>
-                    )}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedApps.map((app) => (
+              <div
+                key={app.packageName}
+                className={`rounded-2xl p-4 glass-panel border transition-all flex flex-col justify-between ${
+                  !app.enabled 
+                    ? 'border-cyan-500/30 bg-slate-950/40 opacity-70' 
+                    : 'border-slate-800/80 hover:border-cyan-500/30'
+                }`}
+              >
+                <div className="flex items-start gap-3.5 mb-3">
+                  <AppIcon 
+                    packageName={app.packageName} 
+                    appName={app.appName} 
+                    isSystem={app.isSystem} 
+                    size="md" 
+                    deviceId={device?.id}
+                  />
+                  <div className="flex-1 min-w-0 text-right">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <h4 className="text-sm font-bold text-white truncate">
+                        {app.appName}
+                      </h4>
+                      {app.isSystem ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          System
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                          User
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-400 font-mono truncate" title={app.packageName}>
+                      {app.packageName}
+                    </p>
+                    <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                      نسخه: {app.version || '1.0'} {app.size !== 'N/A' && `• حجم: ${app.size}`}
+                    </p>
                   </div>
-                  <p className="text-[11px] text-slate-400 font-mono truncate" title={app.packageName}>
-                    {app.packageName}
-                  </p>
-                  <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                    نسخه: {app.version || '1.0'} {app.size !== 'N/A' && `• حجم: ${app.size}`}
-                  </p>
+                </div>
+
+                {/* Action Buttons for App */}
+                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800/60">
+                  {/* Extract App (APK for Android / IPA for iOS) */}
+                  <button
+                    onClick={() => handleExtractApp(app.packageName)}
+                    disabled={extractingPkg === app.packageName}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/50 transition-all disabled:opacity-50"
+                    title={`استخراج بسته ${pkgFormat} روی کامپیوتر`}
+                  >
+                    <Download className={`w-3.5 h-3.5 ${extractingPkg === app.packageName ? 'animate-bounce' : ''}`} />
+                    <span>استخراج {pkgFormat}</span>
+                  </button>
+
+                  {/* Freeze / Unfreeze Button */}
+                  <button
+                    onClick={() => handleToggleFreeze(app.packageName, app.enabled)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+                      app.enabled
+                        ? 'bg-slate-900 hover:bg-cyan-500/10 text-cyan-400 border-slate-700 hover:border-cyan-500/40'
+                        : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                    }`}
+                    title={app.enabled ? 'فریز و غیرفعال کردن برنامه' : 'فعال‌سازی مجدد'}
+                  >
+                    {app.enabled ? <Snowflake className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                    <span>{app.enabled ? 'فریز' : 'فعال‌سازی'}</span>
+                  </button>
+
+                  {/* Uninstall Button */}
+                  <button
+                    onClick={() => handleUninstall(app.packageName)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:border-rose-500/50 transition-all"
+                    title="حذف کامل برنامه از دستگاه"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>حذف</span>
+                  </button>
                 </div>
               </div>
+            ))}
+          </div>
 
-              {/* Action Buttons for App */}
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800/60">
-                {/* Extract App (APK for Android / IPA for iOS) */}
-                <button
-                  onClick={() => handleExtractApp(app.packageName)}
-                  disabled={extractingPkg === app.packageName}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover:border-cyan-500/50 transition-all disabled:opacity-50"
-                  title={`استخراج بسته ${pkgFormat} روی کامپیوتر`}
-                >
-                  <Download className={`w-3.5 h-3.5 ${extractingPkg === app.packageName ? 'animate-bounce' : ''}`} />
-                  <span>استخراج {pkgFormat}</span>
-                </button>
-
-                {/* Freeze / Unfreeze Button */}
-                <button
-                  onClick={() => handleToggleFreeze(app.packageName, app.enabled)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
-                    app.enabled
-                      ? 'bg-slate-900 hover:bg-cyan-500/10 text-cyan-400 border-slate-700 hover:border-cyan-500/40'
-                      : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                  }`}
-                  title={app.enabled ? 'فریز و غیرفعال کردن برنامه' : 'فعال‌سازی مجدد'}
-                >
-                  {app.enabled ? <Snowflake className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
-                  <span>{app.enabled ? 'فریز' : 'فعال‌سازی'}</span>
-                </button>
-
-                {/* Uninstall Button */}
-                <button
-                  onClick={() => handleUninstall(app.packageName)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 hover:border-rose-500/50 transition-all"
-                  title="حذف کامل برنامه از دستگاه"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>حذف</span>
-                </button>
-              </div>
-            </div>
-          ))}
+          {/* Apps Pagination Bar (Bottom) */}
+          {filteredApps.length > appPageSize && (
+            <PaginationBar
+              currentPage={safeAppPage}
+              totalPages={totalAppPages}
+              totalItems={filteredApps.length}
+              pageSize={appPageSize}
+              onPageChange={setAppPage}
+              onPageSizeChange={(newSize) => {
+                setAppPageSize(newSize);
+                setAppPage(1);
+              }}
+              itemLabel="برنامه"
+              variant="cyan"
+            />
+          )}
         </div>
       )}
+
+      {/* Global Animated Action Overlay */}
+      <ActionOverlay
+        isOpen={actionProgress.active}
+        title={actionProgress.title}
+        subtitle={actionProgress.subtitle}
+        variant={actionProgress.variant || 'cyan'}
+      />
     </div>
   );
 };

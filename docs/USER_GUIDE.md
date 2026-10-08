@@ -1,4 +1,4 @@
-# 👑 Comprehensive Module Reference & User Guide — CellPhoneManager v3.4.4 Royal Edition
+# 👑 Comprehensive Module Reference & User Guide — CellPhoneManager v3.5.0 Royal Edition
 
 <div align="center">
   <p><strong>Sahand Electronic Solutions Co. (شرکت راهکار الکترونیک سهند)</strong> — <a href="https://irres.ir">https://irres.ir</a></p>
@@ -45,25 +45,37 @@
 
 ### 🔹 FilesTab
 * **Full Tree & Directory Explorer:** Direct access to `/sdcard`, external SD cards, and download folders.
-* **High-Speed Batch Upload & Download:** Drag & drop files and folders between PC and phone with ADB-accelerated transfer rates.
-* **Integrated Media Viewer:** View photos, stream audio/video, and edit text files directly within the dashboard.
-* **Categorized Filters:** 1-click filtering for Images, Videos, Documents, APKs, and Archives.
+* **High-Speed Batch Upload & Download:** Drag & drop files and entire nested folder trees between PC and phone with ADB-accelerated transfer rates.
+* **Multi-Format Media & Office Studio:**
+  * **Video & Audio Player:** Native in-browser streaming with volume and progress controls.
+  * **Image Viewer:** Full zoom, rotation, and high-resolution inspection.
+  * **Office & Code Viewer:** Built-in preview for `.docx`, `.xlsx`, `.pptx`, `.html`, `.json`, `.xml`, `.py`, `.js`, `.ts`, and text files.
+  * **PDF Reader:** Embedded document viewer with page navigation.
+* **Accurate 8-Way Sorting & Emerald Badges:** Byte-level size indicators across all 5 layout modes (Compact, Grid, Large, Tiles, List).
+* **1-Click ZIP Packaging:** Stream and download multiple selected files as a compressed `.zip` archive.
 
 ---
 
 ## 3. 💬 SMS Messages, Contacts & Call Logs
 
-### 🔹 MessagesTab
-* **Threaded SMS Viewer:** View conversation threads with full contact names, timestamps, and message history.
-* **PC-to-Phone SMS Sending:** Compose and send SMS directly from your PC keyboard through the phone's SIM card.
-* **Contact Book & vCard Export:** Browse all contacts, search instantly, and export to standard `.vcf` vCard files.
-* **Call Log Analyzer:** Detailed inspection of incoming, outgoing, and missed calls with exact duration and timestamp logs.
+### 🔹 MessagesTab & Anti-Freeze Pagination
+* **Anti-Freeze Virtualized Pagination (`PaginationBar.tsx`):** Effortlessly render and navigate across 6,000+ contacts, 1,000+ SMS threads, and call logs with page size toggles (15, 30, 50, 100, 200 items).
+* **Smart SMS Categorization:** Automated classification into **Inbox**, **Sent**, **Banking & OTP (Parsian, Mellat, Melli, Pasargad, etc.)**, **Spam & Ads**, **Blocked**, and **Drafts & Failed**.
+* **Un-truncated Multi-line Body Parser:** Completely preserves multi-line, comma-separated, and special character messages without body truncation.
+* **1-Click Message Copying:** Quick copy button for OTPs and transaction receipts directly to the Windows clipboard.
+* **Contact Merge & Avatar Studio:**
+  * Detect and merge duplicate contacts sharing identical phone numbers or names.
+  * Account source indicators (Google, Telegram, SIM, Device Phonebook).
+  * Avatar photo management, job title/notes fields, and RFC vCard 3.0 export.
+* **Call Log Analyzer:** Incoming, outgoing, and missed call analysis with duration metrics.
 
 ---
 
 ## 4. 📦 Apps Management, APK Inspector & Debloater
 
-### 🔹 AppsTab & ApkInspectorTab
+### 🔹 AppsTab & Real App Icon Extractor
+* **Real APK Icon Extractor (`appIconManager.js`):** Extracts authentic high-res APK icons from installed packages with server-side caching and dynamic fallback badges.
+* **Anti-Freeze Pagination:** Clean page navigation for devices with 300+ user and system applications.
 * **1-Click Batch APK Installation:** Drag & drop `.apk` and `.xapk` files for direct silent background installation.
 * **APK Extraction:** Export raw installer APKs of any installed app directly to your computer.
 * **Deep APK Inspector:** Analyze package names, Target SDK, requested Android permissions, and cryptographic signature certificates.

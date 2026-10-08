@@ -79,8 +79,9 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
         {onToggleSidebar && (
           <button
             onClick={onToggleSidebar}
-            className="md:hidden p-2 rounded-xl bg-[#14151b] hover:bg-[#1a1b22] text-stone-300 hover:text-yellow-300 border border-amber-500/25 shrink-0 transition-colors active:scale-95"
+            className="md:hidden p-2 rounded-xl bg-[#14151b] hover:bg-[#1a1b22] text-stone-300 hover:text-yellow-300 border border-amber-500/25 shrink-0 transition-colors active:scale-95 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
             title="منوی ناوبری"
+            aria-label="منوی ناوبری"
           >
             <Menu className="w-4 h-4" />
           </button>
@@ -102,7 +103,7 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
                 </span>
                 <ChevronDown className="w-3 h-3 text-stone-400 group-hover:text-yellow-300 transition-colors shrink-0" />
               </div>
-              <div className="text-[9px] sm:text-[10px] text-stone-400 font-mono flex items-center gap-1 truncate">
+              <div className="text-[9px] sm:text-[10px] text-stone-400 font-mono flex items-center gap-1 truncate" dir="ltr">
                 <span className="text-amber-300/80 shrink-0">{selectedDevice?.osVersion || 'Android'}</span>
                 <span className="shrink-0">•</span>
                 <span className="text-yellow-400/90 truncate max-w-[60px] sm:max-w-[100px]">{selectedDevice?.serial || 'Disconnected'}</span>
@@ -111,8 +112,9 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
 
             {/* Hidden Native Select */}
             <select
-              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full focus-visible:ring-2 focus-visible:ring-amber-400"
               value={selectedDevice?.id || ''}
+              aria-label="انتخاب دستگاه متصل"
               onChange={(e) => {
                 const dev = devices.find(d => d.id === e.target.value);
                 if (dev) onSelectDevice(dev);
@@ -163,8 +165,9 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
         <button
           onClick={onRefreshDevices}
           disabled={isRefreshing}
-          className="p-2 rounded-xl bg-[#14151b] hover:bg-[#1a1b22] text-stone-400 hover:text-yellow-300 border border-amber-500/20 transition-all disabled:opacity-50 shrink-0"
+          className="p-2 rounded-xl bg-[#14151b] hover:bg-[#1a1b22] text-stone-400 hover:text-yellow-300 border border-amber-500/20 transition-all disabled:opacity-50 shrink-0 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
           title="بروزرسانی وضعیت و اتصال‌ها"
+          aria-label="بروزرسانی وضعیت و اتصال‌ها"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-yellow-400' : ''}`} />
         </button>
@@ -172,8 +175,9 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
         {/* Add Wireless Device */}
         <button
           onClick={onOpenWirelessModal}
-          className="hidden md:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-yellow-300 border border-amber-500/30 text-xs font-bold transition-all group shrink-0"
+          className="hidden md:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-yellow-300 border border-amber-500/30 text-xs font-bold transition-all group shrink-0 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
           title="اتصال دستگاه جدید با وای‌فای"
+          aria-label="اتصال دستگاه جدید با وای‌فای"
         >
           <Wifi className="w-3.5 h-3.5 text-yellow-400 group-hover:scale-110 transition-transform" />
           <span>اتصال Wi-Fi</span>
@@ -187,18 +191,19 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
           href="https://irres.ir"
           target="_blank"
           rel="noreferrer"
-          className="hidden 2xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-600/15 text-yellow-300 border border-amber-500/30 text-xs font-bold transition-all hover:border-amber-500/60 shadow-sm group shrink-0"
+          className="hidden 2xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-600/15 text-yellow-300 border border-amber-500/30 text-xs font-bold transition-all hover:border-amber-500/60 shadow-sm group shrink-0 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
           title="شرکت راهکار الکترونیک سهند (https://irres.ir)"
+          aria-label="شرکت راهکار الکترونیک سهند"
         >
           <Crown className="w-3.5 h-3.5 text-yellow-400" />
           <span>راهکار الکترونیک سهند</span>
-          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-yellow-200 border border-amber-500/30">{APP_VERSION}</span>
+          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/20 text-yellow-200 border border-amber-500/30" dir="ltr">{APP_VERSION}</span>
           <ExternalLink className="w-3 h-3 opacity-70 group-hover:opacity-100" />
         </a>
 
         {/* Battery Status */}
         {selectedDevice?.battery && (
-          <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-[#14151b] border border-amber-500/20 text-xs text-stone-200 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-[#14151b] border border-amber-500/20 text-xs text-stone-200 shrink-0" dir="ltr">
             {selectedDevice.battery.status === 'Charging' ? (
               <BatteryCharging className="w-3.5 h-3.5 text-yellow-400 animate-pulse shrink-0" />
             ) : (
@@ -214,8 +219,9 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
         {/* User Guide Button */}
         <button
           onClick={() => onOpenGuideModal()}
-          className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-yellow-300 border border-amber-500/35 text-xs font-bold transition-all shadow-sm shrink-0 active:scale-95"
+          className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-yellow-300 border border-amber-500/35 text-xs font-bold transition-all shadow-sm shrink-0 active:scale-95 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
           title="مرکز راهنما و آموزش جامع"
+          aria-label="مرکز راهنما و آموزش جامع"
         >
           <BookOpen className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
           <span className="hidden sm:inline">راهنما</span>
@@ -224,8 +230,9 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
         {/* Quick Screenshot */}
         <button
           onClick={() => onQuickAction('screenshot')}
-          className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-[#14151b] hover:bg-[#1a1b22] text-stone-300 hover:text-yellow-300 border border-amber-500/20 hover:border-amber-500/40 text-xs font-semibold transition-all shadow-sm shrink-0 active:scale-95"
+          className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-[#14151b] hover:bg-[#1a1b22] text-stone-300 hover:text-yellow-300 border border-amber-500/20 hover:border-amber-500/40 text-xs font-semibold transition-all shadow-sm shrink-0 active:scale-95 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
           title="اسکرین‌شات و ذخیره در سیستم"
+          aria-label="اسکرین‌شات و ذخیره در سیستم"
         >
           <Camera className="w-3.5 h-3.5 text-yellow-400/80 shrink-0" />
           <span className="hidden lg:inline">اسکرین‌شات</span>
@@ -234,8 +241,9 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
         {/* Quick Reboot */}
         <button
           onClick={() => onQuickAction('reboot')}
-          className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-all shadow-sm shrink-0 active:scale-95"
+          className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-all shadow-sm shrink-0 active:scale-95 focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:outline-none"
           title="راه‌اندازی مجدد (Reboot)"
+          aria-label="راه‌اندازی مجدد (Reboot)"
         >
           <Power className="w-3.5 h-3.5 text-rose-400 shrink-0" />
           <span className="hidden lg:inline">ری‌استارت</span>

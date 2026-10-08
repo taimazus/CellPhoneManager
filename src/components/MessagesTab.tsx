@@ -37,10 +37,31 @@ import {
   ArrowUpDown,
   CheckSquare,
   Square,
-  ListChecks
+  ListChecks,
+  GitMerge,
+  Image as ImageIcon,
+  MapPin,
+  Cake,
+  Globe,
+  Briefcase,
+  Tag,
+  UploadCloud,
+  Bookmark,
+  Building,
+  PhoneForwarded,
+  Smile,
+  ShieldAlert,
+  CreditCard,
+  Ban,
+  Inbox,
+  FileEdit,
+  Copy,
+  Check
 } from 'lucide-react';
 import { Device } from '../types';
 import { safeFetchJson } from '../utils/api';
+import { LoadingSpinner, ActionOverlay } from './LoadingSpinner';
+import { PaginationBar } from './PaginationBar';
 
 interface MessagesTabProps {
   device: Device | null;
@@ -52,9 +73,17 @@ interface Contact {
   contactId?: string;
   name: string;
   phone: string;
+  secondaryPhone?: string;
   email?: string;
   notes?: string;
   company?: string;
+  jobTitle?: string;
+  address?: string;
+  birthday?: string;
+  website?: string;
+  nickname?: string;
+  relationship?: string;
+  avatar?: string;
   accountName?: string;
   accountType?: string;
   sourceKey?: string;
@@ -79,8 +108,12 @@ interface SmsMessage {
   number: string;
   body: string;
   timestamp: string;
-  type: 'inbox' | 'sent';
+  type: 'inbox' | 'sent' | 'draft' | 'outbox' | 'failed';
   read?: boolean;
+  isBank?: boolean;
+  isOtp?: boolean;
+  isSpam?: boolean;
+  isBlocked?: boolean;
 }
 
 interface CallState {
@@ -124,18 +157,47 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
   const [isContactSelectMode, setIsContactSelectMode] = useState<boolean>(false);
   const [showContactModal, setShowContactModal] = useState<boolean>(false);
+  const [showMergeModal, setShowMergeModal] = useState<boolean>(false);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
-  const [contactForm, setContactForm] = useState({ name: '', phone: '', email: '', notes: '', accountType: '' });
+  const [contactModalTab, setContactModalTab] = useState<'basic' | 'work' | 'personal'>('basic');
+  const [contactPage, setContactPage] = useState<number>(1);
+  const [contactPageSize, setContactPageSize] = useState<number>(60);
+  const [callPage, setCallPage] = useState<number>(1);
+  const [callPageSize, setCallPageSize] = useState<number>(50);
+  const [actionProgress, setActionProgress] = useState<{
+    active: boolean;
+    title?: string;
+    subtitle?: string;
+    variant?: 'gold' | 'cyan' | 'purple' | 'emerald';
+  }>({ active: false });
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    phone: '',
+    secondaryPhone: '',
+    email: '',
+    company: '',
+    jobTitle: '',
+    address: '',
+    birthday: '',
+    website: '',
+    nickname: '',
+    relationship: 'همکار',
+    avatar: '',
+    notes: '',
+    accountType: ''
+  });
 
   // --- SMS State ---
   const [smsList, setSmsList] = useState<SmsMessage[]>([]);
   const [smsSearch, setSmsSearch] = useState<string>('');
+  const [smsCategoryFilter, setSmsCategoryFilter] = useState<'all' | 'inbox' | 'sent' | 'banking' | 'spam' | 'blocked' | 'drafts'>('all');
   const [selectedThread, setSelectedThread] = useState<string | null>(null);
   const [newSmsText, setNewSmsText] = useState<string>('');
   const [newSmsRecipient, setNewSmsRecipient] = useState<string>('');
   const [showNewSmsModal, setShowNewSmsModal] = useState<boolean>(false);
   const [selectedSmsThreads, setSelectedSmsThreads] = useState<string[]>([]);
   const [isSmsSelectMode, setIsSmsSelectMode] = useState<boolean>(false);
+  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
 
   // --- Sorting States ---
   const [callSort, setCallSort] = useState<'date_desc' | 'date_asc' | 'duration_desc' | 'name_asc'>('date_desc');
@@ -333,9 +395,17 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
   };
 
   // 2. Fetch Contacts
-  const fetchContacts = async () => {
+  const fetchContacts = async (showOverlay = false) => {
     if (!device) return;
     setLoading(true);
+    if (showOverlay) {
+      setActionProgress({
+        active: true,
+        title: 'در حال بارگذاری و تحلیل دفترچه مخاطبین...',
+        subtitle: 'استخراج داده‌های سیم‌کارت، حافظه دستگاه و حساب‌های ابری',
+        variant: 'cyan'
+      });
+    }
     try {
       const res = await fetch(`/api/devices/${device.id}/contacts`);
       const data = await res.json();
@@ -344,6 +414,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       showToast(`خطا در دریافت مخاطبین: ${err.message}`, 'error');
     } finally {
       setLoading(false);
+      setActionProgress({ active: false });
     }
   };
 
@@ -600,10 +671,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
           body: JSON.stringify({
             contactId: editingContact.id,
             rawContactId: editingContact.rawContactId,
-            name: contactForm.name.trim(),
-            phone: contactForm.phone.trim(),
-            email: contactForm.email.trim(),
-            notes: contactForm.notes.trim()
+            ...contactForm
           })
         });
         const data = await res.json();
@@ -611,12 +679,12 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
           showToast('اطلاعات مخاطب با موفقیت ویرایش شد', 'success');
           setContacts(contacts.map(c => 
             c.id === editingContact.id 
-              ? { ...c, name: contactForm.name.trim(), phone: contactForm.phone.trim(), email: contactForm.email.trim(), notes: contactForm.notes.trim() }
+              ? { ...c, ...contactForm }
               : c
           ));
           setShowContactModal(false);
           setEditingContact(null);
-          setContactForm({ name: '', phone: '', email: '', notes: '', accountType: '' });
+          resetContactForm();
         } else {
           showToast(`خطا: ${data.error || 'ناشناخته'}`, 'error');
         }
@@ -631,7 +699,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
         if (data.success) {
           showToast('مخاطب با موفقیت به گوشی افزوده شد', 'success');
           setShowContactModal(false);
-          setContactForm({ name: '', phone: '', email: '', notes: '', accountType: '' });
+          resetContactForm();
           fetchContacts();
         } else {
           showToast(`خطا: ${data.error || 'ناشناخته'}`, 'error');
@@ -642,15 +710,45 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     }
   };
 
+  const resetContactForm = () => {
+    setContactForm({
+      name: '',
+      phone: '',
+      secondaryPhone: '',
+      email: '',
+      company: '',
+      jobTitle: '',
+      address: '',
+      birthday: '',
+      website: '',
+      nickname: '',
+      relationship: 'همکار',
+      avatar: '',
+      notes: '',
+      accountType: ''
+    });
+    setContactModalTab('basic');
+  };
+
   const handleOpenEditContact = (contact: Contact) => {
     setEditingContact(contact);
     setContactForm({
-      name: contact.name,
-      phone: contact.phone,
+      name: contact.name || '',
+      phone: contact.phone || '',
+      secondaryPhone: contact.secondaryPhone || '',
       email: contact.email || '',
+      company: contact.company || '',
+      jobTitle: contact.jobTitle || '',
+      address: contact.address || '',
+      birthday: contact.birthday || '',
+      website: contact.website || '',
+      nickname: contact.nickname || '',
+      relationship: contact.relationship || 'همکار',
+      avatar: contact.avatar || '',
       notes: contact.notes || '',
       accountType: contact.accountType || ''
     });
+    setContactModalTab('basic');
     setShowContactModal(true);
   };
 
@@ -681,6 +779,13 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     if (!device || selectedContacts.length === 0) return;
     if (!confirm(`آیا از حذف ${selectedContacts.length} مخاطب انتخاب‌شده اطمینان دارید؟`)) return;
 
+    setActionProgress({
+      active: true,
+      title: `در حال حذف گروهی ${selectedContacts.length} مخاطب...`,
+      subtitle: 'ارسال فرمان حذف به ارائه‌دهنده مخاطبین گوشی و پاکسازی رکوردها',
+      variant: 'cyan'
+    });
+
     try {
       const selectedRawIds = contacts
         .filter(c => selectedContacts.includes(c.id))
@@ -702,12 +807,21 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
+    } finally {
+      setActionProgress({ active: false });
     }
   };
 
   const handleClearAllContacts = async () => {
     if (!device) return;
     if (!confirm('⚠️ آیا از پاکسازی کامل تمامی مخاطبین گوشی اطمینان دارید؟ این عملیات تمام مخاطبین را حذف خواهد کرد.')) return;
+
+    setActionProgress({
+      active: true,
+      title: 'در حال پاکسازی کامل دفترچه مخاطبین...',
+      subtitle: 'حذف تمامی مخاطبین سیم‌کارت و حافظه دستگاه',
+      variant: 'cyan'
+    });
 
     try {
       const res = await fetch(`/api/devices/${device.id}/contacts/clear`, { method: 'POST' });
@@ -722,6 +836,8 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       }
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
+    } finally {
+      setActionProgress({ active: false });
     }
   };
 
@@ -730,6 +846,78 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     setSelectedContacts(prev => 
       prev.includes(contactId) ? prev.filter(id => id !== contactId) : [...prev, contactId]
     );
+  };
+
+  const handleMergeGroup = async (group: DuplicateGroup) => {
+    if (!device || group.contacts.length < 2) return;
+    const [primary, ...duplicates] = group.contacts;
+
+    setActionProgress({
+      active: true,
+      title: `در حال ادغام دسته «${group.label}»...`,
+      subtitle: 'یکپارچه‌سازی شماره‌ها و حذف موارد تکراری از گوشی',
+      variant: 'gold'
+    });
+
+    const merged: Contact = {
+      ...primary,
+      name: primary.name || duplicates.find(d => d.name)?.name || 'مخاطب ادغام شده',
+      phone: primary.phone || duplicates.find(d => d.phone)?.phone || '',
+      secondaryPhone: primary.secondaryPhone || duplicates.find(d => d.phone && d.phone !== primary.phone)?.phone || duplicates.find(d => d.secondaryPhone)?.secondaryPhone || '',
+      email: primary.email || duplicates.find(d => d.email)?.email || '',
+      company: primary.company || duplicates.find(d => d.company)?.company || '',
+      jobTitle: primary.jobTitle || duplicates.find(d => d.jobTitle)?.jobTitle || '',
+      address: primary.address || duplicates.find(d => d.address)?.address || '',
+      birthday: primary.birthday || duplicates.find(d => d.birthday)?.birthday || '',
+      website: primary.website || duplicates.find(d => d.website)?.website || '',
+      nickname: primary.nickname || duplicates.find(d => d.nickname)?.nickname || '',
+      relationship: primary.relationship || duplicates.find(d => d.relationship)?.relationship || 'همکار',
+      avatar: primary.avatar || duplicates.find(d => d.avatar)?.avatar || '',
+      notes: Array.from(new Set([primary.notes, ...duplicates.map(d => d.notes)].filter(Boolean))).join(' | ')
+    };
+
+    const duplicateIds = duplicates.map(d => d.id || d.rawContactId).filter(Boolean);
+
+    try {
+      const res = await fetch(`/api/devices/${device.id}/contacts/merge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetContact: merged, duplicateIds })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('مخاطبین مشترک با موفقیت ادغام شدند', 'success');
+        fetchContacts();
+      } else {
+        showToast(`خطا: ${data.error || 'ادغام ناموفق بود'}`, 'error');
+      }
+    } catch (err: any) {
+      showToast(`خطا: ${err.message}`, 'error');
+    } finally {
+      setActionProgress({ active: false });
+    }
+  };
+
+  const handleMergeAllDuplicates = async () => {
+    if (!device || findDuplicates.length === 0) return;
+    if (!confirm(`آیا از ادغام خودکار تمام ${findDuplicates.length} دسته مخاطب تکراری اطمینان دارید؟`)) return;
+
+    setActionProgress({
+      active: true,
+      title: `در حال ادغام خودکار ${findDuplicates.length} دسته مخاطب تکراری...`,
+      subtitle: 'لطفاً چند لحظه شکیبا باشید. تجمیع مشخصات و حذف رکوردهای مشترک در حال انجام است.',
+      variant: 'gold'
+    });
+
+    try {
+      for (const group of findDuplicates) {
+        await handleMergeGroup(group);
+      }
+      showToast('تمامی مخاطبین تکراری با موفقیت ادغام و یکپارچه شدند', 'success');
+      setShowMergeModal(false);
+    } finally {
+      setActionProgress({ active: false });
+    }
   };
 
   const handleSelectAllContacts = (targetList: Contact[]) => {
@@ -756,9 +944,9 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     }
 
     if (format === 'csv') {
-      let csv = 'Name,Phone,Email,Notes,Source,AccountName\n';
+      let csv = 'Name,Phone,SecondaryPhone,Email,Company,JobTitle,Address,Birthday,Website,Nickname,Relationship,Notes,Source\n';
       contacts.forEach(c => {
-        csv += `"${(c.name || '').replace(/"/g, '""')}","${c.phone || ''}","${c.email || ''}","${(c.notes || '').replace(/"/g, '""')}","${c.sourceLabel || ''}","${c.accountName || ''}"\n`;
+        csv += `"${(c.name || '').replace(/"/g, '""')}","${c.phone || ''}","${c.secondaryPhone || ''}","${c.email || ''}","${(c.company || '').replace(/"/g, '""')}","${(c.jobTitle || '').replace(/"/g, '""')}","${(c.address || '').replace(/"/g, '""')}","${c.birthday || ''}","${c.website || ''}","${(c.nickname || '').replace(/"/g, '""')}","${c.relationship || ''}","${(c.notes || '').replace(/"/g, '""')}","${c.sourceLabel || ''}"\n`;
       });
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
       const url = URL.createObjectURL(blob);
@@ -770,10 +958,20 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       return;
     }
 
-    // Default VCF
+    // Default VCF 3.0 Rich Spec
     let vcfData = '';
     contacts.forEach(c => {
-      vcfData += `BEGIN:VCARD\nVERSION:3.0\nFN:${c.name}\nTEL;TYPE=CELL:${c.phone}\nEMAIL:${c.email || ''}\nNOTE:${c.notes || ''}\nORG:${c.company || ''}\nEND:VCARD\n\n`;
+      vcfData += `BEGIN:VCARD\nVERSION:3.0\nFN:${c.name}\nTEL;TYPE=CELL:${c.phone}\n`;
+      if (c.secondaryPhone) vcfData += `TEL;TYPE=WORK:${c.secondaryPhone}\n`;
+      if (c.email) vcfData += `EMAIL:${c.email}\n`;
+      if (c.company) vcfData += `ORG:${c.company}\n`;
+      if (c.jobTitle) vcfData += `TITLE:${c.jobTitle}\n`;
+      if (c.address) vcfData += `ADR;TYPE=HOME:;;${c.address};;;;\n`;
+      if (c.birthday) vcfData += `BDAY:${c.birthday}\n`;
+      if (c.website) vcfData += `URL:${c.website}\n`;
+      if (c.nickname) vcfData += `NICKNAME:${c.nickname}\n`;
+      if (c.notes) vcfData += `NOTE:${c.notes}\n`;
+      vcfData += `END:VCARD\n\n`;
     });
 
     const blob = new Blob([vcfData], { type: 'text/vcard;charset=utf-8' });
@@ -782,7 +980,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     a.href = url;
     a.download = `Contacts_Backup_${Date.now()}.vcf`;
     a.click();
-    showToast('فایل VCF مخاطبین با موفقیت دانلود شد', 'success');
+    showToast('فایل VCF جامع مخاطبین با موفقیت دانلود شد', 'success');
   };
 
   // --- SMS Actions ---
@@ -960,6 +1158,14 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     showToast('پشتیبان‌گیری پیامک‌ها با موفقیت دانلود شد', 'success');
   };
 
+  const handleCopyMessageText = (id: string, text: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedMsgId(id);
+    showToast('متن پیامک در کلیپ‌بورد کپی شد', 'success');
+    setTimeout(() => setCopiedMsgId(null), 2000);
+  };
+
   // Helper to extract numeric epoch ms from various call/sms date representations
   const getCallTimeValue = (c: any): number => {
     if (c.rawDate && !isNaN(Number(c.rawDate))) return Number(c.rawDate);
@@ -1022,7 +1228,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
   });
 
   // Contact Sources Stats Breakdown
-  const contactSources = [
+  const contactSources = useMemo(() => [
     { key: 'all', label: 'همه منابع (تجمعی)', count: contacts.length },
     { key: 'google', label: 'حساب گوگل (Google)', count: contacts.filter(c => c.sourceKey === 'google').length },
     { key: 'xiaomi', label: 'شیائومی (Mi Cloud)', count: contacts.filter(c => c.sourceKey === 'xiaomi').length },
@@ -1030,38 +1236,60 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     { key: 'device', label: 'حافظه داخلی گوشی', count: contacts.filter(c => c.sourceKey === 'device').length },
     { key: 'messengers', label: 'پیام‌رسان‌ها (واتساپ/تلگرام/ایتا)', count: contacts.filter(c => ['whatsapp', 'whatsapp_business', 'telegram', 'eitaa', 'meet'].includes(c.sourceKey || '')).length },
     { key: 'other', label: 'سایر حساب‌ها', count: contacts.filter(c => c.sourceKey === 'other').length },
-  ].filter(s => s.key === 'all' || s.count > 0);
+  ].filter(s => s.key === 'all' || s.count > 0), [contacts]);
 
-  const filteredContacts = contacts
-    .filter(c => {
-      // Source filter
-      if (contactSourceFilter !== 'all') {
-        if (contactSourceFilter === 'messengers') {
-          if (!['whatsapp', 'whatsapp_business', 'telegram', 'eitaa', 'meet'].includes(c.sourceKey || '')) return false;
-        } else if (c.sourceKey !== contactSourceFilter) {
-          return false;
+  const filteredContacts = useMemo(() => {
+    return contacts
+      .filter(c => {
+        // Source filter
+        if (contactSourceFilter !== 'all') {
+          if (contactSourceFilter === 'messengers') {
+            if (!['whatsapp', 'whatsapp_business', 'telegram', 'eitaa', 'meet'].includes(c.sourceKey || '')) return false;
+          } else if (c.sourceKey !== contactSourceFilter) {
+            return false;
+          }
         }
-      }
-      // Search term
-      if (contactSearch.trim()) {
-        const q = contactSearch.toLowerCase();
-        return (
-          (c.name && c.name.toLowerCase().includes(q)) ||
-          (c.phone && c.phone.includes(q)) ||
-          (c.email && c.email.toLowerCase().includes(q)) ||
-          (c.company && c.company.toLowerCase().includes(q)) ||
-          (c.accountName && c.accountName.toLowerCase().includes(q))
-        );
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      if (contactSort === 'name_asc') return (a.name || '').localeCompare(b.name || '', 'fa');
-      if (contactSort === 'name_desc') return (b.name || '').localeCompare(a.name || '', 'fa');
-      if (contactSort === 'phone_asc') return (a.phone || '').localeCompare(b.phone || '');
-      if (contactSort === 'source_asc') return (a.sourceLabel || '').localeCompare(b.sourceLabel || '', 'fa');
-      return 0;
-    });
+        // Search term
+        if (contactSearch.trim()) {
+          const q = contactSearch.toLowerCase();
+          return (
+            (c.name && c.name.toLowerCase().includes(q)) ||
+            (c.phone && c.phone.includes(q)) ||
+            (c.email && c.email.toLowerCase().includes(q)) ||
+            (c.company && c.company.toLowerCase().includes(q)) ||
+            (c.accountName && c.accountName.toLowerCase().includes(q))
+          );
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (contactSort === 'name_asc') return (a.name || '').localeCompare(b.name || '', 'fa');
+        if (contactSort === 'name_desc') return (b.name || '').localeCompare(a.name || '', 'fa');
+        if (contactSort === 'phone_asc') return (a.phone || '').localeCompare(b.phone || '');
+        if (contactSort === 'source_asc') return (a.sourceLabel || '').localeCompare(b.sourceLabel || '', 'fa');
+        return 0;
+      });
+  }, [contacts, contactSourceFilter, contactSearch, contactSort]);
+
+  // Paginated contacts for ultra-fast DOM rendering
+  const totalContactPages = Math.ceil(filteredContacts.length / contactPageSize) || 1;
+  const safeContactPage = Math.min(Math.max(1, contactPage), totalContactPages);
+  const paginatedContacts = useMemo(() => {
+    return filteredContacts.slice(
+      (safeContactPage - 1) * contactPageSize,
+      safeContactPage * contactPageSize
+    );
+  }, [filteredContacts, safeContactPage, contactPageSize]);
+
+  // Paginated calls for fast log rendering
+  const totalCallPages = Math.ceil(filteredCalls.length / callPageSize) || 1;
+  const safeCallPage = Math.min(Math.max(1, callPage), totalCallPages);
+  const paginatedCalls = useMemo(() => {
+    return filteredCalls.slice(
+      (safeCallPage - 1) * callPageSize,
+      safeCallPage * callPageSize
+    );
+  }, [filteredCalls, safeCallPage, callPageSize]);
 
   // Quick dialer auto-complete matches (when typing phone or name in dialer)
   const dialerMatches = useMemo(() => {
@@ -1099,24 +1327,124 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     }).slice(0, 150);
   }, [contacts, dialerContactSourceFilter, dialerContactSearch]);
 
-  // Group SMS by threadId or number
-  const smsThreads: { [key: string]: SmsMessage[] } = {};
-  smsList.forEach(m => {
-    const threadKey = m.threadId || m.number;
-    if (!smsThreads[threadKey]) smsThreads[threadKey] = [];
-    smsThreads[threadKey].push(m);
-  });
+  // High-Speed O(N) Duplicate Contacts Detection
+  interface DuplicateGroup {
+    key: string;
+    label: string;
+    reason: 'phone' | 'name';
+    contacts: Contact[];
+  }
 
-  const filteredThreadKeys = Object.keys(smsThreads).filter(threadKey => {
-    if (!smsSearch.trim()) return true;
-    const msgs = smsThreads[threadKey];
-    const q = smsSearch.toLowerCase();
-    return msgs.some(m => 
-      (m.sender && m.sender.toLowerCase().includes(q)) ||
-      (m.number && m.number.includes(q)) ||
-      (m.body && m.body.toLowerCase().includes(q))
-    );
-  });
+  const findDuplicates = useMemo((): DuplicateGroup[] => {
+    if (contacts.length === 0) return [];
+    const groups: DuplicateGroup[] = [];
+    const phoneMap = new Map<string, Contact[]>();
+    const nameMap = new Map<string, Contact[]>();
+
+    const cleanPhone = (num: string) => {
+      let c = (num || '').replace(/[^0-9]/g, '');
+      if (c.startsWith('98') && c.length === 12) c = '0' + c.slice(2);
+      return c;
+    };
+
+    for (let i = 0; i < contacts.length; i++) {
+      const c = contacts[i];
+      const p = cleanPhone(c.phone);
+      if (p.length >= 7) {
+        const list = phoneMap.get(p) || [];
+        list.push(c);
+        phoneMap.set(p, list);
+      }
+      const n = (c.name || '').trim().toLowerCase();
+      if (n && n !== 'مخاطب بدون نام' && n.length >= 2) {
+        const list = nameMap.get(n) || [];
+        list.push(c);
+        nameMap.set(n, list);
+      }
+    }
+
+    const processedGroupSignatures = new Set<string>();
+
+    phoneMap.forEach((list, phone) => {
+      if (list.length > 1) {
+        const sig = list.map(c => c.id || c.phone).sort().join('|');
+        processedGroupSignatures.add(sig);
+        groups.push({
+          key: `phone_${phone}`,
+          label: `شماره تلفن یکسان (${list[0].phone})`,
+          reason: 'phone',
+          contacts: list
+        });
+      }
+    });
+
+    nameMap.forEach((list, name) => {
+      if (list.length > 1) {
+        const sig = list.map(c => c.id || c.phone).sort().join('|');
+        if (!processedGroupSignatures.has(sig)) {
+          processedGroupSignatures.add(sig);
+          groups.push({
+            key: `name_${name}`,
+            label: `نام مشترک (${list[0].name})`,
+            reason: 'name',
+            contacts: list
+          });
+        }
+      }
+    });
+
+    return groups;
+  }, [contacts]);
+
+  // Filter SMS by Category (Inbox, Sent, Banking, Spam, Blocked, Drafts)
+  const filteredSmsList = useMemo(() => {
+    return smsList.filter(m => {
+      if (smsCategoryFilter === 'inbox') return m.type === 'inbox' && !m.isSpam && !m.isBlocked;
+      if (smsCategoryFilter === 'sent') return m.type === 'sent';
+      if (smsCategoryFilter === 'banking') return m.isBank || m.isOtp;
+      if (smsCategoryFilter === 'spam') return m.isSpam;
+      if (smsCategoryFilter === 'blocked') return m.isBlocked;
+      if (smsCategoryFilter === 'drafts') return m.type === 'draft' || m.type === 'outbox' || m.type === 'failed';
+      return true;
+    });
+  }, [smsList, smsCategoryFilter]);
+
+  // Group SMS by threadId or number
+  const smsThreads: { [key: string]: SmsMessage[] } = useMemo(() => {
+    const map: { [key: string]: SmsMessage[] } = {};
+    filteredSmsList.forEach(m => {
+      const threadKey = m.threadId || m.number;
+      if (!map[threadKey]) map[threadKey] = [];
+      map[threadKey].push(m);
+    });
+    return map;
+  }, [filteredSmsList]);
+
+  const filteredThreadKeys = useMemo(() => {
+    return Object.keys(smsThreads).filter(threadKey => {
+      if (!smsSearch.trim()) return true;
+      const msgs = smsThreads[threadKey];
+      const q = smsSearch.toLowerCase();
+      return msgs.some(m => 
+        (m.sender && m.sender.toLowerCase().includes(q)) ||
+        (m.number && m.number.includes(q)) ||
+        (m.body && m.body.toLowerCase().includes(q))
+      );
+    });
+  }, [smsThreads, smsSearch]);
+
+  // SMS Categories stats
+  const smsCategoryCounts = useMemo(() => {
+    return {
+      all: smsList.length,
+      inbox: smsList.filter(m => m.type === 'inbox' && !m.isSpam && !m.isBlocked).length,
+      sent: smsList.filter(m => m.type === 'sent').length,
+      banking: smsList.filter(m => m.isBank || m.isOtp).length,
+      spam: smsList.filter(m => m.isSpam).length,
+      blocked: smsList.filter(m => m.isBlocked).length,
+      drafts: smsList.filter(m => m.type === 'draft' || m.type === 'outbox' || m.type === 'failed').length
+    };
+  }, [smsList]);
 
   const activeThreadMessages = selectedThread && smsThreads[selectedThread] ? smsThreads[selectedThread] : [];
   const activeThreadRecipient = activeThreadMessages[0]?.number || '';
@@ -1752,64 +2080,85 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
             </div>
 
             {loading ? (
-              <div className="p-12 text-center text-slate-400">
-                <RefreshCw className="w-6 h-6 animate-spin text-cyan-400 mx-auto mb-2" />
-                <span className="text-xs">در حال بارگذاری لاگ تماس‌ها...</span>
+              <div className="p-12 text-center">
+                <LoadingSpinner
+                  size="md"
+                  variant="cyan"
+                  text="در حال بارگذاری تاریخچه مکالمات..."
+                />
               </div>
             ) : filteredCalls.length === 0 ? (
               <div className="p-12 text-center text-slate-500 text-sm">
                 هیچ تماسی در این دسته یافت نشد.
               </div>
             ) : (
-              <div className="divide-y divide-slate-800/60 max-h-[480px] overflow-y-auto pr-1 font-sans text-xs">
-                {filteredCalls.map((call) => (
-                  <div key={call.id} className="flex items-center justify-between p-3.5 hover:bg-slate-800/40 transition-colors group">
-                    <div className="flex items-center gap-3">
-                      {/* Direction Icon */}
-                      <div className={`p-2.5 rounded-xl border ${
-                        call.type === 'incoming' 
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                          : call.type === 'outgoing'
-                          ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                          : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                      }`}>
-                        {call.type === 'incoming' && <PhoneIncoming className="w-4 h-4" />}
-                        {call.type === 'outgoing' && <PhoneOutgoing className="w-4 h-4" />}
-                        {(call.type === 'missed' || call.type === 'rejected') && <PhoneMissed className="w-4 h-4" />}
+              <div className="space-y-3">
+                <div className="divide-y divide-slate-800/60 max-h-[480px] overflow-y-auto pr-1 font-sans text-xs">
+                  {paginatedCalls.map((call) => (
+                    <div key={call.id} className="flex items-center justify-between p-3.5 hover:bg-slate-800/40 transition-colors group">
+                      <div className="flex items-center gap-3">
+                        {/* Direction Icon */}
+                        <div className={`p-2.5 rounded-xl border ${
+                          call.type === 'incoming' 
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                            : call.type === 'outgoing'
+                            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                        }`}>
+                          {call.type === 'incoming' && <PhoneIncoming className="w-4 h-4" />}
+                          {call.type === 'outgoing' && <PhoneOutgoing className="w-4 h-4" />}
+                          {(call.type === 'missed' || call.type === 'rejected') && <PhoneMissed className="w-4 h-4" />}
+                        </div>
+
+                        <div className="text-right">
+                          <h4 className="font-bold text-white text-xs">{call.name}</h4>
+                          <p className="text-[11px] text-slate-400 font-mono mt-0.5 text-left" dir="ltr">{call.number}</p>
+                        </div>
                       </div>
 
-                      <div className="text-right">
-                        <h4 className="font-bold text-white text-xs">{call.name}</h4>
-                        <p className="text-[11px] text-slate-400 font-mono mt-0.5">{call.number}</p>
+                      <div className="flex items-center gap-4">
+                        <div className="text-left text-[11px] text-slate-400 font-mono">
+                          <div>{call.timestamp}</div>
+                          <div className="text-[10px] text-slate-500">{call.duration}</div>
+                        </div>
+
+                        {/* Quick Call Action */}
+                        <button
+                          onClick={() => handleMakeCall(call.number, call.name)}
+                          className="p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-all"
+                          title="تماس مجدد"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                        </button>
+
+                        {/* Delete Action */}
+                        <button
+                          onClick={() => handleDeleteCall(call.id)}
+                          className="p-2 rounded-xl bg-slate-900 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-800 transition-all"
+                          title="حذف از تاریخچه"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
+                  ))}
+                </div>
 
-                    <div className="flex items-center gap-4">
-                      <div className="text-left text-[11px] text-slate-400 font-mono">
-                        <div>{call.timestamp}</div>
-                        <div className="text-[10px] text-slate-500">{call.duration}</div>
-                      </div>
-
-                      {/* Quick Call Action */}
-                      <button
-                        onClick={() => handleMakeCall(call.number, call.name)}
-                        className="p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-all"
-                        title="تماس مجدد"
-                      >
-                        <Phone className="w-3.5 h-3.5" />
-                      </button>
-
-                      {/* Delete Action */}
-                      <button
-                        onClick={() => handleDeleteCall(call.id)}
-                        className="p-2 rounded-xl bg-slate-900 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-800 transition-all"
-                        title="حذف از تاریخچه"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                {filteredCalls.length > callPageSize && (
+                  <PaginationBar
+                    currentPage={safeCallPage}
+                    totalPages={totalCallPages}
+                    totalItems={filteredCalls.length}
+                    pageSize={callPageSize}
+                    onPageChange={setCallPage}
+                    onPageSizeChange={(newSize) => {
+                      setCallPageSize(newSize);
+                      setCallPage(1);
+                    }}
+                    itemLabel="تماس"
+                    variant="cyan"
+                  />
+                )}
               </div>
             )}
           </div>
@@ -1875,6 +2224,21 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                 </select>
               </div>
 
+              {/* Merge Duplicates Button */}
+              {findDuplicates.length > 0 && (
+                <button
+                  onClick={() => setShowMergeModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-yellow-300 border border-amber-500/40 text-xs font-bold transition-all shadow-sm group hover-lift animate-pulse-glow"
+                  title="شناسایی و ادغام هوشمند مخاطبین تکراری و مشترک"
+                >
+                  <GitMerge className="w-4 h-4 text-yellow-400 group-hover:rotate-180 transition-transform duration-300" />
+                  <span>ادغام تکراری‌ها</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-stone-950 font-bold font-mono text-[10px]">
+                    {findDuplicates.length}
+                  </span>
+                </button>
+              )}
+
               {/* Toggle Multi-Select Mode */}
               <button
                 onClick={() => {
@@ -1896,10 +2260,10 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
               <button
                 onClick={() => {
                   setEditingContact(null);
-                  setContactForm({ name: '', phone: '', email: '', notes: '', accountType: '' });
+                  resetContactForm();
                   setShowContactModal(true);
                 }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-md shadow-cyan-500/20 transition-all whitespace-nowrap"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-md shadow-cyan-500/20 transition-all whitespace-nowrap hover-lift"
               >
                 <UserPlus className="w-4 h-4" />
                 <span>مخاطب جدید</span>
@@ -2003,11 +2367,32 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
             </div>
           )}
 
+          {/* Contacts Pagination Bar (Top) */}
+          {filteredContacts.length > contactPageSize && (
+            <PaginationBar
+              currentPage={safeContactPage}
+              totalPages={totalContactPages}
+              totalItems={filteredContacts.length}
+              pageSize={contactPageSize}
+              onPageChange={setContactPage}
+              onPageSizeChange={(newSize) => {
+                setContactPageSize(newSize);
+                setContactPage(1);
+              }}
+              itemLabel="مخاطب"
+              variant="cyan"
+            />
+          )}
+
           {/* Contacts Cards Grid */}
           {loading ? (
-            <div className="p-16 text-center text-slate-400">
-              <RefreshCw className="w-6 h-6 animate-spin text-cyan-400 mx-auto mb-2" />
-              <span className="text-xs">در حال بارگذاری لیست مخاطبین از گوشی...</span>
+            <div className="p-16 text-center">
+              <LoadingSpinner
+                size="lg"
+                variant="cyan"
+                text="در حال بارگذاری دفترچه مخاطبین از گوشی..."
+                subtext="تفکیک حساب‌ها و استخراج شماره‌ها"
+              />
             </div>
           ) : filteredContacts.length === 0 ? (
             <div className="p-16 text-center text-slate-500 text-sm">
@@ -2016,132 +2401,199 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                 : 'هیچ مخاطبی در دستگاه یافت نشد.'}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 max-h-[580px] overflow-y-auto pr-1">
-              {filteredContacts.map((contact) => {
-                const isChecked = selectedContacts.includes(contact.id);
-                return (
-                  <div
-                    key={contact.id}
-                    onClick={() => {
-                      if (isContactSelectMode) toggleSelectContact(contact.id);
-                    }}
-                    className={`p-4 rounded-2xl bg-slate-900/70 border hover:border-cyan-500/40 transition-all flex flex-col justify-between space-y-3 ${
-                      isChecked 
-                        ? 'ring-1 ring-cyan-500/60 bg-cyan-950/30 border-cyan-500/40' 
-                        : 'border-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Checkbox (in selection mode) */}
-                      {isContactSelectMode && (
-                        <div 
-                          onClick={(e) => toggleSelectContact(contact.id, e)} 
-                          className="pt-1 text-cyan-400 cursor-pointer"
-                        >
-                          {isChecked ? (
-                            <CheckSquare className="w-4 h-4 text-cyan-400" />
-                          ) : (
-                            <Square className="w-4 h-4 text-slate-500 hover:text-slate-300" />
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 max-h-[580px] overflow-y-auto pr-1">
+                {paginatedContacts.map((contact) => {
+                  const isChecked = selectedContacts.includes(contact.id);
+                  return (
+                    <div
+                      key={contact.id}
+                      onClick={() => {
+                        if (isContactSelectMode) toggleSelectContact(contact.id);
+                      }}
+                      className={`p-4 rounded-2xl bg-slate-900/70 border hover:border-cyan-500/40 transition-all flex flex-col justify-between space-y-3 ${
+                        isChecked 
+                          ? 'ring-1 ring-cyan-500/60 bg-cyan-950/30 border-cyan-500/40' 
+                          : 'border-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* Checkbox (in selection mode) */}
+                        {isContactSelectMode && (
+                          <div 
+                            onClick={(e) => toggleSelectContact(contact.id, e)} 
+                            className="pt-1 text-cyan-400 cursor-pointer"
+                          >
+                            {isChecked ? (
+                              <CheckSquare className="w-4 h-4 text-cyan-400" />
+                            ) : (
+                              <Square className="w-4 h-4 text-slate-500 hover:text-slate-300" />
+                            )}
+                          </div>
+                        )}
+
+                        {/* Avatar Image or Initial */}
+                        {contact.avatar ? (
+                          <img
+                            src={contact.avatar}
+                            alt={contact.name}
+                            className="w-11 h-11 rounded-xl object-cover border border-cyan-500/40 shadow-md shadow-cyan-500/20 flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 font-bold text-slate-950 flex items-center justify-center text-base shadow-md shadow-cyan-500/20 flex-shrink-0">
+                            {contact.name ? contact.name.charAt(0) : '؟'}
+                          </div>
+                        )}
+
+                        <div className="flex-1 min-w-0 text-right space-y-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <h4 className="font-bold text-white text-xs truncate max-w-[140px] flex items-center gap-1">
+                              <span>{contact.name}</span>
+                              {contact.nickname && (
+                                <span className="text-[10px] text-amber-300/80 font-normal">({contact.nickname})</span>
+                              )}
+                            </h4>
+                            {contact.sourceLabel && (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-sans bg-slate-800 text-slate-400 border border-slate-700/60 truncate max-w-[100px]" title={contact.sourceLabel}>
+                                {contact.sourceLabel}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Phone & Secondary Phone */}
+                          <div className="space-y-0.5">
+                            <p className="text-xs text-cyan-400 font-mono select-text text-left" dir="ltr">{contact.phone}</p>
+                            {contact.secondaryPhone && (
+                              <p className="text-[10px] text-slate-400 font-mono text-left flex items-center gap-1" dir="ltr">
+                                <PhoneForwarded className="w-2.5 h-2.5 text-slate-500" />
+                                <span>{contact.secondaryPhone}</span>
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Company & Job Title */}
+                          {(contact.company || contact.jobTitle) && (
+                            <p className="text-[10px] text-amber-200/80 font-sans truncate flex items-center gap-1">
+                              <Briefcase className="w-3 h-3 text-amber-400/70 shrink-0" />
+                              <span>{[contact.jobTitle, contact.company].filter(Boolean).join(' • ')}</span>
+                            </p>
                           )}
-                        </div>
-                      )}
 
-                      {/* Avatar Initial */}
-                      <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 font-bold text-slate-950 flex items-center justify-center text-base shadow-md shadow-cyan-500/20 flex-shrink-0">
-                        {contact.name ? contact.name.charAt(0) : '؟'}
-                      </div>
+                          {/* Email */}
+                          {contact.email && (
+                            <p className="text-[10px] text-slate-400 truncate flex items-center gap-1 font-mono">
+                              <Mail className="w-3 h-3 text-slate-500 shrink-0" />
+                              <span>{contact.email}</span>
+                            </p>
+                          )}
 
-                      <div className="flex-1 min-w-0 text-right">
-                        <div className="flex items-center justify-between gap-1">
-                          <h4 className="font-bold text-white text-xs truncate max-w-[140px]">{contact.name}</h4>
-                          {contact.sourceLabel && (
-                            <span className="px-2 py-0.5 rounded-full text-[9px] font-sans bg-slate-800 text-slate-400 border border-slate-700/60 truncate max-w-[100px]" title={contact.sourceLabel}>
-                              {contact.sourceLabel}
+                          {/* Address or Birthday Extra Badges */}
+                          {(contact.address || contact.birthday || contact.relationship) && (
+                            <div className="flex flex-wrap gap-1 pt-0.5">
+                              {contact.relationship && (
+                                <span className="px-1.5 py-0.2 rounded bg-cyan-950/60 text-cyan-300 text-[9px] border border-cyan-500/30">
+                                  {contact.relationship}
+                                </span>
+                              )}
+                              {contact.birthday && (
+                                <span className="px-1.5 py-0.2 rounded bg-purple-950/60 text-purple-300 text-[9px] border border-purple-500/30 flex items-center gap-1">
+                                  <Cake className="w-2.5 h-2.5" />
+                                  <span>{contact.birthday}</span>
+                                </span>
+                              )}
+                              {contact.address && (
+                                <span className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 text-[9px] truncate max-w-[140px] flex items-center gap-1" title={contact.address}>
+                                  <MapPin className="w-2.5 h-2.5 text-rose-400 shrink-0" />
+                                  <span className="truncate">{contact.address}</span>
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {contact.notes && (
+                            <span className="inline-block mt-0.5 px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-400 font-sans">
+                              {contact.notes}
                             </span>
                           )}
                         </div>
+                      </div>
 
-                        <p className="text-xs text-cyan-400 font-mono mt-0.5 select-text">{contact.phone}</p>
-                        
-                        {contact.company && (
-                          <p className="text-[10px] text-slate-400 font-sans mt-0.5 truncate">
-                            🏢 {contact.company}
-                          </p>
-                        )}
+                      {/* Actions */}
+                      <div className="flex items-center justify-between pt-2.5 border-t border-slate-800/80">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMakeCall(contact.phone, contact.name);
+                            }}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold transition-all"
+                            title="تماس صوتی"
+                          >
+                            <Phone className="w-3 h-3" />
+                            <span>تماس</span>
+                          </button>
 
-                        {contact.email && (
-                          <p className="text-[10px] text-slate-400 truncate flex items-center gap-1 mt-0.5 font-mono">
-                            <Mail className="w-3 h-3 text-slate-500" />
-                            <span>{contact.email}</span>
-                          </p>
-                        )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setNewSmsRecipient(contact.phone);
+                              setShowNewSmsModal(true);
+                            }}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-semibold transition-all"
+                            title="ارسال پیامک"
+                          >
+                            <MessageSquare className="w-3 h-3" />
+                            <span>پیامک</span>
+                          </button>
+                        </div>
 
-                        {contact.notes && (
-                          <span className="inline-block mt-1 px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-400 font-sans">
-                            {contact.notes}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {/* Edit Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenEditContact(contact);
+                            }}
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-300 border border-slate-700/60 transition-all"
+                            title="ویرایش اطلاعات مخاطب"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Delete Button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteContact(contact.id, contact.name, contact.rawContactId);
+                            }}
+                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700/60 transition-all"
+                            title="حذف مخاطب"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center justify-between pt-2.5 border-t border-slate-800/80">
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMakeCall(contact.phone, contact.name);
-                          }}
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold transition-all"
-                          title="تماس صوتی"
-                        >
-                          <Phone className="w-3 h-3" />
-                          <span>تماس</span>
-                        </button>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setNewSmsRecipient(contact.phone);
-                            setShowNewSmsModal(true);
-                          }}
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-semibold transition-all"
-                          title="ارسال پیامک"
-                        >
-                          <MessageSquare className="w-3 h-3" />
-                          <span>پیامک</span>
-                        </button>
-                      </div>
-
-                      <div className="flex items-center gap-1">
-                        {/* Edit Button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenEditContact(contact);
-                          }}
-                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-cyan-500/20 text-slate-400 hover:text-cyan-300 border border-slate-700/60 transition-all"
-                          title="ویرایش اطلاعات مخاطب"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-
-                        {/* Delete Button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteContact(contact.id, contact.name, contact.rawContactId);
-                          }}
-                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700/60 transition-all"
-                          title="حذف مخاطب"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {/* Contacts Pagination Bar (Bottom) */}
+              {filteredContacts.length > contactPageSize && (
+                <PaginationBar
+                  currentPage={safeContactPage}
+                  totalPages={totalContactPages}
+                  totalItems={filteredContacts.length}
+                  pageSize={contactPageSize}
+                  onPageChange={setContactPage}
+                  onPageSizeChange={(newSize) => {
+                    setContactPageSize(newSize);
+                    setContactPage(1);
+                  }}
+                  itemLabel="مخاطب"
+                  variant="cyan"
+                />
+              )}
             </div>
           )}
         </div>
@@ -2255,6 +2707,43 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                 )}
               </div>
 
+              {/* SMS Category Filter Bar */}
+              <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[11px] scrollbar-none">
+                {[
+                  { id: 'all', label: 'همه', count: smsCategoryCounts.all, icon: MessageSquare },
+                  { id: 'inbox', label: 'ورودی', count: smsCategoryCounts.inbox, icon: Inbox },
+                  { id: 'sent', label: 'ارسال‌شده', count: smsCategoryCounts.sent, icon: Send },
+                  { id: 'banking', label: 'بانکی و رمز', count: smsCategoryCounts.banking, icon: CreditCard },
+                  { id: 'spam', label: 'اسپم و تبلیغات', count: smsCategoryCounts.spam, icon: ShieldAlert },
+                  { id: 'blocked', label: 'مسدودشده', count: smsCategoryCounts.blocked, icon: Ban },
+                  { id: 'drafts', label: 'پیش‌نویس', count: smsCategoryCounts.drafts, icon: FileEdit }
+                ].map((cat) => {
+                  const Icon = cat.icon;
+                  const isActive = smsCategoryFilter === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => {
+                        setSmsCategoryFilter(cat.id as any);
+                      }}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg font-semibold whitespace-nowrap transition-all border ${
+                        isActive
+                          ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-sm'
+                          : 'bg-slate-900/80 text-slate-400 hover:text-slate-200 border-slate-800'
+                      }`}
+                    >
+                      <Icon className="w-3 h-3" />
+                      <span>{cat.label}</span>
+                      <span className={`px-1.5 py-0.2 rounded-full font-mono text-[9px] ${
+                        isActive ? 'bg-cyan-500/30 text-cyan-200' : 'bg-slate-800 text-slate-500'
+                      }`}>
+                        {cat.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
               {/* Multi-Selection Action Toolbar */}
               {(isSmsSelectMode || selectedSmsThreads.length > 0) && (
                 <div className="bg-cyan-950/40 border border-cyan-500/30 rounded-xl p-2 flex items-center justify-between animate-fadeIn text-xs">
@@ -2292,7 +2781,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
               <div className="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
                 {filteredThreadKeys.length === 0 ? (
                   <div className="p-8 text-center text-slate-500 text-xs">
-                    {smsSearch ? 'موردی مطابق با جستجوی شما یافت نشد.' : 'هیچ پیامکی در صندوق پیام یافت نشد.'}
+                    {smsSearch ? 'موردی مطابق با جستجوی شما یافت نشد.' : 'هیچ پیامکی در این دسته‌بندی یافت نشد.'}
                   </div>
                 ) : (
                   filteredThreadKeys.map((threadKey) => {
@@ -2332,17 +2821,47 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                         )}
 
                         {/* Thread Content */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-bold text-white text-xs truncate max-w-[120px]">
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-bold text-white text-xs truncate max-w-[130px]">
                               {lastMsg.sender || lastMsg.number}
                             </span>
                             <span className="text-[10px] text-slate-500 font-mono">
                               {lastMsg.timestamp}
                             </span>
                           </div>
-                          <p className="text-[11px] text-slate-400 truncate max-w-full font-sans">
-                            {lastMsg.body}
+
+                          {/* Category Tag Badge */}
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {lastMsg.isBank && (
+                              <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[9px] font-sans border border-amber-500/30">
+                                💳 بانکی
+                              </span>
+                            )}
+                            {lastMsg.isOtp && (
+                              <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-sans border border-emerald-500/30">
+                                🔑 رمز موقت
+                              </span>
+                            )}
+                            {lastMsg.isSpam && (
+                              <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 text-[9px] font-sans border border-rose-500/30">
+                                🛡️ اسپم
+                              </span>
+                            )}
+                            {lastMsg.isBlocked && (
+                              <span className="px-1.5 py-0.2 rounded bg-red-950/60 text-red-300 text-[9px] font-sans border border-red-700/60">
+                                🚫 مسدود
+                              </span>
+                            )}
+                            {lastMsg.type === 'draft' && (
+                              <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 text-[9px] font-sans border border-purple-500/30">
+                                📝 پیش‌نویس
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-[11px] text-slate-400 truncate max-w-full font-sans leading-snug" dir="auto">
+                            {lastMsg.body || '(پیام بدون متن)'}
                           </p>
                         </div>
 
@@ -2391,17 +2910,18 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                     {/* Instant Call */}
                     <button
                       onClick={() => handleMakeCall(activeThreadRecipient)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-bold transition-all"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold transition-all"
+                      title="تماس مستقیم با این شماره"
                     >
-                      <Phone className="w-3.5 h-3.5" />
-                      <span>تماس فوری</span>
+                      <PhoneCall className="w-3.5 h-3.5" />
+                      <span>تماس</span>
                     </button>
 
-                    {/* Delete Active Thread */}
+                    {/* Delete Thread */}
                     <button
-                      onClick={() => handleDeleteThread(selectedThread, activeThreadRecipient)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold transition-all"
-                      title="حذف کامل این گفتگو"
+                      onClick={(e) => handleDeleteThread(selectedThread, activeThreadRecipient, e)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-semibold transition-all"
+                      title="حذف این گفتگو"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>حذف گفتگو</span>
@@ -2409,72 +2929,140 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                   </div>
                 </div>
 
-                {/* Messages Bubbles Scroll */}
-                <div className="flex-1 overflow-y-auto py-4 space-y-3 max-h-[380px] px-2 flex flex-col-reverse">
-                  {activeThreadMessages.map((msg) => {
-                    const isMe = msg.type === 'sent';
+                {/* Messages Stream */}
+                <div className="flex-1 overflow-y-auto p-3 space-y-3.5 max-h-[380px] my-2 bg-slate-950/40 rounded-2xl border border-slate-900/80">
+                  {activeThreadMessages.map((msg, idx) => {
+                    const isSent = msg.type === 'sent';
                     return (
                       <div
-                        key={msg.id}
-                        className={`group relative flex flex-col max-w-[75%] rounded-2xl p-3.5 text-xs select-text leading-relaxed transition-all ${
-                          isMe 
-                            ? 'mr-auto bg-cyan-600 text-slate-950 rounded-br-none shadow-md shadow-cyan-950/40 font-medium' 
-                            : 'ml-auto bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none'
-                        }`}
+                        key={msg.id || idx}
+                        className={`flex flex-col ${isSent ? 'items-start' : 'items-end'}`}
                       >
-                        {/* Single Message Delete Button (Hover) */}
-                        <button
-                          onClick={(e) => handleDeleteSms(msg.id, e)}
-                          className={`absolute top-2 ${isMe ? 'left-2 text-slate-900/60 hover:text-rose-900' : 'left-2 text-slate-500 hover:text-rose-400'} opacity-0 group-hover:opacity-100 transition-all p-1 rounded-md hover:bg-black/10`}
-                          title="حذف این پیامک تکی"
+                        <div
+                          className={`relative group/msg max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed shadow-md ${
+                            isSent
+                              ? 'bg-cyan-600 text-slate-950 font-medium rounded-br-none shadow-cyan-600/10'
+                              : 'bg-slate-800/90 text-slate-200 rounded-bl-none border border-slate-700/60'
+                          }`}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                          {/* Tags Indicator */}
+                          {(msg.isBank || msg.isOtp || msg.isSpam || msg.isBlocked || msg.type === 'draft') && (
+                            <div className="flex items-center gap-1.5 mb-2 flex-wrap pb-1.5 border-b border-slate-700/40">
+                              {msg.isBank && (
+                                <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[10px] font-sans border border-amber-500/30 flex items-center gap-1">
+                                  <CreditCard className="w-3 h-3 text-amber-400" />
+                                  <span>تراکنش بانکی</span>
+                                </span>
+                              )}
+                              {msg.isOtp && (
+                                <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-[10px] font-sans border border-emerald-500/30 flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3 text-emerald-400" />
+                                  <span>رمز یکبار مصرف / OTP</span>
+                                </span>
+                              )}
+                              {msg.isSpam && (
+                                <span className="px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-300 text-[10px] font-sans border border-rose-500/30 flex items-center gap-1">
+                                  <ShieldAlert className="w-3 h-3 text-rose-400" />
+                                  <span>پیامک تبلیغاتی / اسپم</span>
+                                </span>
+                              )}
+                              {msg.isBlocked && (
+                                <span className="px-2 py-0.5 rounded-md bg-red-900/60 text-red-200 text-[10px] font-sans border border-red-700/60 flex items-center gap-1">
+                                  <Ban className="w-3 h-3 text-red-300" />
+                                  <span>شماره مسدودشده</span>
+                                </span>
+                              )}
+                              {msg.type === 'draft' && (
+                                <span className="px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 text-[10px] font-sans border border-purple-500/30 flex items-center gap-1">
+                                  <FileEdit className="w-3 h-3 text-purple-400" />
+                                  <span>پیش‌نویس</span>
+                                </span>
+                              )}
+                            </div>
+                          )}
 
-                        <p className="whitespace-pre-wrap">{msg.body}</p>
-                        <div className={`flex items-center gap-1 mt-1 text-[10px] ${isMe ? 'text-slate-950/70' : 'text-slate-500'} font-mono justify-end`}>
-                          <span>{msg.timestamp}</span>
-                          {isMe && <CheckCheck className="w-3 h-3" />}
+                          {/* Full Message Text Body */}
+                          <p className="whitespace-pre-wrap select-text font-sans break-words text-right leading-relaxed" dir="auto">
+                            {msg.body || '(بدون محتوا)'}
+                          </p>
+
+                          {/* Bottom Message Info & 1-Click Copy */}
+                          <div className="flex items-center justify-between gap-3 mt-2.5 pt-1.5 border-t border-slate-700/30 text-[10px]">
+                            <div className={`flex items-center gap-1 font-mono ${isSent ? 'text-slate-900/80' : 'text-slate-400'}`}>
+                              <span>{msg.timestamp}</span>
+                              {isSent && <CheckCheck className="w-3 h-3 inline text-slate-950 font-bold" />}
+                            </div>
+
+                            {/* Copy Message Button */}
+                            {msg.body && (
+                              <button
+                                onClick={() => handleCopyMessageText(msg.id, msg.body)}
+                                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg transition-all border ${
+                                  isSent
+                                    ? 'bg-slate-900/40 text-slate-950 border-slate-900/30 hover:bg-slate-900/60'
+                                    : 'bg-slate-900 text-slate-300 border-slate-700 hover:text-cyan-300 hover:border-cyan-500/40'
+                                }`}
+                                title="کپی متن کامل پیامک"
+                              >
+                                {copiedMsgId === msg.id ? (
+                                  <>
+                                    <Check className="w-3 h-3 text-emerald-400" />
+                                    <span className="text-emerald-400 text-[9px] font-bold">کپی شد</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" />
+                                    <span className="text-[9px]">کپی متن</span>
+                                  </>
+                                )}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
 
-                {/* Send SMS Input Form */}
-                <div className="pt-3 border-t border-slate-800/80 flex gap-2">
+                {/* Send Reply Input */}
+                <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
                   <input
                     type="text"
-                    placeholder="متن پیامک را اینجا بنویسید..."
                     value={newSmsText}
                     onChange={(e) => setNewSmsText(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSendSms(activeThreadRecipient, newSmsText)}
-                    className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendSms(activeThreadRecipient, newSmsText);
+                      }
+                    }}
+                    placeholder="پاسخ به این گفتگو..."
+                    className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
                   />
                   <button
                     onClick={() => handleSendSms(activeThreadRecipient, newSmsText)}
                     disabled={!newSmsText.trim()}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-all disabled:opacity-40"
+                    className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs transition-all shadow-md shadow-cyan-500/20 disabled:opacity-50 flex items-center gap-1.5"
                   >
-                    <Send className="w-4 h-4" />
+                    <Send className="w-3.5 h-3.5" />
                     <span>ارسال</span>
                   </button>
                 </div>
               </>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-500 text-sm">
-                <MessageSquare className="w-12 h-12 text-slate-700 mb-2" />
-                <p>یک گفتگو را از لیست سمت چپ انتخاب کنید یا پیام جدیدی ارسال نمایید.</p>
+              <div className="flex-1 flex flex-col items-center justify-center p-12 text-slate-500 space-y-2">
+                <MessageSquare className="w-12 h-12 stroke-[1.5] text-slate-700" />
+                <p className="text-xs">یک گفتگو را از لیست سمت راست انتخاب کنید یا پیامک جدید ارسال نمایید.</p>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* --- ADD/EDIT CONTACT MODAL --- */}
+      {/* --- ADD / EDIT CONTACT MODAL WITH AVATAR & ADVANCED FIELDS --- */}
       {showContactModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-          <div className="bg-[#0c142b] border border-cyan-500/30 rounded-3xl p-6 w-full max-w-md text-right space-y-4 shadow-2xl">
+          <div className="bg-[#0c142b] border border-cyan-500/30 rounded-3xl p-6 w-full max-w-lg text-right space-y-4 shadow-2xl max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
                 {editingContact ? (
@@ -2484,7 +3072,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                 )}
                 <div>
                   <h3 className="text-base font-bold text-white">
-                    {editingContact ? 'ویرایش اطلاعات مخاطب' : 'افزودن مخاطب جدید به گوشی'}
+                    {editingContact ? 'ویرایش جامع مشخصات مخاطب' : 'افزودن مخاطب جدید با تمام مشخصات'}
                   </h3>
                   {editingContact?.sourceLabel && (
                     <span className="text-[10px] text-cyan-400 font-sans block">
@@ -2498,73 +3086,372 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                   setShowContactModal(false);
                   setEditingContact(null);
                 }} 
-                className="text-slate-400 hover:text-slate-200"
+                className="text-slate-400 hover:text-slate-200 p-1"
+                title="بستن"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="text-slate-400 block mb-1">نام و نام خانوادگی:*</label>
-                <input
-                  type="text"
-                  value={contactForm.name}
-                  onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                  placeholder="مثال: علی رضایی"
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400 block mb-1">شماره تماس (موبایل):*</label>
-                <input
-                  type="text"
-                  value={contactForm.phone}
-                  onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
-                  placeholder="09121234567"
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 font-mono text-cyan-300 focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400 block mb-1">ایمیل (اختیاری):</label>
-                <input
-                  type="email"
-                  value={contactForm.email}
-                  onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                  placeholder="name@example.com"
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 font-mono text-slate-200 focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400 block mb-1">یادداشت یا برچسب:</label>
-                <input
-                  type="text"
-                  value={contactForm.notes}
-                  onChange={(e) => setContactForm({ ...contactForm, notes: e.target.value })}
-                  placeholder="همکار، دوست، خانواده..."
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
+            {/* Modal Section Tabs */}
+            <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-2xl border border-slate-800 text-xs">
               <button
-                onClick={() => {
-                  setShowContactModal(false);
-                  setEditingContact(null);
-                }}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+                type="button"
+                onClick={() => setContactModalTab('basic')}
+                className={`flex-1 py-1.5 px-3 rounded-xl font-bold transition-all ${
+                  contactModalTab === 'basic' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                }`}
               >
-                انصراف
+                اطلاعات پایه و تماس
               </button>
               <button
-                onClick={handleSaveContact}
-                className="px-5 py-2 rounded-xl text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 transition-all shadow-md shadow-cyan-500/20"
+                type="button"
+                onClick={() => setContactModalTab('work')}
+                className={`flex-1 py-1.5 px-3 rounded-xl font-bold transition-all ${
+                  contactModalTab === 'work' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                }`}
               >
-                {editingContact ? 'ذخیره تغییرات' : 'ذخیره در گوشی'}
+                شغل و سازمان
+              </button>
+              <button
+                type="button"
+                onClick={() => setContactModalTab('personal')}
+                className={`flex-1 py-1.5 px-3 rounded-xl font-bold transition-all ${
+                  contactModalTab === 'personal' ? 'bg-cyan-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                مشخصات تکمیلی و آدرس
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-3.5 text-xs pr-1">
+              {/* 1. Basic Info & Avatar Tab */}
+              {contactModalTab === 'basic' && (
+                <div className="space-y-3">
+                  {/* Avatar Picker */}
+                  <div className="flex items-center gap-4 p-3 bg-slate-900/80 rounded-2xl border border-slate-800">
+                    <div className="relative group">
+                      {contactForm.avatar ? (
+                        <img
+                          src={contactForm.avatar}
+                          alt="Avatar"
+                          className="w-16 h-16 rounded-2xl object-cover border-2 border-cyan-400 shadow-md"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-2xl font-bold text-slate-950 shadow-md">
+                          {contactForm.name ? contactForm.name.charAt(0) : '👤'}
+                        </div>
+                      )}
+                      {contactForm.avatar && (
+                        <button
+                          type="button"
+                          onClick={() => setContactForm({ ...contactForm, avatar: '' })}
+                          className="absolute -top-1.5 -right-1.5 p-1 bg-rose-600 hover:bg-rose-500 text-white rounded-full shadow"
+                          title="حذف تصویر آواتار"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5 flex-1">
+                      <span className="text-xs font-bold text-white block">تصویر پروفایل و آواتار مخاطب:</span>
+                      <p className="text-[10px] text-slate-400">انتخاب عکس دلخواه از روی سیستم یا فایل‌ها</p>
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-semibold cursor-pointer border border-slate-700 transition-all">
+                        <ImageIcon className="w-3.5 h-3.5" />
+                        <span>آپلود عکس آواتار</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                setContactForm({ ...contactForm, avatar: reader.result as string });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1">نام و نام خانوادگی:*</label>
+                    <input
+                      type="text"
+                      value={contactForm.name}
+                      onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+                      placeholder="مثال: مهندس علی رضایی"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-slate-400 block mb-1">شماره تماس اصلی (موبایل):*</label>
+                      <input
+                        type="text"
+                        value={contactForm.phone}
+                        onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
+                        placeholder="09121234567"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 font-mono text-cyan-300 text-left focus:outline-none focus:border-cyan-500"
+                        dir="ltr"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 block mb-1">شماره دوم (منزل / محل کار):</label>
+                      <input
+                        type="text"
+                        value={contactForm.secondaryPhone}
+                        onChange={(e) => setContactForm({ ...contactForm, secondaryPhone: e.target.value })}
+                        placeholder="02188776655"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 font-mono text-slate-300 text-left focus:outline-none focus:border-cyan-500"
+                        dir="ltr"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1">پست الکترونیکی (ایمیل):</label>
+                    <input
+                      type="email"
+                      value={contactForm.email}
+                      onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                      placeholder="name@example.com"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 font-mono text-slate-200 text-left focus:outline-none focus:border-cyan-500"
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 2. Work & Organization Tab */}
+              {contactModalTab === 'work' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-slate-400 block mb-1">شرکت، سازمان یا دانشگاه:</label>
+                    <input
+                      type="text"
+                      value={contactForm.company}
+                      onChange={(e) => setContactForm({ ...contactForm, company: e.target.value })}
+                      placeholder="مثال: شرکت راهکار الکترونیک سهند"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1">عنوان شغلی و سمت:</label>
+                    <input
+                      type="text"
+                      value={contactForm.jobTitle}
+                      onChange={(e) => setContactForm({ ...contactForm, jobTitle: e.target.value })}
+                      placeholder="مثال: مدیر فنی / کارشناس ارشد"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1">وب‌سایت یا لینک شبکه اجتماعی:</label>
+                    <input
+                      type="text"
+                      value={contactForm.website}
+                      onChange={(e) => setContactForm({ ...contactForm, website: e.target.value })}
+                      placeholder="https://irres.ir"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 font-mono text-cyan-300 text-left focus:outline-none focus:border-cyan-500"
+                      dir="ltr"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* 3. Personal & Extended Info Tab */}
+              {contactModalTab === 'personal' && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-slate-400 block mb-1">نام مستعار یا کوتاه:</label>
+                      <input
+                        type="text"
+                        value={contactForm.nickname}
+                        onChange={(e) => setContactForm({ ...contactForm, nickname: e.target.value })}
+                        placeholder="علی، دکتر..."
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 block mb-1">دسته‌بندی و نسبت:</label>
+                      <select
+                        value={contactForm.relationship}
+                        onChange={(e) => setContactForm({ ...contactForm, relationship: e.target.value })}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500"
+                      >
+                        <option value="همکار">همکار (Colleague)</option>
+                        <option value="خانواده">خانواده (Family)</option>
+                        <option value="دوست">دوست (Friend)</option>
+                        <option value="مشتری">مشتری (Client)</option>
+                        <option value="ویژه / VIP">ویژه / VIP</option>
+                        <option value="سایر">سایر</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-slate-400 block mb-1">تاریخ تولد یا سالگرد:</label>
+                      <input
+                        type="text"
+                        value={contactForm.birthday}
+                        onChange={(e) => setContactForm({ ...contactForm, birthday: e.target.value })}
+                        placeholder="مثال: ۱۳۷۰/۰۵/۱۵"
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 block mb-1">آدرس محل سکونت / کار:</label>
+                      <input
+                        type="text"
+                        value={contactForm.address}
+                        onChange={(e) => setContactForm({ ...contactForm, address: e.target.value })}
+                        placeholder="تهران، خیابان..."
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-200 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-slate-400 block mb-1">یادداشت‌ها و توضیحات اختصاصی:</label>
+                    <textarea
+                      rows={2}
+                      value={contactForm.notes}
+                      onChange={(e) => setContactForm({ ...contactForm, notes: e.target.value })}
+                      placeholder="توضیحات و نکات تکمیلی در مورد مخاطب..."
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-200 focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                <span>بخش فعال: {contactModalTab === 'basic' ? 'اطلاعات پایه' : contactModalTab === 'work' ? 'شغل و سازمان' : 'مشخصات فردی'}</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setShowContactModal(false);
+                    setEditingContact(null);
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800"
+                >
+                  انصراف
+                </button>
+                <button
+                  onClick={handleSaveContact}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-cyan-500 hover:bg-cyan-400 text-slate-950 transition-all shadow-md shadow-cyan-500/20"
+                >
+                  {editingContact ? 'ذخیره تغییرات' : 'ذخیره در گوشی'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MERGE DUPLICATE CONTACTS MODAL --- */}
+      {showMergeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="bg-[#0c142b] border border-amber-500/40 rounded-3xl p-6 w-full max-w-2xl text-right space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-amber-500/20 text-yellow-300">
+                  <GitMerge className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">
+                    ادغام و یکپارچه‌سازی مخاطبین مشترک
+                  </h3>
+                  <p className="text-xs text-amber-200/70 mt-0.5">
+                    شناسایی {findDuplicates.length} دسته مخاطب با شماره یا نام مشترک
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowMergeModal(false)}
+                className="text-slate-400 hover:text-slate-200 p-1"
+                title="بستن"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-amber-500/10 rounded-2xl border border-amber-500/25 flex items-center justify-between gap-3 text-xs">
+              <span className="text-amber-200">
+                با ادغام، شماره‌های فرعی، ایمیل‌ها و یادداشت‌های هر گروه در یک مخاطب جامع تجمیع شده و رکوردهای تکراری حذف خواهند شد.
+              </span>
+              <button
+                onClick={handleMergeAllDuplicates}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-black text-xs transition-all shadow-md shadow-amber-500/20 whitespace-nowrap shrink-0 hover-lift"
+              >
+                ادغام خودکار همه ({findDuplicates.length})
+              </button>
+            </div>
+
+            {/* Duplicates Groups List */}
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1 divide-y divide-slate-800/60 max-h-[420px]">
+              {findDuplicates.map((group) => (
+                <div key={group.key} className="pt-3 first:pt-0 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-yellow-300 flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5 text-amber-400" />
+                      <span>{group.label}</span>
+                      <span className="text-[10px] text-slate-400 font-normal">({group.contacts.length} مورد مشابه)</span>
+                    </span>
+
+                    <button
+                      onClick={() => handleMergeGroup(group)}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-slate-950 text-xs font-bold transition-all border border-cyan-500/30"
+                      title="ادغام این گروه"
+                    >
+                      <GitMerge className="w-3.5 h-3.5" />
+                      <span>ادغام این دسته</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {group.contacts.map((c, idx) => (
+                      <div key={c.id + idx} className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <div className="w-7 h-7 rounded-lg bg-slate-800 text-cyan-300 font-bold flex items-center justify-center text-xs shrink-0">
+                            {idx === 0 ? 'اصلی' : `#${idx + 1}`}
+                          </div>
+                          <div className="truncate">
+                            <div className="font-bold text-white truncate">{c.name}</div>
+                            <div className="text-[10px] text-slate-400 font-mono" dir="ltr">{c.phone}</div>
+                          </div>
+                        </div>
+                        <span className="text-[9px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 shrink-0">
+                          {c.sourceLabel || 'مخاطب'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-end pt-3 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowMergeModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-slate-300 hover:text-white border border-slate-800"
+              >
+                بستن پنجره
               </button>
             </div>
           </div>
@@ -2758,6 +3645,14 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
           </div>
         </div>
       )}
+
+      {/* Global Animated Action Overlay (Anti-Freeze & Multi-Click Lock) */}
+      <ActionOverlay
+        isOpen={actionProgress.active}
+        title={actionProgress.title}
+        subtitle={actionProgress.subtitle}
+        variant={actionProgress.variant || 'cyan'}
+      />
     </div>
   );
 };

@@ -169,8 +169,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {onToggleCollapse && (
             <button
               onClick={onToggleCollapse}
-              className="p-1.5 rounded-lg text-stone-400 hover:text-yellow-300 hover:bg-stone-800/80 transition-colors shrink-0"
+              className="p-1.5 rounded-lg text-stone-400 hover:text-yellow-300 hover:bg-stone-800/80 transition-colors shrink-0 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
               title={isCollapsed ? 'گسترش منو' : 'جمع کردن منو'}
+              aria-label={isCollapsed ? 'گسترش منو' : 'جمع کردن منو'}
             >
               {isCollapsed ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             </button>
@@ -187,12 +188,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
               placeholder="جستجوی ابزارها (مثلاً: روت، باتری، فایل)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="جستجوی ابزارها"
               className="w-full bg-[#121318] border border-amber-500/20 rounded-xl pr-8 pl-7 py-1.5 text-xs text-amber-100 placeholder-stone-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/20 shadow-inner"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute left-2.5 top-2 text-stone-500 hover:text-amber-300"
+                className="absolute left-2.5 top-2 text-stone-500 hover:text-amber-300 focus-visible:ring-1 focus-visible:ring-amber-400 rounded"
+                title="پاک کردن جستجو"
+                aria-label="پاک کردن جستجو"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -201,7 +205,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
 
         {/* Categorized Navigation List */}
-        <nav className="flex-1 overflow-y-auto space-y-4 pr-0.5 mt-1">
+        <nav className="flex-1 overflow-y-auto space-y-4 pr-0.5 mt-1" aria-label="منوی بخش‌ها">
           {searchQuery.trim() ? (
             <div className="space-y-1">
               <div className="px-2 text-[10px] font-bold text-amber-400/80 uppercase tracking-wider">
@@ -243,7 +247,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <Bot className="w-3.5 h-3.5 text-amber-400" />
             )}
             {!isCollapsed && (
-              <span className="font-mono text-stone-300 text-[10px] truncate">
+              <span className="font-mono text-stone-300 text-[10px] truncate" dir="ltr">
                 {deviceType === 'ios' ? 'Apple iOS' : 'Android ADB'}
               </span>
             )}
@@ -260,13 +264,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             href="https://irres.ir"
             target="_blank"
             rel="noreferrer"
-            className="block p-2 rounded-xl bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-amber-600/10 border border-amber-500/20 hover:border-amber-500/40 text-center transition-all group"
+            className="block p-2 rounded-xl bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-amber-600/10 border border-amber-500/20 hover:border-amber-500/40 text-center transition-all group focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
+            aria-label="وب‌سایت شرکت راهکار الکترونیک سهند"
           >
             <div className="text-[10px] font-bold text-amber-200 group-hover:text-yellow-300 flex items-center justify-center gap-1">
               <span>توسعه: راهکار الکترونیک سهند</span>
               <ExternalLink className="w-2.5 h-2.5 opacity-70 group-hover:opacity-100" />
             </div>
-            <div className="text-[9px] font-mono text-stone-400 mt-0.5">
+            <div className="text-[9px] font-mono text-stone-400 mt-0.5" dir="ltr">
               https://irres.ir • {APP_VERSION} Royal
             </div>
           </a>
@@ -285,12 +290,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <button
         key={item.id}
         onClick={() => setActiveTab(item.id)}
-        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all duration-150 text-right group relative ${
+        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all duration-150 text-right group relative focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none ${
           isActive
             ? 'bg-gradient-to-l from-amber-500/20 via-yellow-500/10 to-transparent text-amber-100 border border-amber-500/40 shadow-sm shadow-amber-500/10'
             : 'text-stone-400 hover:text-amber-200 hover:bg-stone-800/40 border border-transparent'
         }`}
         title={isCollapsed ? item.label : undefined}
+        aria-label={item.label}
       >
         {/* Active Indicator Bar */}
         {isActive && (
@@ -312,7 +318,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {item.label}
               </span>
               {isAndroidExclusive && (
-                <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-stone-800/80 text-amber-300/80 border border-amber-500/20 shrink-0">
+                <span className="text-[8px] font-mono px-1 py-0.2 rounded bg-stone-800/80 text-amber-300/80 border border-amber-500/20 shrink-0" dir="ltr">
                   Android
                 </span>
               )}

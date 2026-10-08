@@ -59,6 +59,16 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
     if (isOpen && tab === 'scan') {
       triggerScan();
     }
@@ -175,8 +185,9 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
           </div>
           <button 
             onClick={onClose}
-            className="p-2 rounded-xl bg-[#181922] hover:bg-[#22242f] text-stone-400 hover:text-yellow-300 border border-amber-500/15 transition-all"
+            className="p-2 rounded-xl bg-[#181922] hover:bg-[#22242f] text-stone-400 hover:text-yellow-300 border border-amber-500/15 transition-all focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
             title="بستن پنجره"
+            aria-label="بستن پنجره اتصال وای‌فای"
           >
             <X className="w-5 h-5" />
           </button>

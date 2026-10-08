@@ -1,6 +1,19 @@
 # Task Journal: task-002-cellphone-manager
 
-## 2026-10-07 - Full Implementation & Verification
+## 2026-10-08 - Anti-Freeze Virtualization, Pagination & Global ActionOverlay
+- **User Request:** System freeze / "Page isn't responding" when clicking on heavy data (e.g. 6,304 contacts). System must show instant animated feedback explaining the current action and prevent multi-clicking/freezing across the entire app. Also, some SMS texts (like bank SMS) are truncated/missing, and categories for Spam, Blocked, Banking, and Drafts are needed.
+- **Root Cause:**
+  - Browser JS event loop and DOM choked trying to render 6,304 contact cards at once (>100,000 DOM elements), causing 10s+ freezes.
+  - SMS parsing regex `body=([^,]+)` stopped matching at the very first comma (e.g. account numbers or formatted amounts like `50,000 ریال`), losing the rest of the body text.
+- **Solution & Engineering:**
+  - Created `src/components/PaginationBar.tsx`: Royal Gold / Cyan paginator with page selector, page size options (30, 60, 100, 200), and first/prev/next/last jumps.
+  - Created `ActionOverlay` in `src/components/LoadingSpinner.tsx`: Frosted modal overlay with dual-ring spinning animation, animated status text, animated pulse bar, and click lock.
+  - Re-architected SMS parser in `server/adbManager.js`: query projection with `body` at tail + block delimiter splitting to extract multi-line and comma-rich SMS messages completely without truncation.
+  - Added SMS category classification in backend & frontend: Inbox, Sent, Banking & OTP, Spam & Ads, Blocked, Drafts.
+  - Added category filter pills, badges, and 1-click text copy buttons in `MessagesTab.tsx`.
+- **Verification:**
+  - `npm test`: 27 test files, 93 tests passing (0 failures).
+  - `npm run build`: Successfully compiled production bundle in 5.30s.
 - **Architecture:** Node.js Express/WebSocket backend bridge + React 19/TypeScript/Tailwind frontend.
 - **Backend Bridges:**
   - `server/fileManager.js`: Directory explorer, push/pull binary transfers, delete, and mkdir.
@@ -87,3 +100,63 @@
 - Current checks: `npm test` passed (25 files, 80 tests); `npm run build` passed (1,949 modules) with tab chunks split and no >500 kB warning.
 - Tests generated known test-only entries in audit/automation data and a snapshot; verified the entries corresponded to this run and restored/removed only those artifacts. Working tree was clean after cleanup before updating task notes.
 - This was a spot-check, not a new full enterprise audit or physical-device/offline installer verification. Next step if required: fresh audit and clean VM/hardware validation.
+
+## 2026-10-08 - Audit-Fix-Loop Execution (Cycles 1 & 2 Completed)
+- **Protocol:** `audit-fix-loop`.
+- **Cycle 1 (Surgical Repairs & Regression Tests):**
+  - Resolved `AUD-2026-001`: Refactored `server/networkManager.js` to execute `ping` via `execFileAsync` with argument array and regex validation.
+  - Resolved `AUD-2026-002`: Refactored `server/toolManager.js` to use `spawn` with `-LiteralPath` for PowerShell extraction and installer execution, eliminating raw string injection.
+  - Resolved `AUD-2026-003`: Refactored `server/universalBackupManager.js` to open folders using `spawn('explorer.exe', [targetDir])`.
+  - Resolved `AUD-2026-004`: Escaped and sanitized inputs in `server/adbManager.js` and `server/passwordManager.js`.
+  - Resolved `AUD-2026-006`: Sanitized `targetPath` in `server/fileManager.js`.
+  - Added unit test assertions in `tests/networkManager.test.js` and `tests/universalBackupManager.test.js`.
+  - Verification: 26 test files / 89 tests passed; Vite build 2000 modules in 4.77s.
+- **Cycle 2 (Fresh Repository-Wide Pass):**
+  - Complete re-inspection of the entire codebase and test suite.
+  - Verified 0 new actionable defects. All confirmed defects resolved.
+
+## 2026-10-08 - Startup Splash & UI/UX Accessibility Enhancements
+- **Startup Splash Screen (`public/loading.html`):** Created a luxury dark/gold branded startup screen with dynamic loading bar, Persian status messages, and automatic backend polling (`/`) every 500ms that replaces window location smoothly when Vite/Express are ready.
+- **Launcher Scripts:** Updated `cpmStart.bat` and `launch.ps1` to open `public/loading.html` immediately on startup, eliminating the 10-second `ERR_CONNECTION_REFUSED` browser error.
+- **BiDi / RTL Isolation:** Enclosed device serials, OS versions, and phone numbers in `<span dir="ltr" className="font-mono">` across `DeviceHeader.tsx` and `MessagesTab.tsx`.
+- **WCAG Accessibility:** Added `aria-label` to all icon buttons and `focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none` for keyboard navigation in `Sidebar.tsx`, `DeviceHeader.tsx`, `OverviewTab.tsx`, and `MessagesTab.tsx`. Added `Escape` key listeners to modal dialogs.
+- **Verification:** 26 test files / 89 tests passed; Vite build 2000 modules in 5.10s.
+
+## 2026-10-08 - Comprehensive Micro-Animations & Dynamic Loading Engine
+- **CSS Keyframes & Utilities (`src/index.css`):** Introduced `.animate-fadeInScale`, `.skeleton-shimmer`, `.animate-pulse-glow`, `.pulse-ring-wave`, `.animate-float`, `.animate-spin-slow`, `.hover-lift`, and `.dot-typing`.
+- **Loading UI (`src/components/LoadingSpinner.tsx`):** Implemented high-end dual-ring loading spinner with ambient glowing halos and animated status dots.
+- **Component Upgrades:** Enhanced tab loading skeletons in `App.tsx`, folder exploration in `FilesTab.tsx`, contact and call log retrieval in `MessagesTab.tsx`, package inspection in `AppsTab.tsx`, live notification listeners in `NotificationsTab.tsx`, and bloatware scan in `DebloaterTab.tsx`.
+- **Verification:** 26 test files / 89 tests passed, Vite build 2001 modules in 5.07s.
+
+## 2026-10-08 - Smart Contact Deduplication, Merging & Extended Mobile Profile Fields
+- **Contact Merging Engine (`server/index.js`, `server/mockDeviceManager.js`, `server/adbManager.js`):**
+  - Added `/api/devices/:id/contacts/merge` endpoint.
+  - Implemented `mergeContacts(deviceId, { targetContact, duplicateIds })` allowing batch deletion of duplicate records while preserving and updating the unified target contact with combined phone numbers, emails, addresses, and notes.
+- **Smart Duplicate Detection (`MessagesTab.tsx`):**
+  - Implemented normalized telephone comparison (`0` vs `+98`, removing spaces, hyphens, and non-digits) and exact name matching to detect duplicates accurately.
+  - Added prominent **ادغام تکراری‌ها** toolbar badge showing live duplicate group count and an interactive multi-group Merge Modal with single-group merge and one-click "ادغام خودکار همه".
+- **Avatar Profile Pictures & Extended Contact Specification:**
+  - Added avatar upload support with direct Base64 preview, edit, and removal.
+  - Added extended mobile contact attributes: Secondary Phone (`secondaryPhone`), Company (`company`), Job Title (`jobTitle`), Address (`address`), Birthday (`birthday`), Website (`website`), Nickname (`nickname`), and Relationship category (`relationship`).
+  - Added 3-tab Add/Edit Contact Modal:
+    1. *اطلاعات پایه و تماس* (Name, Main Phone, Second Phone, Email, Avatar)
+    2. *شغل و سازمان* (Company, Job Title, Website)
+    3. *مشخصات تکمیلی و آدرس* (Nickname, Relationship, Birthday, Address, Notes)
+  - Updated VCF vCard 3.0 exporter, CSV exporter, and JSON backup exporter to include all extended attributes (`BDAY`, `TITLE`, `ORG`, `ADR`, `URL`, `NICKNAME`).
+- **Verification:** 26 test files / 89 tests passed, Vite build 2001 modules in 5.27s.
+
+## 2026-10-08 - Real APK Icon Extraction Engine & Polished Fallback System
+- **App Icon Extraction Manager (`server/appIconManager.js`):**
+  - Implemented `AppIconManager` to extract real launcher icons directly from installed APK packages on connected devices via ADB (`pm path` + `adb exec-out "unzip -p ..."`).
+  - Designed an intelligent asset scoring algorithm favoring highest density raster icons (`xxxhdpi` > `xxhdpi` > `xhdpi` > `hdpi`) and launcher variants (`ic_launcher_round`, `ic_launcher`, `app_icon`).
+  - Added fast binary validation (PNG/WebP/JPEG headers) and automatic local disk caching in `uploads/app_icons_cache/` for instant sub-millisecond future requests.
+- **Icon Endpoint (`server/index.js`):**
+  - Exposed `GET /api/devices/:id/apps/:packageName/icon` with `Cache-Control: public, max-age=86400`.
+- **UI Components Enhancement (`AppIcon.tsx`, `AppsTab.tsx`, `OverviewTab.tsx`, `BackupTab.tsx`, `DebloaterTab.tsx`):**
+  - Updated `AppIcon` with lazy image loading and smooth skeleton transitions.
+  - Implemented graceful categorized fallbacks (Iranian Messengers, Social, Media, Shopping, Navigation, System Shields, or Aesthetic Dynamic Gradient Letter Avatars) whenever an app lacks an extractable icon or runs offline/mock.
+  - Passed `deviceId` across all tabs to seamlessly display real installed application icons.
+- **Unit Tests:** Added `tests/appIconManager.test.js` (4 tests).
+- **Verification:** 27 test files / 93 tests passed (100% green), Vite build 2001 modules in 15.66s.
+
+

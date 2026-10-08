@@ -17,6 +17,7 @@ import { automationManager } from './automationManager.js';
 import { notificationManager } from './notificationManager.js';
 import { recorderManager } from './recorderManager.js';
 import { apkInspectorManager } from './apkInspectorManager.js';
+import { appIconManager } from './appIconManager.js';
 import { aiManager } from './aiManager.js';
 import { gpsManager } from './gpsManager.js';
 import { debloaterManager } from './debloaterManager.js';
@@ -285,6 +286,21 @@ app.get('/api/devices/:id/apps', async (req, res) => {
     res.json({ apps: [] });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/devices/:id/apps/:packageName/icon', async (req, res) => {
+  const { id, packageName } = req.params;
+  try {
+    const iconData = await appIconManager.getAppIcon(id, packageName);
+    if (iconData && iconData.buffer) {
+      res.set('Content-Type', iconData.mime);
+      res.set('Cache-Control', 'public, max-age=86400');
+      return res.send(iconData.buffer);
+    }
+    return res.status(404).send('Icon not found');
+  } catch (err) {
+    return res.status(404).send('Icon not available');
   }
 });
 
@@ -1535,6 +1551,23 @@ app.post('/api/devices/:id/contacts/clear', async (req, res) => {
       return res.json({ success: true, message: 'تمامی مخاطبین با موفقیت پاکسازی شدند' });
     }
     const result = await adbManager.clearAllContacts(id);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/contacts/merge', async (req, res) => {
+  const { id } = req.params;
+  const { targetContact, duplicateIds = [] } = req.body;
+  if (!targetContact) return res.status(400).json({ error: 'اطلاعات مخاطب هدف برای ادغام الزامی است' });
+
+  try {
+    if (id.startsWith('mock-')) {
+      mockDeviceManager.mergeContacts(id, { targetContact, duplicateIds });
+      return res.json({ success: true, message: 'مخاطبین با موفقیت ادغام شدند' });
+    }
+    const result = await adbManager.mergeContacts(id, { targetContact, duplicateIds });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

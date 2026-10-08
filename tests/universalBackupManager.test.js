@@ -79,4 +79,15 @@ describe('UniversalBackupManager Test Suite', () => {
     expect(restoreTraversal.success).toBe(false);
     expect(restoreTraversal.error).toContain('شناسه نسخه پشتیبان نامعتبر است');
   });
+
+  it('should handle openBackupFolder and openBackupItemFolder safely', async () => {
+    const res = await universalBackupManager.openBackupFolder();
+    expect(res.success).toBe(true);
+    expect(res).toHaveProperty('path');
+
+    const notFoundRes = await universalBackupManager.openBackupItemFolder('non_existent_id');
+    expect(notFoundRes.success).toBe(false);
+    expect(notFoundRes.error).toContain('یافت نشد');
+  });
 });
+

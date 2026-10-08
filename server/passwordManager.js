@@ -83,7 +83,9 @@ export class PasswordManager {
         return { success: true, message: `دستور اتصال به شبکه ${ssid} در شبیه‌ساز ارسال شد.` };
       }
 
-      const res = await adbManager.runAdb(`shell cmd wifi connect-network "${ssid}" wpa2 "${password}"`, serial);
+      const safeSsid = (ssid || '').replace(/["\\$`!]/g, '');
+      const safePass = (password || '').replace(/["\\$`!]/g, '');
+      const res = await adbManager.runAdb(`shell cmd wifi connect-network "${safeSsid}" wpa2 "${safePass}"`, serial);
       return { success: true, message: `دستور اتصال به شبکه ${ssid} با موفقیت ارسال شد.`, output: res.stdout };
     } catch (e) {
       return { success: false, error: e.message };

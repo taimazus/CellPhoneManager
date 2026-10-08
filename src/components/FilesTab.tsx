@@ -52,6 +52,7 @@ import {
   CheckCheck
 } from 'lucide-react';
 import { Device } from '../types';
+import { LoadingSpinner } from './LoadingSpinner';
 
 interface FileItem {
   name: string;
@@ -1226,9 +1227,13 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
 
       {/* Files Display Section */}
       {loading ? (
-        <div className="p-20 text-center text-slate-400 space-y-3">
-          <RefreshCw className="w-10 h-10 animate-spin text-cyan-400 mx-auto" />
-          <p className="text-sm font-semibold">در حال بارگذاری فایل‌های پوشه...</p>
+        <div className="p-16 text-center">
+          <LoadingSpinner
+            size="lg"
+            variant="cyan"
+            text="در حال دریافت و بارگذاری فایل‌های پوشه..."
+            subtext="دریافت ساختار دایرکتوری از حافظه داخلی گوشی"
+          />
         </div>
       ) : filteredItems.length === 0 ? (
         <div className="p-20 text-center text-slate-500 space-y-3 glass-panel rounded-3xl border border-slate-800">
@@ -2354,12 +2359,13 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
               {getFileCategory(previewFile.name) === 'text' && (
                 <div className="w-full h-full flex flex-col">
                   {previewLoading ? (
-                    <div className="py-20 text-center text-slate-400 space-y-3">
-                      <div className="relative w-12 h-12 mx-auto">
-                        <div className="w-12 h-12 rounded-full border-2 border-cyan-500/20 border-t-cyan-400 animate-spin" />
-                        <RefreshCw className="w-5 h-5 text-cyan-400 absolute inset-0 m-auto animate-pulse" />
-                      </div>
-                      <p className="text-sm font-bold text-slate-200">در حال خواندن و بارگذاری فایل متنی از گوشی...</p>
+                    <div className="py-16 text-center">
+                      <LoadingSpinner
+                        size="md"
+                        variant="cyan"
+                        text="در حال خواندن و بارگذاری فایل متنی از گوشی..."
+                        subtext="دریافت لحظه‌ای محتوا از حافظه دستگاه"
+                      />
                     </div>
                   ) : (
                     <pre className="p-4 bg-[#080d1a] border border-slate-800 rounded-2xl font-mono text-xs text-cyan-300 max-h-[60vh] overflow-y-auto whitespace-pre-wrap select-text text-left">

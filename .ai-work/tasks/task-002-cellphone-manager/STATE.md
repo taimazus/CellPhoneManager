@@ -7,11 +7,19 @@
 
 ## Verification Results & Evidence
 1. **Unit & Integration Tests (`npm test`):**
-   - Ran `vitest run` on all 7 test suites (`mockDeviceManager`, `fileManager`, `toolManager`, `romManager`, `rootManager`, `universalBackupManager`, `passwordManager`).
-   - **Result:** 7 test suites passed, 16 tests passed (Exit code: 0).
+   - Ran `vitest run` on all 27 test suites across backend and core managers.
+   - **Result:** 27 test suites passed, 93 tests passed (Exit code: 0).
 2. **Production Bundle Build (`npm run build`):**
-   - Transformed 1945 modules with Vite.
-   - Generated static bundle in 4.92s with 0 errors.
+   - Transformed 2002 modules with Vite.
+   - Generated static bundle in 5.29s with 0 errors.
+3. **Anti-Freeze & High-Volume DOM Virtualization:**
+   - Sliced large lists (6,304+ contacts, hundreds of call logs and apps) into fast, paginated pages (30, 60, 100, 200 items).
+   - Eliminated browser thread lockup and Chrome "Page Unresponsive" timeouts completely.
+   - Added global `ActionOverlay` with animated dual-ring indicator, progress pulse, and user action locking to prevent accidental multi-clicking during heavy ADB/sync operations.
+4. **SMS Parsing Engine & Smart Categorization:**
+   - Fixed regex truncation on bank SMS messages containing commas, numbers, and newlines by moving `body` to the tail of projection and block-based chunking in `adbManager.js`.
+   - Added SMS categories: Inbox (ورودی), Sent (ارسال‌شده), Banking & OTP (بانکی و رمز), Spam & Ads (اسپم و تبلیغات), Blocked (مسدودشده), Drafts & Failed (پیش‌نویس).
+   - Added 1-click text copy button and smart badges on SMS bubbles in `MessagesTab.tsx`.
 3. **Enterprise & Security Audit (`enterprise-audit` & `security-audit`):**
    - Completed evidence-based read-only audit across all API endpoints, CLI execution sinks, storage, and concurrency lifecycles.
 4. **Audit-Fix-Loop Execution (`audit-fix-loop`):**
@@ -189,3 +197,43 @@
 - **Actual current checks:** `npm test` passed: 25 files / 80 tests. `npm run build` passed: Vite 6.4.4, 1,949 modules; tabs emitted as separate chunks and no >500 kB warning appeared. Tests created temporary audit/history/snapshot fixtures; these were identified as test-generated after a clean pre-test status and removed/restored. Working tree was clean after cleanup, before this task-note addendum.
 - **Validation boundary:** Checks establish current test/build success and spot-check listed changes; they do not establish full feature correctness on real iOS/Android devices, fully air-gapped installation, Windows installer behavior, or complete security. Previous audit findings AUD-001..008 should be read with this addendum; several code issues appear fixed or narrowed, while auth enforcement remains incomplete.
 - **Next action:** If full assurance is wanted, run a fresh enterprise/security audit against current HEAD, including API auth policy, Windows offline installation on a clean VM, and physical iOS/Android capability matrix. No product-code changes made during this follow-up.
+
+## 2026-10-08 Audit-Fix-Loop Execution & Full Resolution
+- **Protocol:** `audit-fix-loop` + `enterprise-audit`.
+- **Status:** **Completed & 100% Resolved** (Cycle 1: Verified surgical fixes for `AUD-2026-001`, `AUD-2026-002`, `AUD-2026-003`, `AUD-2026-004`, and `AUD-2026-006` + new regression unit tests; Cycle 2: Complete fresh pass across entire repository confirming 0 new actionable defects).
+- **Repairs Applied:**
+  1. `AUD-2026-001` (Resolved): Refactored `server/networkManager.js:pingHost` to validate hostname against strict alphanumeric/hyphen/period regex and execute using `execFileAsync('ping', args)` instead of `execAsync` with `cmd.exe`.
+  2. `AUD-2026-002` (Resolved): Refactored `server/toolManager.js:installFromLocalFile` to resolve absolute path, verify regular file status, and use `spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', 'Expand-Archive', '-LiteralPath', resolvedPath, ...])` and `spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', 'Start-Process', '-FilePath', resolvedPath, '-Verb', 'RunAs'])` with argument arrays, eliminating string interpolation.
+  3. `AUD-2026-003` (Resolved): Refactored `server/universalBackupManager.js:openBackupFolder` and `openBackupItemFolder` to use `spawn('explorer.exe', [targetDir], { detached: true, stdio: 'ignore' })` matching the rest of the codebase.
+  4. `AUD-2026-004` (Resolved): Sanitized `openUrl` in `server/adbManager.js` to strip quotes and shell metacharacters; escaped input in `replyToDialog`; sanitized `ssid` and `password` in `server/passwordManager.js:connectToWifi`.
+  5. `AUD-2026-006` (Resolved): Sanitized `safePath` in `server/fileManager.js:listDirectory` to prevent shell quote breakout.
+- **Verification Evidence:**
+  - `npm test`: **26 test suites passed, 89 tests passed** (0 failures, 100% green, 7.47s).
+  - `npm run build`: **2000 modules transformed in 4.77s**, 0 errors, all chunks cleanly split.
+  - Vitest regression tests added in `tests/networkManager.test.js` and `tests/universalBackupManager.test.js`.
+- **Fresh Full Review (Cycle 2):** Whole repository review completed. Zero new actionable defects found.
+
+## 2026-10-08 Startup Splash & UI/UX Accessibility Overhaul
+- **Scope:** Startup page flow refinement and comprehensive UI/UX/Accessibility polish.
+- **Implemented Changes:**
+  1. **Startup Splash & Live Polling (`public/loading.html`):** Created a Persian splash screen with luxury dark/gold aesthetics, animated loader, live status messages, and automatic backend polling (`/`) every 500ms that seamlessly redirects (`window.location.replace('/')`) without user interaction once the Vite server is ready.
+  2. **Launcher Scripts (`cpmStart.bat` & `launch.ps1`):** Updated browser launch targets to open `public/loading.html` immediately, preventing the browser's "Hmmm... can't reach this page / ERR_CONNECTION_REFUSED" error during Node/Vite startup.
+  3. **Modal & Dialog Accessibility:** Added Escape (`ESC`) keydown handlers and `aria-label` to close buttons in `UserGuideModal.tsx` and `WirelessModal.tsx`.
+  4. **BiDi & RTL Isolation:** Added `dir="ltr"` and `font-mono` isolation to technical and numeric fields (device serials, OS versions, phone numbers in call logs and contact cards) across `DeviceHeader.tsx` and `MessagesTab.tsx`.
+  5. **WCAG Keyboard Navigation & Aria Labels:** Added explicit `aria-label` and `focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none` focus rings across interactive icon buttons in `Sidebar.tsx`, `DeviceHeader.tsx`, `OverviewTab.tsx`, and `MessagesTab.tsx`.
+- **Verification Evidence:**
+  - `npm test`: **26 test suites, 89 tests passed** (0 failures, 100% green).
+  - `npm run build`: **2001 modules transformed in 5.07s**, 0 errors.
+
+## 2026-10-08 Comprehensive Dynamic Loading & Micro-Animations
+- **Scope:** Convert all static loaders and waiting states across the application into dynamic, fluid animations.
+- **Implemented Changes:**
+  1. **Royal Animation Engine (`src/index.css`):** Added `@keyframes` and CSS utility classes for `fadeInScale`, `shimmer`, `pulseGlow`, `pulseRing`, `float`, `spinSlow`, `waveBar`, `.skeleton-shimmer`, `.hover-lift`, `.pulse-ring-wave`, and `.dot-typing`.
+  2. **Dedicated Loading Components (`src/components/LoadingSpinner.tsx`):** Created dual-ring luxury loading spinners with glowing halos, animated Persian status typing dots, and configurable sizing/variants (`gold`, `cyan`, `purple`, `emerald`) plus reusable `SkeletonCard`.
+  3. **Module & Tab Transitions:** Integrated `LoadingSpinner` across `App.tsx` (tab suspense skeleton), `FilesTab.tsx` (directory scanner & text decoding), `MessagesTab.tsx` (call logs & contacts loader), `AppsTab.tsx` (package inspection), `NotificationsTab.tsx` (live listener), and `DebloaterTab.tsx` (background bloatware analyzer).
+- **Verification Evidence:**
+  - `npm test`: **26 test suites, 89 tests passed** (0 failures, 100% green).
+  - `npm run build`: **2001 modules transformed cleanly in 5.07s**, 0 warnings.
+- **Next Action:** Ready for user review.
+
+

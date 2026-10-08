@@ -225,6 +225,20 @@ export class MockDeviceManager {
     return true;
   }
 
+  mergeContacts(deviceId, { targetContact, duplicateIds = [] }) {
+    const dev = this.getDevice(deviceId);
+    if (!dev || !dev.contacts) return false;
+    const dupSet = new Set(duplicateIds);
+    dev.contacts = dev.contacts.filter(c => !dupSet.has(c.id) && !dupSet.has(c.rawContactId));
+    const idx = dev.contacts.findIndex(c => c.id === targetContact.id || c.rawContactId === targetContact.id);
+    if (idx !== -1) {
+      dev.contacts[idx] = { ...dev.contacts[idx], ...targetContact };
+    } else {
+      dev.contacts.unshift({ id: targetContact.id || `c_${Date.now()}`, ...targetContact });
+    }
+    return true;
+  }
+
   // --- Call Logs & State Management ---
   getCallState(deviceId) {
     const dev = this.getDevice(deviceId);

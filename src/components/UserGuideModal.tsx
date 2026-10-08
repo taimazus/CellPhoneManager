@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BookOpen, 
   X, 
@@ -36,6 +36,16 @@ interface UserGuideModalProps {
 export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose, initialTopic = 'getting_started' }) => {
   const [activeCategory, setActiveCategory] = useState<string>(initialTopic);
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -358,8 +368,9 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose,
 
           <button
             onClick={onClose}
-            className="p-2 rounded-2xl bg-stone-900 border border-stone-800 hover:border-amber-500/40 text-stone-400 hover:text-amber-300 hover:bg-amber-500/10 transition-all active:scale-95"
+            className="p-2 rounded-2xl bg-stone-900 border border-stone-800 hover:border-amber-500/40 text-stone-400 hover:text-amber-300 hover:bg-amber-500/10 transition-all active:scale-95 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none"
             title="بستن پنجره"
+            aria-label="بستن پنجره راهنما"
           >
             <X className="w-5 h-5" />
           </button>
