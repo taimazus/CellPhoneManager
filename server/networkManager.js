@@ -320,9 +320,26 @@ export class NetworkManager {
 
   async scanLocalSubnetForDevices() {
     try {
-      const { stdout } = await execAsync('arp -a');
+      // 1. Get currently connected ADB wireless devices
+      const activeAdbIps = new Set();
+      try {
+        const adbPath = await toolManager.getAdbPath();
+        const { stdout: devOut } = await execAsync(`"${adbPath}" devices`);
+        for (const line of (devOut || '').split('\n')) {
+          const match = line.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d+)\s+device/);
+          if (match) {
+            activeAdbIps.add(match[1]);
+          }
+        }
+      } catch (e) {
+        // Ignore ADB list error if daemon not running
+      }
+
+      // 2. Query ARP table
+      let { stdout } = await execAsync('arp -a').catch(() => ({ stdout: '' }));
       const lines = (stdout || '').split('\n');
       const candidates = [];
+      const seenIps = new Set();
 
       for (const line of lines) {
         const match = line.trim().match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+([0-9a-fA-F\-]{17})\s+(\w+)/i);
@@ -331,47 +348,90 @@ export class NetworkManager {
           const mac = match[2].toUpperCase().replace(/-/g, ':');
           const type = match[3].toLowerCase();
 
-          // Skip broadcast, multicast, loopback
-          if (ip.endsWith('.255') || ip.startsWith('224.') || ip.startsWith('239.') || ip === '255.255.255.255' || ip.startsWith('127.')) {
+          // Skip broadcast, multicast, loopback, gateway broadcast
+          if (
+            ip.endsWith('.255') || 
+            ip.endsWith('.0') || 
+            ip.startsWith('224.') || 
+            ip.startsWith('239.') || 
+            ip === '255.255.255.255' || 
+            ip.startsWith('127.') ||
+            seenIps.has(ip)
+          ) {
             continue;
           }
 
+          seenIps.add(ip);
           candidates.push({ ip, mac, type });
         }
       }
 
-      // Check port 5555 in parallel with timeout
+      // 3. Parallel port & vendor inspection
       const checkResults = await Promise.all(
-        candidates.slice(0, 30).map(async (c) => {
-          const isAdbOpen = await this.checkTcpPort(c.ip, 5555, 450);
+        candidates.slice(0, 50).map(async (c) => {
+          const isAdbConnected = activeAdbIps.has(c.ip);
+          const isAdbOpen = isAdbConnected || (await this.checkTcpPort(c.ip, 5555, 450));
           
           let vendor = 'دستگاه متصل به شبکه Wi-Fi';
           let deviceType = 'Smart Device';
 
-          if (c.mac.startsWith('B4:0E:DE') || c.mac.startsWith('AC:C1:EE') || c.mac.startsWith('34:CE:00')) {
-            vendor = 'شیائومی / ردمی (Xiaomi)';
+          // Comprehensive MAC OUI Vendor database
+          const mac3 = c.mac.substring(0, 8);
+          if (
+            mac3.startsWith('B4:0E:DE') || mac3.startsWith('AC:C1:EE') || mac3.startsWith('34:CE:00') ||
+            mac3.startsWith('68:DF:DD') || mac3.startsWith('78:11:DC') || mac3.startsWith('58:44:98')
+          ) {
+            vendor = 'شیائومی / ردمی / پوکو (Xiaomi / Redmi / Poco)';
             deviceType = 'Android';
-          } else if (c.mac.startsWith('DC:71:44') || c.mac.startsWith('F4:60:E2') || c.mac.startsWith('50:77:05')) {
-            vendor = 'سامسونگ گلکسی (Samsung)';
+          } else if (
+            mac3.startsWith('DC:71:44') || mac3.startsWith('F4:60:E2') || mac3.startsWith('50:77:05') ||
+            mac3.startsWith('30:CD:A7') || mac3.startsWith('88:79:7E') || mac3.startsWith('A4:70:D6') ||
+            mac3.startsWith('44:78:3E') || mac3.startsWith('94:DB:DA')
+          ) {
+            vendor = 'سامسونگ گلکسی (Samsung Galaxy)';
             deviceType = 'Android';
-          } else if (c.mac.startsWith('AC:BC:32') || c.mac.startsWith('F0:18:98') || c.mac.startsWith('18:F6:43')) {
+          } else if (
+            mac3.startsWith('AC:BC:32') || mac3.startsWith('F0:18:98') || mac3.startsWith('18:F6:43') ||
+            mac3.startsWith('3C:06:30') || mac3.startsWith('40:4D:7F') || mac3.startsWith('A8:66:7F') ||
+            mac3.startsWith('DC:A9:04') || mac3.startsWith('98:01:A7')
+          ) {
             vendor = 'اپل آیفون / آیپد (Apple iOS)';
             deviceType = 'iOS';
+          } else if (
+            mac3.startsWith('E4:AA:EC') || mac3.startsWith('48:2C:A0') || mac3.startsWith('B4:9C:DF')
+          ) {
+            vendor = 'هواوی / آنر (Huawei / Honor)';
+            deviceType = 'Android';
           } else if (isAdbOpen) {
             vendor = 'گوشی اندروید (Wireless Debugging فعال)';
             deviceType = 'Android';
+          }
+
+          let status = 'شناسایی‌شده در شبکه Wi-Fi';
+          if (isAdbConnected) {
+            status = 'متصل و آماده تبادل داده (ADB Online)';
+          } else if (isAdbOpen) {
+            status = 'آماده اتصال فوری (پورت ۵۵۵۵ باز)';
           }
 
           return {
             ip: c.ip,
             mac: c.mac,
             isAdbOpen,
+            isAdbConnected,
             vendor,
             deviceType,
-            status: isAdbOpen ? 'آماده اتصال فوری (پورت ۵۵۵۵ باز)' : 'شناسایی‌شده در شبکه Wi-Fi'
+            status
           };
         })
       );
+
+      // Sort: ADB-open and connected devices first
+      checkResults.sort((a, b) => {
+        if (a.isAdbOpen && !b.isAdbOpen) return -1;
+        if (!a.isAdbOpen && b.isAdbOpen) return 1;
+        return 0;
+      });
 
       return {
         success: true,

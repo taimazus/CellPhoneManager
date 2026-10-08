@@ -225,7 +225,7 @@ app.get('/api/devices/wireless/scan', async (req, res) => {
     const result = await networkManager.scanLocalSubnetForDevices();
     res.json(result);
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message, devices: [] });
+    res.json({ success: false, error: err.message, devices: [] });
   }
 });
 

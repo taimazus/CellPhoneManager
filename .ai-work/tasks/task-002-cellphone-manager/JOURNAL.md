@@ -1,5 +1,22 @@
 # Task Journal: task-002-cellphone-manager
 
+## 2026-10-08 - Fresh Repository-wide Enterprise Audit (Read-only)
+- **User request:** Audit the entire open repository using `enterprise-audit`; infer goal/stack; reconcile the active task STATE before work; keep important decisions, files, real checks and next step in task STATE/JOURNAL; do not change code; classify severity/evidence/path:line/failure scenario/verification; distinguish risks/hypotheses; state coverage limits.
+- **Task/status reconciliation:** Read `.ai-work/INDEX.md` and task-002 STATE/JOURNAL/SPEC first. The index contains an obsolete root path and STATE has stale “completed/released” and prior zero-finding audit claims. Continued with existing task ID `task-002-cellphone-manager`; recorded this fresh review as a dated addendum. Current workspace root is `F:\Projects\CellPhoneManager`.
+- **Protocol:** `core/enterprise-audit.md` is missing in this repository. Used evidence-first fallback required by root AGENTS instructions. No product files edited. Secrets were not copied into this journal or findings.
+- **Goal/stack inferred from code:** Windows-oriented Android/iOS phone management and repair suite. Node ES modules + Express/WebSocket server; React 19, TypeScript, Vite, Tailwind; ADB/Fastboot/Scrcpy and Python `pymobiledevice3`; Vitest tests.
+- **Important files reviewed:** `package.json`, README and architecture docs; `server/index.js`, `securityManager.js`, `adbManager.js`, `iosManager.js`, `iosToolkitManager.js`, `romManager.js`, `rescueManager.js`, `fileManager.js`, `universalBackupManager.js`, `taskQueueManager.js`; tests and task metadata.
+- **Confirmed findings added to STATE.md:**
+  - AUD-2026-001 Critical: exposed default all-interface API, optional auth default disabled, unauthenticated auth configuration route.
+  - AUD-2026-002 High: batch-download command construction embeds caller remote paths in PowerShell quoting.
+  - AUD-2026-003 High: decrypt restore writes payload-selected filenames without containment validation; AES-CBC payload lacks integrity authentication.
+  - AUD-2026-004 High: iOS UDID caller input is interpolated into `exec` command strings.
+  - AUD-2026-005 Medium: legacy security config endpoint returns the full config/API key.
+  - AUD-2026-006 Medium: task queue simulates success without running jobs; active cancellation does not cancel its timer.
+- **Actual checks:** `npm run build` passed (Vite 6.4.4, 2,005 modules, exit 0, 13.82s). `npm test` failed: 30/31 files passed, 118/119 tests passed; Windows Bluetooth host status test timed out at 5s. Classified only as environment-sensitive suite failure, not a proven product defect. A test changed the tracked mock extraction manifest timestamp; inspected the one-line timestamp diff and restored the fixture. No other workspace changes were present.
+- **Not established:** No exploit was executed, no server/hardware/clean Windows VM was used, and not every route/OS behavior was dynamically exercised. This source audit cannot prove absence of defects.
+- **Next step:** Present the audit report for review; remediation requires a separate user request. Product code remains unchanged.
+
 ## 2026-10-08 - Anti-Freeze Virtualization, Pagination & Global ActionOverlay
 - **User Request:** System freeze / "Page isn't responding" when clicking on heavy data (e.g. 6,304 contacts). System must show instant animated feedback explaining the current action and prevent multi-clicking/freezing across the entire app. Also, some SMS texts (like bank SMS) are truncated/missing, and categories for Spam, Blocked, Banking, and Drafts are needed.
 - **Root Cause:**
