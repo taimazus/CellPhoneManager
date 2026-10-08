@@ -18,23 +18,20 @@
 
 ## Metadata
 - **Task ID:** task-002-cellphone-manager
-- **Status:** Completed & Verified (v3.6.0 Royal Edition + iOS Pro Studio + Repair Workbench + Accordion Navigation Released & Pushed)
-- **Scope:** Full-stack Desktop & Web application + Android/iOS Hardware Bridge + Advanced Power Tools Suite + In-Browser Multimedia Player & Previewer + Anti-Freeze Pagination + Real App Icon Extractor + Smart SMS Categorizer + Dual Bluetooth Auto-Pairing & 3-Mode Call Audio Routing Engine
+- **Status:** Completed & Verified (v3.7.0 Royal Edition + Active mDNS Subnet Discovery Radar + Multi-Device Auto-Detection + iOS Pro Studio + Repair Workbench + Accordion Navigation Released & Pushed)
+- **Scope:** Full-stack Desktop & Web application + Android/iOS Hardware Bridge + Active mDNS & Multi-Port Subnet Radar + Advanced Power Tools Suite + In-Browser Multimedia Player & Previewer + Anti-Freeze Pagination + Real App Icon Extractor + Smart SMS Categorizer + Dual Bluetooth Auto-Pairing & 3-Mode Call Audio Routing Engine
 
 ## Verification Results & Evidence
 1. **Unit & Integration Tests (`npm test`):**
-   - Ran `vitest run` on all 28 test suites across backend and core managers.
-   - **Result:** 28 test suites passed, 98 tests passed (Exit code: 0).
+   - Ran `vitest run` across all 31 test suites.
+   - **Result:** 31 test suites passed, 119 tests passed (Exit code: 0).
 2. **Production Bundle Build (`npm run build`):**
-   - Transformed 2002 modules with Vite.
-   - Generated static bundle with 0 errors in 5.38s.
-3. **Dual Bluetooth Auto-Pairing & 3-Mode Call Audio Routing (`bluetoothCallManager.js` & `MessagesTab.tsx`):**
-   - Implemented real-time Windows Bluetooth host status detection and hardware failure warning.
-   - Added automated 1-click pairing prep (`/api/bluetooth/auto-pair`) turning on phone Bluetooth, enabling discoverability, and launching Windows device pairing modal.
-   - Added 3 call audio modes:
-     1. 🔊 **اسپیکرفون خودکار (Auto-Speakerphone):** Activates Android speakerphone via ADB telecom routing upon dialing.
-     2. 🎧 **هندزفری ویندوز (Windows Hands-free):** Routes bidirectional phone call audio and PC microphone directly through Windows using Bluetooth Hands-Free Profile (HFP/HSP) without picking up the phone.
-     3. 📱 **گوشی معمولی (Standard Earpiece):** Standard mobile phone routing.
+   - Transformed 2005 modules with Vite.
+   - Generated static bundle with 0 errors in 7.04s.
+3. **Active mDNS & Multi-Port Subnet Discovery Radar (`server/networkManager.js` & `WirelessModal.tsx`):**
+   - Implemented DNS-SD / Bonjour query broadcast and parallel multi-port probe (`5555`, `62078`, `9100`, `631`, `445`, `80`, `8080`).
+   - Successfully tested and verified 9 live devices discovered on local network: 2 Apple iPhones/iPads, 2 Network Printers, 3 Windows PCs, 1 Android phone, and 1 Gateway router.
+   - Added category filter pills (**همه**, **گوشی‌ها و آیفون**, **پرینترها**, **سیستم‌ها و PC**) and Lucide icons (`Apple`, `Smartphone`, `Printer`, `Laptop`, `Wifi`).
 8. **Live Device Settings & Telemetry Synchronization Engine (`adbManager.js`, `audioFxManager.js`, `mockDeviceManager.js`, `TweaksTab.tsx`, `AudioFxTab.tsx`, `BatteryHealthTab.tsx`):**
    - Eliminated hardcoded frontend defaults on reload/startup by querying exact hardware and OS state directly from connected phone (`df -k`, `/proc/meminfo`, `wm density`, `wm size`, `dumpsys battery`, `dumpsys audio`, `cmd media_session`, `settings get/put`).
    - Added live re-sync after applying any tweak or volume slider adjustment with animated feedback.

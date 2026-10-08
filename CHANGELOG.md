@@ -6,7 +6,39 @@ Developed and maintained exclusively by **Sahand Electronic Solutions Co. (شر�
 
 ---
 
-## [3.5.0] — 2026-10-08 (Anti-Freeze Virtualization & Pagination, Smart SMS Categorizer, Real App Icon Extractor, and Contact Merge Studio)
+## [3.7.0] — 2026-10-08 (Active mDNS Subnet Discovery, Multi-Device Radar, iPhone/Printer/PC Auto-Detection & Accordion Navigation)
+
+### 🌟 Added & Enhanced
+- **🛰️ Active mDNS & Multi-Port Subnet Discovery Radar (`server/networkManager.js` & `src/components/WirelessModal.tsx`):**
+  - **Active Subnet Wakeup:** Dispatches DNS-SD / Bonjour mDNS query packets to multicast `224.0.0.251:5353` and subnet broadcast `*.255:5353`, actively waking up dormant iPhones, iPads, AirPrint printers, and Bonjour services across the local `/24` subnet.
+  - **Parallel Multi-Port Sweep:** Performs ultra-fast, concurrent TCP port sweeps across ports `5555` (Android ADB Wireless), `62078` (Apple Lockdown / Wi-Fi Sync), `9100` / `631` (RAW JetDirect & IPP Network Printers), `445` (Windows SMB PC), and `80` / `8080` (Routers/Gateways) in under 800ms.
+  - **IEEE 802 Private Wi-Fi MAC Classifier:** Detects randomized MAC addresses (locally administered bit: 2nd hex digit `2`, `6`, `A`, `E`) used by iOS 14+ and modern Android devices.
+  - **Comprehensive Hardware OUI Database:** Auto-identifies Apple, Samsung, Xiaomi, Huawei, HP, Canon, Epson, Brother, Ricoh, Asus, Gigabyte, and TP-Link devices.
+  - **Smart Category Filter Tabs in Wi-Fi Modal:** Instant filtering by **همه دستگاه‌ها (All Devices)**, **گوشی‌ها و آیفون (Smartphones & Apple iOS)**, **پرینترها (Printers & Scanners)**, and **سیستم‌ها و PC (Windows PCs)** with dedicated icons (`Apple`, `Smartphone`, `Printer`, `Laptop`, `Wifi`) and 1-click Fast Connect / Pairing buttons.
+- **🍏 iOS Pro Studio Suite (8-in-1 Apple Diagnostics & Tools) (`server/iosToolkitManager.js` & `src/components/IosToolkitTab.tsx`):**
+  - **3uTools Hardware Verification Score:** Compares encrypted factory serials of Motherboard, Battery, Screen, Front/Rear Cameras, and Face ID against live hardware to calculate a 0-100% authenticity score.
+  - **AI Panic Log Analyzer:** Extracts `panic-full.ips` kernel crashes and pinpoints faulty hardware ICs (charging port flex `prsh_wdt`, proximity sensor `AOP PANIC`, NAND, audio codec) with technician repair guide.
+  - **Deep Battery & Gas Gauge BMS Analytics:** Reads true factory design capacity, current capacity, exact cycle count, voltage, and cell temperature directly from the Power Management IC (PMIC).
+  - **Recovery & DFU Hub:** 1-click Exit Recovery Loop (fixes restart loops), Force Enter Recovery, and step-by-step hardware timing guide for DFU Mode.
+  - **iCloud, FMI & Carrier Lock Checker:** Live check of Find My iPhone (FMI ON/OFF), Factory SimLock / Carrier lock status, and GSMA international blacklist.
+  - **Permanent OTA Update Blocker:** Installs Apple tvOS developer profile to block unwanted iOS updates and preserve battery/jailbreak stability without jailbreaking.
+  - **System-Wide Apple DDI Virtual GPS:** Injects custom latitude and longitude coordinates into the iOS kernel via Developer Disk Image (works across Apple Maps, Find My, social apps, and ridesharing).
+  - **Direct IPA Sideloading:** Sideloads custom or enterprise IPA packages via Apple InstallationProxy service over USB.
+- **🔧 Mobile Technician Workbench & Diagnostics Suite (8-in-1) (`server/repairWorkbenchManager.js` & `src/components/RepairWorkbenchTab.tsx`):**
+  - **Customer Job Sheet & Intake Generator:** Auto-fills connected phone info (Model, S/N, IMEI, Battery Health), manages customer name, phone, problem description, estimated cost, and deposit with persistent JSON storage.
+  - **Printable Official Repair Invoice & Receipt:** High-resolution printable receipt layout with shop branding, unique job barcode/ID, terms and conditions, and dual signature lines.
+  - **FRP & Account Bypass Helper:** MTP Open Browser launcher (YouTube/Chrome intent), Samsung `*#0*#` Mode AT Command ADB activator, and Xiaomi Bootloader/Mi Account lock status inspector.
+  - **Broken Screen & Touch Forensic Data Rescue:** 1-Click "Extract Everything" dumping DCIM Photos, Downloads, Contacts, and SMS directly to a customer folder on PC, with virtual PIN/pattern keypad injection for unresponsive digitizers.
+  - **Multi-Brand Secret Codes & Engineering Menus Database:** Database of hardware test codes for Samsung (*#0*#, *#0228#, *#0808#, *#1234#, *#9900#), Xiaomi (CIT *#*#6484#*#*), Huawei (ProjectMenu *#*#2846579#*#*), Oppo/Realme (Engineering *#899#) with direct ADB Intent execution without physical touch input.
+  - **IMEI, Baseband & Radio Network Diagnostics:** Live readout of IMEI 1/2, MEID, Baseband firmware string, Baseband health indicator (Healthy vs Corrupt/Null), and 1-click RadioInfo launcher.
+  - **Charging & Power Meter Analyzer:** Live charging current (`mA`), voltage (`mV`), power wattage (`W`), battery temperature, and Fast Charge protocol detection (QC/PD/SuperVOOC).
+  - **1-Click Software Glitch Fixer:** 1-click fixes for "Google Play Services Keeps Stopping", "Storage Full Bootloop", "Force MTP USB Mode", and "Reset App Permissions".
+- **📂 Single-Open Accordion Sidebar Navigation (`src/components/Sidebar.tsx`):**
+  - Streamlined 28 tabs into 4 organized accordion categories (Core, Media, Tools, Pro) with auto-closing of sibling groups and auto-synchronization with active tab.
+
+---
+
+## [3.6.0] — 2026-10-08 (iOS Pro Studio & Technician Workbench Royal Edition)
 
 ### 🌟 Added & Enhanced
 - **🎧 Bluetooth Hands-Free & Call Audio Routing Engine (`server/bluetoothCallManager.js` & `src/components/MessagesTab.tsx`):**

@@ -1,8 +1,8 @@
-# 👑 CellPhoneManager v3.6.0 — Royal Edition
+# 👑 CellPhoneManager v3.7.0 — Royal Edition
 
 [![Sahand Electronic Solutions Co.](https://img.shields.io/badge/Developed%20By-Sahand%20Electronic%20Solutions%20Co.%20(irres.ir)-d4af37?style=for-the-badge&logo=android)](https://irres.ir)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-taimazus%2FCellPhoneManager-181717?style=for-the-badge&logo=github)](https://github.com/taimazus/CellPhoneManager)
-[![Version](https://img.shields.io/badge/Version-v3.6.0%20Royal%20Edition-eab308?style=for-the-badge)](https://github.com/taimazus/CellPhoneManager)
+[![Version](https://img.shields.io/badge/Version-v3.7.0%20Royal%20Edition-eab308?style=for-the-badge)](https://github.com/taimazus/CellPhoneManager)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011%20(x64)-blue?style=for-the-badge&logo=windows)](https://irres.ir)
 [![Mobile Support](https://img.shields.io/badge/Devices-Android%20%26%20iOS-purple?style=for-the-badge&logo=apple)](https://irres.ir)
@@ -17,9 +17,14 @@
 
 ## 📌 Executive Overview
 
-**CellPhoneManager v3.6.0 Royal Edition** is an enterprise-grade, ultra-responsive Windows desktop management, diagnostics, rooting, flashing, media studio, mobile technician workbench, and iOS pro studio suite featuring a bespoke 24K Royal Gold and Obsidian UI theme.
+**CellPhoneManager v3.7.0 Royal Edition** is an enterprise-grade, ultra-responsive Windows desktop management, diagnostics, rooting, flashing, media studio, mobile technician workbench, and iOS pro studio suite featuring a bespoke 24K Royal Gold and Obsidian UI theme.
 
 ### 🌟 Key Capabilities
+
+* **🛰️ Active mDNS & Multi-Port Subnet Discovery Radar:**
+  * **Zero-Traffic Subnet Wakeup:** Dispatches UDP mDNS Bonjour queries (`224.0.0.251:5353` and subnet broadcast `*.255:5353`) that wake up dormant iPhones, iPads, AirPrint printers, and Bonjour services across the local `/24` subnet.
+  * **Parallel Multi-Port Sweep:** Concurrently scans ports `5555` (ADB), `62078` (Apple Sync), `9100`/`631` (Printers), `445` (PCs), and `80`/`8080` (Routers) in under 800ms.
+  * **IEEE 802 Private Wi-Fi MAC Classifier:** Identifies randomized MAC addresses and classifies devices into **Smartphones & iPhones**, **Network Printers & Scanners**, **Windows PCs**, and **Routers/Gateways** with 1-click Fast Connect and Pairing.
 
 * **🍏 iOS Pro Studio (8-in-1 Apple Diagnostics & Tools):**
   * **3uTools Hardware Verification Score:** Compares encrypted factory serials of Motherboard, Battery, Screen, Front/Rear Cameras, and Face ID against live hardware to calculate a 0-100% authenticity score.
