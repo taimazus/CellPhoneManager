@@ -2,29 +2,36 @@
 
 ## Metadata
 - **Task ID:** task-002-cellphone-manager
-- **Status:** Completed & Verified (v3.5.0 Royal Edition Released & Pushed)
-- **Scope:** Full-stack Desktop & Web application + Android/iOS Hardware Bridge + Advanced Power Tools Suite + In-Browser Multimedia Player & Previewer + Anti-Freeze Pagination + Real App Icon Extractor + Smart SMS Categorizer
+- **Status:** Completed & Verified (v3.5.0 Royal Edition + Bluetooth Audio Call Engine Released & Pushed)
+- **Scope:** Full-stack Desktop & Web application + Android/iOS Hardware Bridge + Advanced Power Tools Suite + In-Browser Multimedia Player & Previewer + Anti-Freeze Pagination + Real App Icon Extractor + Smart SMS Categorizer + Dual Bluetooth Auto-Pairing & 3-Mode Call Audio Routing Engine
 
 ## Verification Results & Evidence
 1. **Unit & Integration Tests (`npm test`):**
-   - Ran `vitest run` on all 27 test suites across backend and core managers.
-   - **Result:** 27 test suites passed, 93 tests passed (Exit code: 0).
+   - Ran `vitest run` on all 28 test suites across backend and core managers.
+   - **Result:** 28 test suites passed, 98 tests passed (Exit code: 0).
 2. **Production Bundle Build (`npm run build`):**
    - Transformed 2002 modules with Vite.
-   - Generated static bundle with 0 errors.
-3. **Anti-Freeze & High-Volume DOM Virtualization (`PaginationBar.tsx`):**
+   - Generated static bundle with 0 errors in 5.38s.
+3. **Dual Bluetooth Auto-Pairing & 3-Mode Call Audio Routing (`bluetoothCallManager.js` & `MessagesTab.tsx`):**
+   - Implemented real-time Windows Bluetooth host status detection and hardware failure warning.
+   - Added automated 1-click pairing prep (`/api/bluetooth/auto-pair`) turning on phone Bluetooth, enabling discoverability, and launching Windows device pairing modal.
+   - Added 3 call audio modes:
+     1. 🔊 **اسپیکرفون خودکار (Auto-Speakerphone):** Activates Android speakerphone via ADB telecom routing upon dialing.
+     2. 🎧 **هندزفری ویندوز (Windows Hands-free):** Routes bidirectional phone call audio and PC microphone directly through Windows using Bluetooth Hands-Free Profile (HFP/HSP) without picking up the phone.
+     3. 📱 **گوشی معمولی (Standard Earpiece):** Standard mobile phone routing.
+4. **Anti-Freeze & High-Volume DOM Virtualization (`PaginationBar.tsx`):**
    - Sliced large lists (6,304+ contacts, hundreds of call logs and apps) into fast, paginated pages (15, 30, 50, 100, 200 items).
    - Eliminated browser thread lockup and Chrome "Page Unresponsive" timeouts completely.
    - Added global `ActionOverlay` with animated dual-ring indicator, progress pulse, and user action locking to prevent accidental multi-clicking during heavy ADB/sync operations.
-4. **SMS Parsing Engine & Smart Categorization (`adbManager.js` & `MessagesTab.tsx`):**
+5. **SMS Parsing Engine & Smart Categorization (`adbManager.js` & `MessagesTab.tsx`):**
    - Fixed regex truncation on bank SMS messages containing commas, numbers, and newlines by moving `body` to the tail of projection and block-based chunking in `adbManager.js`.
    - Added SMS categories: Inbox (ورودی), Sent (ارسال‌شده), Banking & OTP (بانکی و رمز), Spam & Ads (اسپم و تبلیغات), Blocked (مسدودشده), Drafts & Failed (پیش‌نویس).
    - Added 1-click text copy button and smart badges on SMS bubbles in `MessagesTab.tsx`.
-5. **Real APK Icon Extractor (`appIconManager.js` & `AppIcon.tsx`):**
+6. **Real APK Icon Extractor (`appIconManager.js` & `AppIcon.tsx`):**
    - Implemented real APK icon extraction from installed apps with caching in `data/app_icons/` and dynamic SVG fallback badges.
-6. **Project Documentation & GitHub Publication (`project-docs` & `git-release-sync`):**
-   - Version bumped to **v3.5.0 Royal Edition** across `package.json`, `src/constants.ts`, `index.html`, `CHANGELOG.md`, `README.md`, `README.fa.md`, `docs/ARCHITECTURE.md`, `docs/ARCHITECTURE.fa.md`, `docs/USER_GUIDE.md`, `docs/USER_GUIDE.fa.md`, `docs/OFFLINE_DEPLOYMENT.md`, `docs/OFFLINE_DEPLOYMENT.fa.md`.
-   - Atomic commit created and pushed to GitHub with tag `v3.5.0` on branch `main`.
+7. **Project Documentation & GitHub Publication (`project-docs` & `git-release-sync`):**
+   - Version bumped to **v3.5.0 Royal Edition** across manifests, source code, and docs.
+   - Committed and pushed to GitHub repository [taimazus/CellPhoneManager](https://github.com/taimazus/CellPhoneManager) on branch `main`.
 
 ## Complete Checklist
 - [x] Functional Specification Created (`SPEC.md`)
