@@ -1,0 +1,11 @@
+{
+  "serial": "mock-android-s24",
+  "timestamp": "2026-10-08T07:28:02.827Z",
+  "extractedItems": {
+    "contacts": 420,
+    "sms": 185,
+    "photos": 84,
+    "downloads": 12
+  },
+  "savedPath": "F:\\Projects\\CellPhoneManager\\data\\extracted_devices\\mock-android-s24"
+}

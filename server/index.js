@@ -43,6 +43,7 @@ import { firmwareGuardManager } from './firmwareGuardManager.js';
 import { capabilityManager } from './capabilityManager.js';
 import bluetoothCallManager from './bluetoothCallManager.js';
 import { taskProcessManager } from './taskProcessManager.js';
+import { repairWorkbenchManager } from './repairWorkbenchManager.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -3273,10 +3274,95 @@ app.post('/api/devices/:id/tasks/background/limit', async (req, res) => {
   res.json(result);
 });
 
-app.post('/api/devices/:id/tasks/battery/whitelist', async (req, res) => {
+// -------------------------------------------------------------
+// 39. Mobile Repair & Technician Workbench APIs
+// -------------------------------------------------------------
+// 1. Job Sheets & Intake Receipts
+app.get('/api/repair/jobsheets', (req, res) => {
+  res.json({ success: true, jobSheets: repairWorkbenchManager.getJobSheets() });
+});
+
+app.post('/api/repair/jobsheets', (req, res) => {
+  res.json(repairWorkbenchManager.createJobSheet(req.body));
+});
+
+app.patch('/api/repair/jobsheets/:id/status', (req, res) => {
   const { id } = req.params;
-  const { packageName, whitelist } = req.body;
-  const result = await taskProcessManager.setBatteryOptimization(id, { packageName, whitelist });
+  const { status } = req.body;
+  res.json(repairWorkbenchManager.updateJobSheetStatus(id, status));
+});
+
+app.delete('/api/repair/jobsheets/:id', (req, res) => {
+  const { id } = req.params;
+  res.json(repairWorkbenchManager.deleteJobSheet(id));
+});
+
+// 2. FRP & Account Bypass Helpers
+app.post('/api/devices/:id/repair/frp/mtp-browser', async (req, res) => {
+  const { id } = req.params;
+  const { targetUrl } = req.body;
+  const result = await repairWorkbenchManager.launchMtpBrowser(id, { targetUrl });
+  res.json(result);
+});
+
+app.post('/api/devices/:id/repair/frp/samsung-adb', async (req, res) => {
+  const { id } = req.params;
+  const result = await repairWorkbenchManager.triggerSamsungTestModeAdb(id);
+  res.json(result);
+});
+
+app.get('/api/devices/:id/repair/frp/xiaomi-status', async (req, res) => {
+  const { id } = req.params;
+  const result = await repairWorkbenchManager.checkMiAccountAndBootloader(id);
+  res.json(result);
+});
+
+// 3. Broken Screen / Forensic Data Extraction
+app.post('/api/devices/:id/repair/broken-screen/extract', async (req, res) => {
+  const { id } = req.params;
+  const { targetDir, categories } = req.body;
+  const result = await repairWorkbenchManager.extractBrokenScreenData(id, { targetDir, categories });
+  res.json(result);
+});
+
+app.post('/api/devices/:id/repair/broken-screen/inject-pin', async (req, res) => {
+  const { id } = req.params;
+  const { pinCode } = req.body;
+  const result = await repairWorkbenchManager.injectPinOrPattern(id, pinCode);
+  res.json(result);
+});
+
+// 4. Secret Codes Hub
+app.get('/api/repair/secret-codes', (req, res) => {
+  res.json({ success: true, codes: repairWorkbenchManager.getSecretCodesDatabase() });
+});
+
+app.post('/api/devices/:id/repair/secret-codes/execute', async (req, res) => {
+  const { id } = req.params;
+  const { codeItem } = req.body;
+  const result = await repairWorkbenchManager.executeSecretCode(id, codeItem);
+  res.json(result);
+});
+
+// 5. IMEI, Baseband & Radio Network Diagnostics
+app.get('/api/devices/:id/repair/diagnostics/imei-baseband', async (req, res) => {
+  const { id } = req.params;
+  const result = await repairWorkbenchManager.getImeiAndBasebandDiagnostics(id);
+  res.json(result);
+});
+
+// 6. Charging & Power Telemetry
+app.get('/api/devices/:id/repair/diagnostics/charging-power', async (req, res) => {
+  const { id } = req.params;
+  const result = await repairWorkbenchManager.getChargingPowerTelemetry(id);
+  res.json(result);
+});
+
+// 7. 1-Click Software Glitch Fixer
+app.post('/api/devices/:id/repair/glitch-fix', async (req, res) => {
+  const { id } = req.params;
+  const { glitchType } = req.body;
+  const result = await repairWorkbenchManager.fixGlitch(id, glitchType);
   res.json(result);
 });
 

@@ -39,6 +39,7 @@ const RootToolkitTab = lazy(() => import('./components/RootToolkitTab').then(m =
 const RomFlasherTab = lazy(() => import('./components/RomFlasherTab').then(m => ({ default: m.RomFlasherTab })));
 const PasswordVaultTab = lazy(() => import('./components/PasswordVaultTab').then(m => ({ default: m.PasswordVaultTab })));
 const TaskManagerTab = lazy(() => import('./components/TaskManagerTab').then(m => ({ default: m.TaskManagerTab })));
+const RepairWorkbenchTab = lazy(() => import('./components/RepairWorkbenchTab').then(m => ({ default: m.RepairWorkbenchTab })));
 import { LoadingSpinner } from './components/LoadingSpinner';
 
 const TabLoadingSkeleton = () => (
@@ -361,6 +362,9 @@ export function App() {
                 )}
                 {activeTab === 'taskmanager' && (
                   <TaskManagerTab device={selectedDevice} />
+                )}
+                {activeTab === 'repair' && (
+                  <RepairWorkbenchTab device={selectedDevice} />
                 )}
                 {activeTab === 'apps' && (
                   <AppsTab device={selectedDevice} />

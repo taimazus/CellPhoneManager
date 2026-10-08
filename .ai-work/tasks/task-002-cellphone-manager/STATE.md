@@ -29,17 +29,26 @@
    - **One-Click RAM Booster:** `killAllBackground` purging non-essential background processes and releasing hundreds of MBs of memory.
    - **Boot & Startup Apps Manager (Auto-Start):** Scans all apps registered for `BOOT_COMPLETED` and allows 1-click toggle to disable automatic startup on phone boot (`pm disable <receiver>` + AppOps `BOOT_COMPLETED ignore`).
    - **Background Service & Doze Whitelist Controller:** Scans background running services, allows fine-grained background execution limits (`RUN_IN_BACKGROUND`), and controls battery optimization / Doze mode whitelisting.
-10. **Anti-Freeze & High-Volume DOM Virtualization (`PaginationBar.tsx`):**
+10. **Mobile Repair & Technician Workbench Suite (`server/repairWorkbenchManager.js` & `RepairWorkbenchTab.tsx`):**
+    - **1. Customer Job Sheet & Intake Generator:** Auto-fills connected phone info (Model, S/N, IMEI, Battery Health), manages customer name, phone, problem description, estimated cost, and deposit with persistent JSON storage.
+    - **2. Printable Official Repair Invoice & Receipt:** High-resolution printable receipt layout with shop branding, unique job barcode/ID, terms and conditions, and dual signature lines.
+    - **3. FRP & Account Bypass Helper:** MTP Open Browser launcher (YouTube/Chrome intent), Samsung `*#0*#` Mode AT Command ADB activator, and Xiaomi Bootloader/Mi Account lock status inspector.
+    - **4. Broken Screen & Touch Forensic Data Rescue:** 1-Click "Extract Everything" dumping DCIM Photos, Downloads, Contacts, and SMS directly to a customer folder on PC, with virtual PIN/pattern keypad injection for unresponsive digitizers.
+    - **5. Multi-Brand Secret Codes & Engineering Menus Database:** Database of hardware test codes for Samsung (*#0*#, *#0228#, *#0808#, *#1234#, *#9900#), Xiaomi (CIT *#*#6484#*#*), Huawei (ProjectMenu *#*#2846579#*#*), Oppo/Realme (Engineering *#899#) with direct ADB Intent execution without physical touch input.
+    - **6. IMEI, Baseband & Radio Network Diagnostics:** Live readout of IMEI 1/2, MEID, Baseband firmware string, Baseband health indicator (Healthy vs Corrupt/Null), and 1-click RadioInfo launcher.
+    - **7. Charging & Power Meter Analyzer:** Live charging current (`mA`), voltage (`mV`), power wattage (`W`), battery temperature, and Fast Charge protocol detection (QC/PD/SuperVOOC).
+    - **8. 1-Click Software Glitch Fixer:** 1-click fixes for "Google Play Services Keeps Stopping", "Storage Full Bootloop", "Force MTP USB Mode", and "Reset App Permissions".
+11. **Anti-Freeze & High-Volume DOM Virtualization (`PaginationBar.tsx`):**
     - Sliced large lists (6,304+ contacts, hundreds of call logs and apps) into fast, paginated pages (15, 30, 50, 100, 200 items).
     - Eliminated browser thread lockup and Chrome "Page Unresponsive" timeouts completely.
     - Added global `ActionOverlay` with animated dual-ring indicator, progress pulse, and user action locking to prevent accidental multi-clicking during heavy ADB/sync operations.
-11. **SMS Parsing Engine & Smart Categorization (`adbManager.js` & `MessagesTab.tsx`):**
+12. **SMS Parsing Engine & Smart Categorization (`adbManager.js` & `MessagesTab.tsx`):**
     - Fixed regex truncation on bank SMS messages containing commas, numbers, and newlines by moving `body` to the tail of projection and block-based chunking in `adbManager.js`.
     - Added SMS categories: Inbox (ورودی), Sent (ارسال‌شده), Banking & OTP (بانکی و رمز), Spam & Ads (اسپم و تبلیغات), Blocked (مسدودشده), Drafts & Failed (پیش‌نویس).
     - Added 1-click text copy button and smart badges on SMS bubbles in `MessagesTab.tsx`.
-12. **Real APK Icon Extractor (`appIconManager.js` & `AppIcon.tsx`):**
+13. **Real APK Icon Extractor (`appIconManager.js` & `AppIcon.tsx`):**
     - Implemented real APK icon extraction from installed apps with caching in `data/app_icons/` and dynamic SVG fallback badges.
-13. **Project Documentation & GitHub Publication (`project-docs` & `git-release-sync`):**
+14. **Project Documentation & GitHub Publication (`project-docs` & `git-release-sync`):**
     - Version bumped to **v3.5.0 Royal Edition** across manifests, source code, and docs.
     - Committed and pushed to GitHub repository [taimazus/CellPhoneManager](https://github.com/taimazus/CellPhoneManager) on branch `main`.
 

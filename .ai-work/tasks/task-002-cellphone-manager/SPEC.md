@@ -32,6 +32,15 @@ A unified Windows management control center for both **Android** and **iOS (iPho
     - Hidden & System Settings Tweaks (`TweaksTab.tsx`)
     - Live Logs & Diagnostics (`DiagnosticsTab.tsx`)
     - Driver & Tool Doctor (`DoctorTab.tsx`)
+    - Task, Startup & Background Process Manager (`TaskManagerTab.tsx`)
+    - Mobile Repair & Technician Workbench Suite (`RepairWorkbenchTab.tsx`):
+      1. Customer Job Sheet, Intake & Printable Official Invoice Generator
+      2. FRP & Account Bypass Helpers (MTP Browser Launch, Samsung *#0*# AT ADB, Xiaomi Bootloader/Mi Account Check)
+      3. Broken Screen & Touch Forensic Data Rescue (1-Click Extract Everything & Virtual PIN Injector)
+      4. Multi-Brand Secret Codes & Engineering Menus Database (Samsung, Xiaomi CIT, Huawei, Oppo)
+      5. IMEI, Baseband & Radio Network Diagnostics (LTE/NR Lock, Modem Health)
+      6. Charging & Power Meter Analyzer (mA, mV, Wattage, QC/PD Protocol detection)
+      7. 1-Click Common Software Glitch Fixer (GMS Stopped, Storage Bootloop, Force MTP, Permissions)
 
 
 ## 3. Acceptance Criteria
