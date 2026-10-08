@@ -335,7 +335,58 @@ export class NetworkManager {
         // Ignore ADB list error if daemon not running
       }
 
-      // 2. Query ARP table
+      // 2. Discover local subnets & interface broadcasts
+      const interfaces = (await import('os')).networkInterfaces();
+      const subnets = [];
+      for (const name in interfaces) {
+        for (const iface of interfaces[name] || []) {
+          if (iface.family === 'IPv4' && !iface.internal) {
+            const parts = iface.address.split('.');
+            subnets.push({
+              ip: iface.address,
+              base: parts.slice(0, 3).join('.'),
+              broadcast: parts.slice(0, 3).join('.') + '.255'
+            });
+          }
+        }
+      }
+
+      // 3. Active mDNS wakeup (wakes up dormant iPhones, iPads, AirPrint printers, Bonjour devices)
+      try {
+        const dgram = await import('dgram');
+        const udpClient = dgram.createSocket({ type: 'udp4', reuseAddr: true });
+        // Standard DNS-SD pointer query packet
+        const mdnsQuery = Buffer.from([
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x09, 0x5f, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73,
+          0x07, 0x5f, 0x64, 0x6e, 0x73, 0x2d, 0x73, 0x64,
+          0x04, 0x5f, 0x75, 0x64, 0x70,
+          0x05, 0x6c, 0x6f, 0x63, 0x61, 0x6c, 0x00,
+          0x00, 0x0c, 0x00, 0x01
+        ]);
+        udpClient.send(mdnsQuery, 5353, '224.0.0.251', () => {});
+        for (const sub of subnets) {
+          udpClient.send(mdnsQuery, 5353, sub.broadcast, () => {});
+        }
+        setTimeout(() => {
+          try { udpClient.close(); } catch {}
+        }, 800);
+      } catch {}
+
+      // 4. Quick parallel port sweep on the primary /24 subnet to populate ARP
+      const primarySub = subnets[0] || { base: '192.168.1' };
+      const probePromises = [];
+      for (let i = 1; i <= 254; i++) {
+        const targetIp = `${primarySub.base}.${i}`;
+        probePromises.push(this.checkTcpPort(targetIp, 5555, 300));
+        probePromises.push(this.checkTcpPort(targetIp, 62078, 300));
+        probePromises.push(this.checkTcpPort(targetIp, 9100, 300));
+        probePromises.push(this.checkTcpPort(targetIp, 445, 300));
+        probePromises.push(this.checkTcpPort(targetIp, 80, 300));
+      }
+      await Promise.all(probePromises);
+
+      // 5. Query Windows ARP cache (now fully populated)
       let { stdout } = await execAsync('arp -a').catch(() => ({ stdout: '' }));
       const lines = (stdout || '').split('\n');
       const candidates = [];
@@ -366,71 +417,124 @@ export class NetworkManager {
         }
       }
 
-      // 3. Parallel port & vendor inspection
+      // MAC Databases
+      const APPLE_OUIS = [
+        'E8:78:65', 'AC:BC:32', 'F0:18:98', '18:F6:43', '3C:06:30', '40:4D:7F',
+        'A8:66:7F', 'DC:A9:04', '98:01:A7', 'BC:D0:74', 'F4:F9:51', '80:E6:50',
+        '64:A5:C3', '48:D7:05', 'F8:38:80', '28:6A:BA', '70:EC:E4', 'A4:C3:61',
+        'B8:78:26', 'F4:34:F0', '7C:6D:62', 'A4:83:E7', '00:F4:B9', '78:7B:8A',
+        '20:A2:E4', '34:08:BC', '00:C6:10', '38:CA:DA', '44:4C:0C', '40:6C:8F'
+      ];
+
+      const PRINTER_OUIS = [
+        '78:AC:C0', '00:17:61', '00:1B:A9', '00:21:5A', '00:25:B3', '00:1E:0B',
+        '3C:D9:2B', '18:A9:58', 'A4:5D:36', '94:57:A5', '00:00:85', '00:1E:8F',
+        '00:26:73', '18:03:73', '38:1A:52', '70:85:C2', '00:00:48', '00:21:B7',
+        '00:26:AB', '44:D9:E7', '64:EB:8C', '00:80:77', '30:05:5C', '00:01:E6'
+      ];
+
+      const PC_OUIS = [
+        '18:60:24', 'C8:D3:FF', '00:D8:61', '10:65:30', '54:BF:64', 'B8:85:84',
+        'EC:F4:BB', '2C:F0:5D', 'D8:BB:C1', 'E0:D5:5E', '48:21:0B', '30:9C:23'
+      ];
+
+      const XIAOMI_OUIS = ['B4:0E:DE', 'AC:C1:EE', '34:CE:00', '68:DF:DD', '78:11:DC', '58:44:98'];
+      const SAMSUNG_OUIS = ['DC:71:44', 'F4:60:E2', '50:77:05', '30:CD:A7', '88:79:7E', 'A4:70:D6', '44:78:3E', '94:DB:DA'];
+      const HUAWEI_OUIS = ['E4:AA:EC', '48:2C:A0', 'B4:9C:DF'];
+
+      const isRandomizedMac = (mac) => {
+        if (!mac || mac.length < 2) return false;
+        const secondChar = mac[1].toUpperCase();
+        return ['2', '6', 'A', 'E'].includes(secondChar);
+      };
+
+      // 6. Parallel deep port & device category classification
       const checkResults = await Promise.all(
-        candidates.slice(0, 50).map(async (c) => {
+        candidates.slice(0, 60).map(async (c) => {
           const isAdbConnected = activeAdbIps.has(c.ip);
-          const isAdbOpen = isAdbConnected || (await this.checkTcpPort(c.ip, 5555, 450));
-          
-          let vendor = 'دستگاه متصل به شبکه Wi-Fi';
+          const [p5555, p62078, p9100, p631, p445, p80] = await Promise.all([
+            isAdbConnected ? Promise.resolve(true) : this.checkTcpPort(c.ip, 5555, 350),
+            this.checkTcpPort(c.ip, 62078, 350),
+            this.checkTcpPort(c.ip, 9100, 350),
+            this.checkTcpPort(c.ip, 631, 350),
+            this.checkTcpPort(c.ip, 445, 350),
+            this.checkTcpPort(c.ip, 80, 350)
+          ]);
+
+          const isAdbOpen = p5555 || isAdbConnected;
+          const macPrefix = c.mac.substring(0, 8);
+
+          let category = 'other'; // 'phones' | 'printers' | 'pcs' | 'routers' | 'other'
           let deviceType = 'Smart Device';
-
-          // Comprehensive MAC OUI Vendor database
-          const mac3 = c.mac.substring(0, 8);
-          if (
-            mac3.startsWith('B4:0E:DE') || mac3.startsWith('AC:C1:EE') || mac3.startsWith('34:CE:00') ||
-            mac3.startsWith('68:DF:DD') || mac3.startsWith('78:11:DC') || mac3.startsWith('58:44:98')
-          ) {
-            vendor = 'شیائومی / ردمی / پوکو (Xiaomi / Redmi / Poco)';
-            deviceType = 'Android';
-          } else if (
-            mac3.startsWith('DC:71:44') || mac3.startsWith('F4:60:E2') || mac3.startsWith('50:77:05') ||
-            mac3.startsWith('30:CD:A7') || mac3.startsWith('88:79:7E') || mac3.startsWith('A4:70:D6') ||
-            mac3.startsWith('44:78:3E') || mac3.startsWith('94:DB:DA')
-          ) {
-            vendor = 'سامسونگ گلکسی (Samsung Galaxy)';
-            deviceType = 'Android';
-          } else if (
-            mac3.startsWith('AC:BC:32') || mac3.startsWith('F0:18:98') || mac3.startsWith('18:F6:43') ||
-            mac3.startsWith('3C:06:30') || mac3.startsWith('40:4D:7F') || mac3.startsWith('A8:66:7F') ||
-            mac3.startsWith('DC:A9:04') || mac3.startsWith('98:01:A7')
-          ) {
-            vendor = 'اپل آیفون / آیپد (Apple iOS)';
-            deviceType = 'iOS';
-          } else if (
-            mac3.startsWith('E4:AA:EC') || mac3.startsWith('48:2C:A0') || mac3.startsWith('B4:9C:DF')
-          ) {
-            vendor = 'هواوی / آنر (Huawei / Honor)';
-            deviceType = 'Android';
-          } else if (isAdbOpen) {
-            vendor = 'گوشی اندروید (Wireless Debugging فعال)';
-            deviceType = 'Android';
-          }
-
+          let vendor = 'دستگاه متصل به شبکه Wi-Fi';
           let status = 'شناسایی‌شده در شبکه Wi-Fi';
-          if (isAdbConnected) {
-            status = 'متصل و آماده تبادل داده (ADB Online)';
-          } else if (isAdbOpen) {
-            status = 'آماده اتصال فوری (پورت ۵۵۵۵ باز)';
+
+          if (isAdbOpen) {
+            category = 'phones';
+            deviceType = 'Android';
+            vendor = 'گوشی اندروید (Wireless Debugging فعال)';
+            status = isAdbConnected ? 'متصل و آماده تبادل داده (ADB Online)' : 'آماده اتصال فوری (پورت ۵۵۵۵ باز)';
+          } else if (p62078 || APPLE_OUIS.some(o => macPrefix.startsWith(o))) {
+            category = 'phones';
+            deviceType = 'iOS';
+            vendor = 'گوشی اپل آیفون / آیپد (Apple iOS)';
+            status = 'دستگاه اپل شناسایی‌شده در شبکه محلی';
+          } else if (p9100 || p631 || PRINTER_OUIS.some(o => macPrefix.startsWith(o))) {
+            category = 'printers';
+            deviceType = 'Printer';
+            vendor = 'پرینتر و اسکنر تحت شبکه (Network Printer)';
+            status = 'دستگاه چاپ تحت شبکه آنلاین';
+          } else if (p445 || PC_OUIS.some(o => macPrefix.startsWith(o))) {
+            category = 'pcs';
+            deviceType = 'PC';
+            vendor = 'کامپیوتر و لپ‌تاپ (Windows PC)';
+            status = 'سیستم کامپیوتری متصل به شبکه';
+          } else if (c.ip.endsWith('.1') || c.ip.endsWith('.254')) {
+            category = 'routers';
+            deviceType = 'Router';
+            vendor = 'مودم و روتر وای‌فای (Wi-Fi Router & Gateway)';
+            status = 'دروازه اینترنت و مودم شبکه';
+          } else if (XIAOMI_OUIS.some(o => macPrefix.startsWith(o))) {
+            category = 'phones';
+            deviceType = 'Android';
+            vendor = 'شیائومی / ردمی / پوکو (Xiaomi / Redmi / Poco)';
+            status = 'گوشی شیائومی متصل به شبکه';
+          } else if (SAMSUNG_OUIS.some(o => macPrefix.startsWith(o))) {
+            category = 'phones';
+            deviceType = 'Android';
+            vendor = 'سامسونگ گلکسی (Samsung Galaxy)';
+            status = 'گوشی سامسونگ متصل به شبکه';
+          } else if (HUAWEI_OUIS.some(o => macPrefix.startsWith(o))) {
+            category = 'phones';
+            deviceType = 'Android';
+            vendor = 'هواوی / آنر (Huawei / Honor)';
+            status = 'گوشی هواوی متصل به شبکه';
+          } else if (isRandomizedMac(c.mac)) {
+            category = 'phones';
+            deviceType = 'iOS';
+            vendor = 'گوشی اپل آیفون / آیپد (Apple iOS)';
+            status = 'دستگاه اپل / هوشمند با Private Wi-Fi Address';
           }
 
           return {
             ip: c.ip,
             mac: c.mac,
-            isAdbOpen,
-            isAdbConnected,
-            vendor,
+            category,
             deviceType,
-            status
+            vendor,
+            status,
+            isAdbOpen,
+            isAdbConnected
           };
         })
       );
 
-      // Sort: ADB-open and connected devices first
+      // Sort: ADB-open and connected phones first, then iOS, then printers, then PCs, then routers
+      const sortOrder = { Android: 1, iOS: 2, Smartphone: 3, Printer: 4, PC: 5, Router: 6, 'Smart Device': 7 };
       checkResults.sort((a, b) => {
         if (a.isAdbOpen && !b.isAdbOpen) return -1;
         if (!a.isAdbOpen && b.isAdbOpen) return 1;
-        return 0;
+        return (sortOrder[a.deviceType] || 99) - (sortOrder[b.deviceType] || 99);
       });
 
       return {

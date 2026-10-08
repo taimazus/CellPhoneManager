@@ -17,7 +17,10 @@ import {
   Check,
   Shield,
   Activity,
-  ArrowLeft
+  ArrowLeft,
+  Apple,
+  Printer,
+  Laptop
 } from 'lucide-react';
 import { safeFetchJson } from '../utils/api';
 
@@ -30,10 +33,12 @@ interface WirelessModalProps {
 interface ScannedDevice {
   ip: string;
   mac: string;
-  isAdbOpen: boolean;
+  category?: 'phones' | 'printers' | 'pcs' | 'routers' | 'other';
+  deviceType: 'Android' | 'iOS' | 'Smartphone' | 'Printer' | 'PC' | 'Router' | 'Smart Device';
   vendor: string;
-  deviceType: 'Android' | 'iOS' | 'Smart Device';
   status: string;
+  isAdbOpen: boolean;
+  isAdbConnected?: boolean;
 }
 
 export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, onRefresh }) => {
@@ -41,6 +46,7 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
   
   // Auto-scan state
   const [scannedDevices, setScannedDevices] = useState<ScannedDevice[]>([]);
+  const [deviceFilter, setDeviceFilter] = useState<'all' | 'phones' | 'printers' | 'pcs'>('all');
   const [isScanning, setIsScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState<string | null>(null);
 
@@ -167,6 +173,61 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
     setTab('pair');
   };
 
+  const filteredDevices = scannedDevices.filter(d => {
+    if (deviceFilter === 'all') return true;
+    if (deviceFilter === 'phones') return d.category === 'phones' || d.deviceType === 'Android' || d.deviceType === 'iOS' || d.deviceType === 'Smartphone';
+    if (deviceFilter === 'printers') return d.category === 'printers' || d.deviceType === 'Printer';
+    if (deviceFilter === 'pcs') return d.category === 'pcs' || d.deviceType === 'PC';
+    return true;
+  });
+
+  const countPhones = scannedDevices.filter(d => d.category === 'phones' || d.deviceType === 'Android' || d.deviceType === 'iOS' || d.deviceType === 'Smartphone').length;
+  const countPrinters = scannedDevices.filter(d => d.category === 'printers' || d.deviceType === 'Printer').length;
+  const countPcs = scannedDevices.filter(d => d.category === 'pcs' || d.deviceType === 'PC').length;
+
+  const renderDeviceIcon = (dev: ScannedDevice) => {
+    if (dev.deviceType === 'iOS') {
+      return (
+        <div className="p-2.5 rounded-xl border mt-0.5 bg-sky-500/20 text-sky-400 border-sky-500/40">
+          <Apple className="w-4 h-4" />
+        </div>
+      );
+    }
+    if (dev.deviceType === 'Printer') {
+      return (
+        <div className="p-2.5 rounded-xl border mt-0.5 bg-violet-500/20 text-violet-400 border-violet-500/40">
+          <Printer className="w-4 h-4" />
+        </div>
+      );
+    }
+    if (dev.deviceType === 'PC') {
+      return (
+        <div className="p-2.5 rounded-xl border mt-0.5 bg-blue-500/20 text-blue-400 border-blue-500/40">
+          <Laptop className="w-4 h-4" />
+        </div>
+      );
+    }
+    if (dev.deviceType === 'Router') {
+      return (
+        <div className="p-2.5 rounded-xl border mt-0.5 bg-amber-500/20 text-amber-400 border-amber-500/40">
+          <Wifi className="w-4 h-4" />
+        </div>
+      );
+    }
+    if (dev.isAdbOpen) {
+      return (
+        <div className="p-2.5 rounded-xl border mt-0.5 bg-emerald-500/20 text-emerald-400 border-emerald-500/40">
+          <Smartphone className="w-4 h-4" />
+        </div>
+      );
+    }
+    return (
+      <div className="p-2.5 rounded-xl border mt-0.5 bg-stone-800/60 text-stone-400 border-stone-700/60">
+        <Smartphone className="w-4 h-4" />
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
       <div className="relative w-full max-w-2xl bg-[#121319] border border-amber-500/30 rounded-3xl p-5 sm:p-6 shadow-2xl shadow-black/90 glass-panel text-right flex flex-col max-h-[92vh]">
@@ -178,9 +239,9 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-                مرکز شناسایی و اتصال بی‌سیم گوشی‌ها (Wi-Fi ADB)
+                مرکز شناسایی و اتصال بی‌سیم گوشی‌ها (Wi-Fi ADB & iOS)
               </h3>
-              <p className="text-xs text-stone-400">کشف خودکار گوشی‌های شبکه محلی و اتصال فوق‌سریع بدون کابل</p>
+              <p className="text-xs text-stone-400">کشف خودکار گوشی‌ها، آیفون‌ها و تجهیزات فعال در شبکه محلی بدون کابل</p>
             </div>
           </div>
           <button 
@@ -264,9 +325,9 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
                 <div className="flex items-center gap-2.5">
                   <Activity className="w-4 h-4 text-yellow-400 animate-spin" />
                   <div>
-                    <h4 className="text-xs font-bold text-yellow-300">رادار پویش زیرشبکه Wi-Fi</h4>
+                    <h4 className="text-xs font-bold text-yellow-300">رادار پویش زیرشبکه Wi-Fi و Bonjour</h4>
                     <p className="text-[11px] text-stone-300">
-                      شناسایی IPها، مک‌آدرس‌ها و پورت ۵۵۵۵ گوشی‌های فعال در شبکه محلی
+                      پویش هوشمند IPها، آیفون‌ها، گوشی‌های اندروید، پرینترها و سیستم‌های فعال در شبکه
                     </p>
                   </div>
                 </div>
@@ -286,48 +347,120 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
                 </div>
               )}
 
+              {/* Category Filter Buttons */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+                <button
+                  onClick={() => setDeviceFilter('all')}
+                  className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 flex-shrink-0 ${
+                    deviceFilter === 'all'
+                      ? 'bg-amber-500/25 text-yellow-300 border border-amber-500/40'
+                      : 'bg-stone-900/60 text-stone-400 border border-stone-800 hover:text-stone-200'
+                  }`}
+                >
+                  <span>همه دستگاه‌ها</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-stone-800 text-[10px] text-stone-300">
+                    {scannedDevices.length}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setDeviceFilter('phones')}
+                  className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 flex-shrink-0 ${
+                    deviceFilter === 'phones'
+                      ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40'
+                      : 'bg-stone-900/60 text-stone-400 border border-stone-800 hover:text-stone-200'
+                  }`}
+                >
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span>گوشی‌ها و آیفون</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-stone-800 text-[10px] text-stone-300">
+                    {countPhones}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setDeviceFilter('printers')}
+                  className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 flex-shrink-0 ${
+                    deviceFilter === 'printers'
+                      ? 'bg-violet-500/25 text-violet-300 border border-violet-500/40'
+                      : 'bg-stone-900/60 text-stone-400 border border-stone-800 hover:text-stone-200'
+                  }`}
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>پرینترها</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-stone-800 text-[10px] text-stone-300">
+                    {countPrinters}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setDeviceFilter('pcs')}
+                  className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 flex-shrink-0 ${
+                    deviceFilter === 'pcs'
+                      ? 'bg-blue-500/25 text-blue-300 border border-blue-500/40'
+                      : 'bg-stone-900/60 text-stone-400 border border-stone-800 hover:text-stone-200'
+                  }`}
+                >
+                  <Laptop className="w-3.5 h-3.5" />
+                  <span>سیستم‌ها و PC</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-stone-800 text-[10px] text-stone-300">
+                    {countPcs}
+                  </span>
+                </button>
+              </div>
+
               {/* Discovered devices list */}
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between px-1">
                   <span className="text-xs font-bold text-stone-300 flex items-center gap-1.5">
                     <Smartphone className="w-4 h-4 text-amber-400" />
-                    دستگاه‌های کشف‌شده در شبکه ({scannedDevices.length})
+                    دستگاه‌های کشف‌شده در شبکه ({filteredDevices.length})
                   </span>
                   <span className="text-[11px] text-stone-400">زیرشبکه محلی (LAN / Wi-Fi)</span>
                 </div>
 
-                {scannedDevices.length === 0 && !isScanning ? (
+                {filteredDevices.length === 0 && !isScanning ? (
                   <div className="p-8 text-center rounded-2xl bg-[#15161f] border border-stone-800 text-stone-400 space-y-2">
                     <Radio className="w-8 h-8 mx-auto text-amber-500/40 animate-pulse" />
-                    <p className="text-xs font-medium">هیچ گوشی دیگری در جدول ARP شبکه کشف نشد.</p>
+                    <p className="text-xs font-medium">هیچ دستگاهی در این دسته‌بندی کشف نشد.</p>
                     <p className="text-[11px] text-stone-500">
-                      گوشی را به همان مودم Wi-Fi متصل کرده و دکمه اسکن مجدد را بزنید یا از تب «جفت‌سازی» استفاده کنید.
+                      دستگاه را به همان مودم Wi-Fi متصل کرده و دکمه اسکن مجدد را بزنید یا فیلتر را روی «همه دستگاه‌ها» بگذارید.
                     </p>
                   </div>
                 ) : (
-                  scannedDevices.map((dev, idx) => (
+                  filteredDevices.map((dev, idx) => (
                     <div 
                       key={idx}
                       className={`p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                         dev.isAdbOpen 
                           ? 'bg-gradient-to-r from-emerald-950/30 via-[#161d19] to-[#121319] border-emerald-500/40 shadow-lg shadow-emerald-950/30' 
-                          : 'bg-[#15161f] border-stone-800/80 hover:border-amber-500/30'
+                          : dev.deviceType === 'iOS'
+                            ? 'bg-gradient-to-r from-sky-950/30 via-[#131a22] to-[#121319] border-sky-500/30 hover:border-sky-500/50'
+                            : dev.deviceType === 'Printer'
+                              ? 'bg-gradient-to-r from-violet-950/30 via-[#181524] to-[#121319] border-violet-500/30 hover:border-violet-500/50'
+                              : dev.deviceType === 'PC'
+                                ? 'bg-[#15161f] border-blue-500/20 hover:border-blue-500/40'
+                                : 'bg-[#15161f] border-stone-800/80 hover:border-amber-500/30'
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className={`p-2.5 rounded-xl border mt-0.5 ${
-                          dev.isAdbOpen 
-                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' 
-                            : 'bg-stone-800/60 text-stone-400 border-stone-700/60'
-                        }`}>
-                          <Smartphone className="w-4 h-4" />
-                        </div>
+                        {renderDeviceIcon(dev)}
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-bold text-white">{dev.vendor}</span>
                             {dev.isAdbOpen && (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse">
-                                ADB پورَت ۵۵۵۵ باز
+                                ADB پورت ۵۵۵۵ باز
+                              </span>
+                            )}
+                            {dev.deviceType === 'iOS' && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/40">
+                                Apple iOS
+                              </span>
+                            )}
+                            {dev.deviceType === 'Printer' && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-500/20 text-violet-300 border border-violet-500/40">
+                                پرینتر تحت شبکه
                               </span>
                             )}
                           </div>
@@ -349,13 +482,38 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
                             <Zap className={`w-3.5 h-3.5 ${connectingIp === dev.ip ? 'animate-spin' : ''}`} />
                             <span>{connectingIp === dev.ip ? 'اتصال...' : 'اتصال فوری'}</span>
                           </button>
-                        ) : (
+                        ) : dev.deviceType === 'Android' || dev.deviceType === 'Smartphone' ? (
                           <button
                             onClick={() => fillPairFromScanned(dev)}
                             className="px-3 py-1.5 rounded-xl bg-[#20222f] hover:bg-[#2a2c3d] text-yellow-300 hover:text-yellow-200 border border-amber-500/25 text-xs font-bold transition-all flex items-center gap-1"
                           >
                             <span>جفت‌سازی با این IP</span>
                             <ArrowLeft className="w-3 h-3" />
+                          </button>
+                        ) : dev.deviceType === 'iOS' ? (
+                          <button
+                            onClick={() => setTab('guide')}
+                            className="px-3 py-1.5 rounded-xl bg-sky-950/40 hover:bg-sky-900/50 text-sky-300 hover:text-sky-200 border border-sky-500/30 text-xs font-bold transition-all flex items-center gap-1"
+                          >
+                            <Apple className="w-3 h-3" />
+                            <span>راهنمای همگام‌سازی</span>
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleCopy(dev.ip, `copy_${dev.ip}`)}
+                            className="px-3 py-1.5 rounded-xl bg-stone-800/80 hover:bg-stone-700 text-stone-300 hover:text-white border border-stone-700 text-xs font-medium transition-all flex items-center gap-1 font-mono"
+                          >
+                            {copiedKey === `copy_${dev.ip}` ? (
+                              <>
+                                <Check className="w-3 h-3 text-emerald-400" />
+                                <span className="text-emerald-400">کپی شد</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3" />
+                                <span>کپی IP</span>
+                              </>
+                            )}
                           </button>
                         )}
                       </div>
