@@ -7,7 +7,7 @@
 
 import { execFile, spawn } from 'child_process';
 import util from 'util';
-import adbManager from './adbManager.js';
+import { adbManager } from './adbManager.js';
 
 const execFileAsync = util.promisify(execFile);
 
