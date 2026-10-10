@@ -66,3 +66,23 @@ export interface ToolStatus {
   category: 'android' | 'ios' | 'core';
   description: string;
 }
+
+export interface LivePhoneEvent {
+  id: string;
+  key: string;
+  packageName: string;
+  appName: string;
+  category: 'sms' | 'call' | 'notification' | 'system';
+  title: string;
+  text: string;
+  sender?: string;
+  timestamp: string;
+  icon: string;
+  targetTab: 'messages' | 'notifications' | 'overview' | 'battery' | 'findmyphone';
+  targetSubTab?: 'sms' | 'calls' | 'contacts';
+  searchQuery?: string;
+  targetItemKey?: string;
+  actionLabel: string;
+  read: boolean;
+  isMissedCall?: boolean;
+}

@@ -2,6 +2,7 @@ import { exec } from 'child_process';
 import util from 'util';
 import { toolManager } from './toolManager.js';
 import { adbManager } from './adbManager.js';
+import { iosManager } from './iosManager.js';
 
 const execAsync = util.promisify(exec);
 
@@ -15,8 +16,39 @@ function formatFileSize(bytes) {
 }
 
 export class FileManager {
+  isIos(serial) {
+    if (!serial) return false;
+    if (serial.startsWith('mock-ios')) return true;
+    return iosManager.isIosDevice(serial);
+  }
+
+  normalizeIosPath(targetPath) {
+    if (!targetPath || targetPath === '/sdcard/' || targetPath === '/sdcard') {
+      return '/';
+    }
+    let p = targetPath.replace(/\\/g, '/');
+    if (p.startsWith('/sdcard/')) {
+      p = p.replace(/^\/sdcard\//, '/');
+    } else if (p.startsWith('sdcard/')) {
+      p = p.replace(/^sdcard\//, '/');
+    }
+    if (!p.startsWith('/')) p = '/' + p;
+    return p;
+  }
+
   async listDirectory(serial, targetPath = '/sdcard/') {
+    // 1. Mock Android / iOS Handling
     if (!serial || serial.startsWith('mock-')) {
+      if (serial === 'mock-ios-15pro') {
+        return [
+          { name: 'DCIM', isDir: true, size: 'پوشه', sizeBytes: 0, permissions: 'drwxr-xr-x', modified: '2026-10-05 06:22' },
+          { name: 'Downloads', isDir: true, size: 'پوشe', sizeBytes: 0, permissions: 'drwxr-xr-x', modified: '2026-10-01 19:14' },
+          { name: 'Books', isDir: true, size: 'پوشه', sizeBytes: 0, permissions: 'drwxr-xr-x', modified: '2026-10-04 07:59' },
+          { name: 'Music', isDir: true, size: 'پوشه', sizeBytes: 0, permissions: 'drwxr-xr-x', modified: '2026-10-01 19:14' },
+          { name: 'Recordings', isDir: true, size: 'پوشه', sizeBytes: 0, permissions: 'drwxr-xr-x', modified: '2026-10-08 12:32' },
+          { name: 'PhotoData', isDir: true, size: 'پوشه', sizeBytes: 0, permissions: 'drwxr-xr-x', modified: '2026-10-08 12:10' }
+        ];
+      }
       return [
         { name: 'DCIM', isDir: true, size: 'پوشه', sizeBytes: 0, permissions: 'drwxrwx---', modified: '2026-10-01 14:20' },
         { name: 'Download', isDir: true, size: 'پوشه', sizeBytes: 0, permissions: 'drwxrwx---', modified: '2026-10-06 09:12' },
@@ -34,6 +66,17 @@ export class FileManager {
       ];
     }
 
+    // 2. iOS AFC File Listing
+    if (this.isIos(serial)) {
+      const iosPath = this.normalizeIosPath(targetPath);
+      const res = await iosManager.listFiles(serial, iosPath);
+      if (res && res.items) {
+        return res.items;
+      }
+      return [];
+    }
+
+    // 3. Android ADB File Listing
     try {
       const adbPath = await toolManager.getAdbPath();
       const serialFlag = serial ? `-s ${serial}` : '';
@@ -71,7 +114,6 @@ export class FileManager {
         });
       }
 
-      // Sort folders first, then files alphabetically
       items.sort((a, b) => {
         if (a.isDir && !b.isDir) return -1;
         if (!a.isDir && b.isDir) return 1;
@@ -89,6 +131,10 @@ export class FileManager {
     if (!serial || serial.startsWith('mock-')) {
       return { success: true, message: 'فایل با موفقیت ارسال شد (شبیه‌ساز)' };
     }
+    if (this.isIos(serial)) {
+      const iosPath = this.normalizeIosPath(remoteDirPath);
+      return await iosManager.pushFile(serial, localFilePath, iosPath);
+    }
     const safeDest = remoteDirPath.endsWith('/') ? remoteDirPath : remoteDirPath + '/';
     return await adbManager.runAdb(`push "${localFilePath}" "${safeDest}"`, serial);
   }
@@ -97,12 +143,20 @@ export class FileManager {
     if (!serial || serial.startsWith('mock-')) {
       return { success: true, message: 'فایل با موفقیت دریافت شد' };
     }
+    if (this.isIos(serial)) {
+      const iosPath = this.normalizeIosPath(remoteFilePath);
+      return await iosManager.pullFile(serial, iosPath, localDestPath);
+    }
     return await adbManager.runAdb(`pull "${remoteFilePath}" "${localDestPath}"`, serial);
   }
 
   async deleteFile(serial, remotePath) {
     if (!serial || serial.startsWith('mock-')) {
       return { success: true, message: 'فایل یا پوشه با موفقیت حذف شد' };
+    }
+    if (this.isIos(serial)) {
+      const iosPath = this.normalizeIosPath(remotePath);
+      return await iosManager.deleteFile(serial, iosPath);
     }
     return await adbManager.runAdb(`shell rm -rf "${remotePath}"`, serial);
   }
@@ -111,12 +165,21 @@ export class FileManager {
     if (!serial || serial.startsWith('mock-')) {
       return { success: true, message: 'پوشه ایجاد شد' };
     }
+    if (this.isIos(serial)) {
+      const iosPath = this.normalizeIosPath(remoteDirPath);
+      return await iosManager.createDirectory(serial, iosPath);
+    }
     return await adbManager.runAdb(`shell mkdir -p "${remoteDirPath}"`, serial);
   }
 
   async renameFile(serial, oldRemotePath, newRemotePath) {
     if (!serial || serial.startsWith('mock-')) {
       return { success: true, message: 'تغییر نام با موفقیت انجام شد (شبیه‌ساز)' };
+    }
+    if (this.isIos(serial)) {
+      const oldIos = this.normalizeIosPath(oldRemotePath);
+      const newIos = this.normalizeIosPath(newRemotePath);
+      return await iosManager.renameFile(serial, oldIos, newIos);
     }
     return await adbManager.runAdb(`shell mv "${oldRemotePath}" "${newRemotePath}"`, serial);
   }
@@ -125,6 +188,11 @@ export class FileManager {
     if (!serial || serial.startsWith('mock-')) {
       return { success: true, message: 'انتقال با موفقیت انجام شد (شبیه‌ساز)' };
     }
+    if (this.isIos(serial)) {
+      const srcIos = this.normalizeIosPath(srcRemotePath);
+      const destIos = this.normalizeIosPath(destDirPath);
+      return await iosManager.moveFile(serial, srcIos, destIos);
+    }
     const safeDest = destDirPath.endsWith('/') ? destDirPath : destDirPath + '/';
     return await adbManager.runAdb(`shell mv "${srcRemotePath}" "${safeDest}"`, serial);
   }
@@ -132,6 +200,11 @@ export class FileManager {
   async copyFile(serial, srcRemotePath, destDirPath) {
     if (!serial || serial.startsWith('mock-')) {
       return { success: true, message: 'کپی با موفقیت انجام شد (شبیه‌ساز)' };
+    }
+    if (this.isIos(serial)) {
+      const srcIos = this.normalizeIosPath(srcRemotePath);
+      const destIos = this.normalizeIosPath(destDirPath);
+      return await iosManager.copyFile(serial, srcIos, destIos);
     }
     const safeDest = destDirPath.endsWith('/') ? destDirPath : destDirPath + '/';
     return await adbManager.runAdb(`shell cp -r "${srcRemotePath}" "${safeDest}"`, serial);

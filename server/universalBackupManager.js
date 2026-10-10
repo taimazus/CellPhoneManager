@@ -215,6 +215,41 @@ export class UniversalBackupManager {
             console.error('[UniversalBackupManager] Error pushing backup to phone:', pErr);
           }
         }
+      } else if (type === 'ios' || iosManager.isIosDevice(serial)) {
+        // iOS Live Backup
+        // 1. Device Info & Hardware specs snapshot
+        try {
+          const devDetails = await iosManager.getDeviceDetails(serial);
+          fs.writeFileSync(path.join(targetDir, 'device_info.json'), JSON.stringify(devDetails, null, 2));
+        } catch (dErr) {
+          console.error('[UniversalBackupManager] Error snapshotting iOS device info:', dErr);
+        }
+
+        // 2. Installed Apps
+        if (options.apps) {
+          try {
+            const apps = await iosManager.listApps(serial);
+            manifest.items.appsCount = apps.length;
+            fs.writeFileSync(path.join(targetDir, 'apps_list.json'), JSON.stringify(apps, null, 2));
+          } catch (aErr) {
+            console.error('[UniversalBackupManager] Error backing up iOS apps list:', aErr);
+          }
+        }
+
+        // 3. Media & DCIM Photo Catalog
+        if (options.media) {
+          try {
+            const mediaDir = path.join(targetDir, 'media');
+            fs.mkdirSync(mediaDir, { recursive: true });
+            const files = await fileManager.listFiles(serial, '/DCIM/', 'ios');
+            if (files && files.items && files.items.length > 0) {
+              manifest.items.mediaFilesCount = files.items.length;
+              fs.writeFileSync(path.join(mediaDir, 'media_manifest.json'), JSON.stringify(files.items, null, 2));
+            }
+          } catch (mErr) {
+            console.error('[UniversalBackupManager] Error indexing iOS media:', mErr);
+          }
+        }
       }
 
       // Write Manifest

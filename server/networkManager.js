@@ -441,6 +441,8 @@ export class NetworkManager {
       const XIAOMI_OUIS = ['B4:0E:DE', 'AC:C1:EE', '34:CE:00', '68:DF:DD', '78:11:DC', '58:44:98'];
       const SAMSUNG_OUIS = ['DC:71:44', 'F4:60:E2', '50:77:05', '30:CD:A7', '88:79:7E', 'A4:70:D6', '44:78:3E', '94:DB:DA'];
       const HUAWEI_OUIS = ['E4:AA:EC', '48:2C:A0', 'B4:9C:DF'];
+      const GOOGLE_OUIS = ['F4:F5:DB', 'D8:EB:97', '3C:5A:37', '94:08:53', '54:60:09'];
+      const OPPO_OUIS = ['C8:51:95', 'E8:BB:A8', '14:AB:C5', 'BC:D0:74', '2C:33:61', '90:32:4B', '7C:A7:B0'];
 
       const isRandomizedMac = (mac) => {
         if (!mac || mac.length < 2) return false;
@@ -509,11 +511,21 @@ export class NetworkManager {
             deviceType = 'Android';
             vendor = 'هواوی / آنر (Huawei / Honor)';
             status = 'گوشی هواوی متصل به شبکه';
+          } else if (GOOGLE_OUIS.some(o => macPrefix.startsWith(o))) {
+            category = 'phones';
+            deviceType = 'Android';
+            vendor = 'گوگل پیکسل (Google Pixel)';
+            status = 'گوشی گوگل متصل به شبکه';
+          } else if (OPPO_OUIS.some(o => macPrefix.startsWith(o))) {
+            category = 'phones';
+            deviceType = 'Android';
+            vendor = 'اوپو / ریلمی / وان‌پلاس (Oppo / Realme / OnePlus)';
+            status = 'گوشی متصل به شبکه';
           } else if (isRandomizedMac(c.mac)) {
             category = 'phones';
-            deviceType = 'iOS';
-            vendor = 'گوشی اپل آیفون / آیپد (Apple iOS)';
-            status = 'دستگاه اپل / هوشمند با Private Wi-Fi Address';
+            deviceType = 'Smartphone';
+            vendor = 'گوشی هوشمند (اندروید / iOS با مک خصوصی)';
+            status = 'شناسایی‌شده در شبکه Wi-Fi (مک رندوم / Private MAC)';
           }
 
           return {

@@ -132,7 +132,16 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
   }
 
   // Common quick launch apps
-  const quickApps = [
+  const quickApps = device.type === 'ios' ? [
+    { name: 'تنظیمات', pkg: 'com.apple.Preferences' },
+    { name: 'دوربین', pkg: 'com.apple.camera' },
+    { name: 'سافاری', pkg: 'com.apple.mobilesafari' },
+    { name: 'تصاویر', pkg: 'com.apple.mobileslideshow' },
+    { name: 'تلگرام', pkg: 'ph.telegra.Telegraph' },
+    { name: 'واتساپ', pkg: 'net.whatsapp.WhatsApp' },
+    { name: 'یوتیوب', pkg: 'com.google.ios.youtube' },
+    { name: 'فایل‌ها', pkg: 'com.apple.DocumentsApp' }
+  ] : [
     { name: 'تنظیمات', pkg: 'com.android.settings' },
     { name: 'دوربین', pkg: 'com.android.camera' },
     { name: 'کروم / وب', pkg: 'com.android.chrome' },
@@ -142,6 +151,10 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
     { name: 'یوتیوب', pkg: 'com.google.android.youtube' },
     { name: 'فایل‌ها', pkg: 'com.google.android.documentsui' }
   ];
+
+  const battLevel = device.battery?.level ?? 78;
+  const isCharging = device.battery?.status === 'Charging' || (device.battery as any)?.isCharging;
+  const battStatusText = isCharging ? 'در حال شارژ' : (device.battery?.status || 'آماده به کار');
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -166,17 +179,17 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-yellow-300 border border-amber-500/35">
-                  {device.type}
+                  {device.type === 'ios' ? 'Apple iOS' : device.type}
                 </span>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  متصل و آماده
+                  متصل و آنلاین
                 </span>
               </div>
               <h2 className="text-2xl font-black text-white font-sans tracking-wide">
                 {device.name}
               </h2>
               <p className="text-sm text-stone-400 mt-0.5 flex items-center gap-3">
-                <span>سازنده: <strong className="text-stone-200">{device.manufacturer || 'Apple / Google'}</strong></span>
+                <span>سازنده: <strong className="text-stone-200">{device.manufacturer || (device.type === 'ios' ? 'Apple Inc.' : 'Generic')}</strong></span>
                 <span>•</span>
                 <span>مدل: <strong className="text-stone-200">{device.model}</strong></span>
                 <span>•</span>
@@ -194,12 +207,11 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
               <span>شروع کنترل و تصویر زنده</span>
             </button>
             <button
-              onClick={() => onNavigateTab('tweaks')}
+              onClick={() => onNavigateTab(device.type === 'ios' ? 'iostoolkit' : 'tweaks')}
               className="flex items-center gap-2 px-4 py-3 rounded-xl bg-[#1a1b22] hover:bg-[#22242d] text-stone-200 border border-amber-500/25 text-sm font-semibold transition-all hover:text-yellow-300"
             >
               <Sliders className="w-4 h-4 text-yellow-400" />
-
-              <span>تنظیمات مخفی</span>
+              <span>{device.type === 'ios' ? 'استودیو آیفون' : 'تنظیمات مخفی'}</span>
             </button>
           </div>
         </div>
@@ -217,24 +229,24 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
           </div>
           <div className="flex items-baseline gap-2 mb-2">
             <span className="text-3xl font-black text-white font-mono">
-              {device.battery?.level || 85}%
+              {battLevel}%
             </span>
             <span className="text-xs font-semibold text-emerald-400">
-              {device.battery?.status === 'Charging' ? 'در حال شارژ' : 'سلامت عالی'}
+              {battStatusText}
             </span>
           </div>
           <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden mb-3">
             <div 
               className="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 rounded-full transition-all duration-500"
-              style={{ width: `${device.battery?.level || 85}%` }}
+              style={{ width: `${battLevel}%` }}
             ></div>
           </div>
           <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800/60 font-mono">
             <span className="flex items-center gap-1">
               <Thermometer className="w-3.5 h-3.5 text-amber-400" />
-              {device.battery?.temperature || 31}°C
+              {device.battery?.temperature || 29}°C
             </span>
-            <span>ولتاژ: {device.battery?.voltage || 4100} mV</span>
+            <span>ولتاژ: {device.battery?.voltage || 4200} mV</span>
           </div>
         </div>
 
@@ -248,7 +260,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
           </div>
           <div className="flex items-baseline gap-2 mb-2">
             <span className="text-3xl font-black text-white font-mono">
-              {device.storage?.used || '64 GB'}
+              {device.storage?.used || '21 GB'}
             </span>
             <span className="text-xs text-slate-400">
               از {device.storage?.total || '256 GB'}
@@ -257,12 +269,12 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
           <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden mb-3">
             <div 
               className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full transition-all duration-500"
-              style={{ width: `${device.storage?.usedPercentage || 40}%` }}
+              style={{ width: `${device.storage?.usedPercentage ?? 8}%` }}
             ></div>
           </div>
           <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800/60">
-            <span>فضای آزاد: <strong className="text-cyan-400 font-mono">{device.storage?.free || '192 GB'}</strong></span>
-            <span>{device.storage?.usedPercentage || 40}% مصرف شده</span>
+            <span>فضای آزاد: <strong className="text-cyan-400 font-mono">{device.storage?.free || '235 GB'}</strong></span>
+            <span>{device.storage?.usedPercentage ?? 8}% مصرف شده</span>
           </div>
         </div>
 
@@ -276,21 +288,21 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
           </div>
           <div className="flex items-baseline gap-2 mb-2">
             <span className="text-3xl font-black text-white font-mono">
-              {device.ram?.used || '4.2 GB'}
+              {device.ram?.used || '2.6 GB'}
             </span>
             <span className="text-xs text-slate-400">
-              از {device.ram?.total || '12 GB'}
+              از {device.ram?.total || (device as any).hardware?.ram || '6 GB'}
             </span>
           </div>
           <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden mb-3">
             <div 
               className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500"
-              style={{ width: '48%' }}
+              style={{ width: '43%' }}
             ></div>
           </div>
           <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800/60">
-            <span>آزاد: <strong className="text-purple-400 font-mono">{device.ram?.free || '7.8 GB'}</strong></span>
-            <span className="text-emerald-400 font-semibold">پایدار</span>
+            <span>آزاد: <strong className="text-purple-400 font-mono">{device.ram?.free || '3.4 GB'}</strong></span>
+            <span className="text-emerald-400 font-semibold">پایدار و عالی</span>
           </div>
         </div>
 
@@ -304,19 +316,19 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
           </div>
           <div className="mb-2">
             <span className="text-2xl font-black text-white font-mono">
-              {device.display?.resolution || '1080x2400'}
+              {device.display?.resolution || '2778x1284'}
             </span>
           </div>
           <div className="flex items-center gap-2 text-xs text-slate-300 mb-3">
             <span className="px-2 py-0.5 rounded bg-slate-800 font-mono text-cyan-400 font-semibold">
-              {device.display?.density || 420} DPI
+              {device.display?.density || 458} DPI
             </span>
             <span className="px-2 py-0.5 rounded bg-slate-800 font-mono text-amber-400 font-semibold">
-              {device.display?.refreshRate || '120Hz'}
+              {device.display?.refreshRate || '120Hz ProMotion'}
             </span>
           </div>
           <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800/60">
-            <span>HDR10+ / OLED</span>
+            <span>{device.type === 'ios' ? 'Super Retina XDR OLED' : 'HDR10+ / OLED'}</span>
             <span className="text-emerald-400 font-semibold">وضوح عالی</span>
           </div>
         </div>
@@ -433,40 +445,40 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({ device, onNavigateTab,
               <h3 className="text-base font-bold text-white">شناسنامه جامع سخت‌افزاری و وضعیت امنیتی</h3>
             </div>
             <span className="px-2.5 py-1 rounded-lg bg-slate-800 text-[11px] font-mono text-cyan-400 border border-slate-700">
-              {deepInfo?.socPlatform || 'Snapdragon / Dimensity'}
+              {deepInfo?.socPlatform || (device as any).hardware?.chip || (device.type === 'ios' ? 'Apple Silicon' : 'Snapdragon / Dimensity')}
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/80">
               <span className="text-[11px] text-slate-400 block mb-1">معماری پردازنده (CPU ABI)</span>
-              <p className="text-xs font-bold text-slate-100 font-mono">{deepInfo?.cpuAbi || 'arm64-v8a (64-Bit)'}</p>
+              <p className="text-xs font-bold text-slate-100 font-mono">{deepInfo?.cpuAbi || (device as any).hardware?.cpuArchitecture || 'arm64e / 64-Bit'}</p>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/80">
-              <span className="text-[11px] text-slate-400 block mb-1">پچ امنیتی (Security Patch)</span>
-              <p className="text-xs font-bold text-emerald-400 font-mono">{deepInfo?.securityPatch || '2024-05-01'}</p>
+              <span className="text-[11px] text-slate-400 block mb-1">{device.type === 'ios' ? 'نسخه و بیلد فریمور' : 'پچ امنیتی (Security Patch)'}</span>
+              <p className="text-xs font-bold text-emerald-400 font-mono">{deepInfo?.securityPatch || device.osVersion || '2024-05-01'}</p>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/80">
-              <span className="text-[11px] text-slate-400 block mb-1">وضعیت بوت‌لودر (Bootloader)</span>
-              <p className="text-xs font-bold text-cyan-400 font-mono">{deepInfo?.bootloaderLocked || 'Locked (قفل ایمن)'}</p>
+              <span className="text-[11px] text-slate-400 block mb-1">امنیت بوت و چیپ امنیتی</span>
+              <p className="text-xs font-bold text-cyan-400 font-mono">{deepInfo?.bootloaderLocked || (device.type === 'ios' ? 'Secure Enclave (SEP Active)' : 'Locked (قفل ایمن)')}</p>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/80">
-              <span className="text-[11px] text-slate-400 block mb-1">سطح امنیت هسته (SELinux)</span>
-              <p className="text-xs font-bold text-emerald-400 font-mono">{deepInfo?.selinux || 'Enforcing'}</p>
+              <span className="text-[11px] text-slate-400 block mb-1">سطح امنیت هسته</span>
+              <p className="text-xs font-bold text-emerald-400 font-mono">{deepInfo?.selinux || (device.type === 'ios' ? 'Sandboxed (Darwin Mach-O)' : 'Enforcing')}</p>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/80">
-              <span className="text-[11px] text-slate-400 block mb-1">مدت زمان روشن بودن (Uptime)</span>
-              <p className="text-xs font-bold text-purple-300 font-mono">{deepInfo?.uptime || '48h 12m'}</p>
+              <span className="text-[11px] text-slate-400 block mb-1">شناسه یکتای سخت‌افزاری</span>
+              <p className="text-xs font-bold text-purple-300 font-mono truncate" title={device.serial}>{device.serial}</p>
             </div>
 
             <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/80">
               <span className="text-[11px] text-slate-400 block mb-1">پروتکل ارتباط</span>
               <p className="text-xs font-bold text-amber-300 font-mono">
-                {device.id.includes(':') ? 'Wireless TCP/IP (Wi-Fi)' : 'USB High-Speed Debugging'}
+                {device.id.includes(':') ? 'Wireless TCP/IP (Wi-Fi)' : (device.type === 'ios' ? 'Apple USB Mux (High-Speed AFC)' : 'USB High-Speed Debugging')}
               </p>
             </div>
           </div>

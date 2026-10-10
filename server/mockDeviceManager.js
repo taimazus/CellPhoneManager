@@ -456,10 +456,11 @@ export class MockDeviceManager {
     return true;
   }
 
-  deleteSmsThread(deviceId, threadKey, number) {
+  deleteSmsThread(deviceId, threadKey, number, messageIds = []) {
     const dev = this.getDevice(deviceId);
     if (!dev || !dev.smsMessages) return false;
     dev.smsMessages = dev.smsMessages.filter(s => {
+      if (messageIds && messageIds.length > 0 && messageIds.includes(s.id)) return false;
       if (s.threadId && s.threadId === threadKey) return false;
       if (number && s.number === number) return false;
       return true;

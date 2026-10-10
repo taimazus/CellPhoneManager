@@ -22,6 +22,7 @@ import { AppIcon } from './AppIcon';
 import { TabGuideCard } from './TabGuideCard';
 import { LoadingSpinner, ActionOverlay } from './LoadingSpinner';
 import { PaginationBar } from './PaginationBar';
+import { resolveAppDisplayName } from '../utils/appNameResolver';
 
 interface AppsTabProps {
   device: Device | null;
@@ -51,8 +52,13 @@ export const AppsTab: React.FC<AppsTabProps> = ({ device }) => {
     try {
       const res = await fetch(`/api/devices/${device.id}/apps?type=${device.type}`);
       const data = await res.json();
-      if (data.apps) {
-        setApps(data.apps);
+      if (data.apps && Array.isArray(data.apps)) {
+        const enriched = data.apps.map((a: DeviceApp) => ({
+          ...a,
+          appName: resolveAppDisplayName(a.packageName, a.appName),
+          name: resolveAppDisplayName(a.packageName, a.name)
+        }));
+        setApps(enriched);
       }
     } catch (err) {
       console.error('Error fetching apps:', err);

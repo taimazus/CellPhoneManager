@@ -1,10 +1,10 @@
 <div lang="fa" dir="rtl" align="right">
 
-# 👑 نرم‌افزار مدیریت جامع و سلطنتی گوشی‌های هوشمند — CellPhoneManager v3.7.0 Royal Edition
+# 👑 نرم‌افزار مدیریت جامع و سلطنتی گوشی‌های هوشمند — CellPhoneManager v3.8.0 Royal Edition
 
 [![راهکار الکترونیک سهند](https://img.shields.io/badge/طراحی%20و%20توسعه%20توسط-شرکت%20راهکار%20الکترونیک%20سهند%20(irres.ir)-d4af37?style=for-the-badge&logo=android)](https://irres.ir)
 [![گیت‌هاب](https://img.shields.io/badge/مخزن%20گیت‌هاب-taimazus%2FCellPhoneManager-181717?style=for-the-badge&logo=github)](https://github.com/taimazus/CellPhoneManager)
-[![نسخه](https://img.shields.io/badge/نسخه-v3.7.0%20Royal%20Edition-eab308?style=for-the-badge)](https://github.com/taimazus/CellPhoneManager)
+[![نسخه](https://img.shields.io/badge/نسخه-v3.8.0%20Royal%20Edition-eab308?style=for-the-badge)](https://github.com/taimazus/CellPhoneManager)
 [![لایسنس](https://img.shields.io/badge/مجوز-MIT-blue?style=for-the-badge)](LICENSE)
 [![ویندوز](https://img.shields.io/badge/پلتفرم-ویندوز%20۱۰%20%D9%88%20۱۱%20(x64)-blue?style=for-the-badge&logo=windows)](https://irres.ir)
 [![اندروید و آیفون](https://img.shields.io/badge/پشتیبانی-اندروید%20%D9%88%20iOS-purple?style=for-the-badge&logo=apple)](https://irres.ir)

@@ -31,6 +31,7 @@ interface CameraTabProps {
 }
 
 export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
+  const isIos = device?.platform === 'ios' || device?.model?.toLowerCase().includes('iphone');
   const [facing, setFacing] = useState<'back' | 'front'>('back');
   const [cameraSize, setCameraSize] = useState<string>('1920x1080');
   const [cameraFps, setCameraFps] = useState<number>(30);
@@ -216,6 +217,16 @@ export const CameraTab: React.FC<CameraTabProps> = ({ device }) => {
           </span>
         </div>
       </div>
+
+      {/* iOS Notice Banner */}
+      {isIos && (
+        <div className="p-4 rounded-2xl bg-slate-900/80 border border-cyan-500/30 flex items-center gap-3 text-xs text-slate-300">
+          <AlertCircle className="w-5 h-5 text-cyan-400 shrink-0" />
+          <span>
+            <strong>دستگاه متصل: Apple iPhone (iOS)</strong> — پیش‌نمایش تصویر و استریم درون‌مرورگر با پروتکل مستقیم iOS فعال است. برای استفاده از حداکثر کیفیت دوربین آیفون به عنوان وب‌کم 4K در نرم‌افزارهای OBS و ویندوز، می‌توانید از قابلیت رسمی <strong>Continuity Camera</strong> اپل یا استودیو اختصاصی آیفون استفاده فرمایید.
+          </span>
+        </div>
+      )}
 
       {/* Main Studio Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

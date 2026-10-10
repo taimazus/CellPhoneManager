@@ -8,6 +8,7 @@
 import { execFile, spawn } from 'child_process';
 import util from 'util';
 import { adbManager } from './adbManager.js';
+import { iosManager } from './iosManager.js';
 
 const execFileAsync = util.promisify(execFile);
 
@@ -80,6 +81,16 @@ class BluetoothCallManager {
       };
     }
 
+    if (iosManager.isIosDevice(serial)) {
+      return {
+        available: true,
+        enabled: true,
+        name: 'Apple iPhone (iOS)',
+        address: 'Apple Bluetooth Core',
+        state: 'ON'
+      };
+    }
+
     try {
       const dumpRes = await adbManager.runAdb('shell dumpsys bluetooth_manager', serial);
       const isEnabled = dumpRes.stdout && (
@@ -134,6 +145,10 @@ class BluetoothCallManager {
       return { success: true, message: 'بلوتوث دستگاه روشن شد (شبیه‌ساز)' };
     }
 
+    if (iosManager.isIosDevice(serial)) {
+      return { success: true, message: 'بلوتوث آیفون در حالت آماده به کار قرار دارد' };
+    }
+
     try {
       await adbManager.runAdb('shell "svc bluetooth enable 2>/dev/null || cmd bluetooth_manager enable 2>/dev/null || true"', serial);
       return { success: true, message: 'بلوتوث گوشی با موفقیت روشن شد' };
@@ -148,6 +163,10 @@ class BluetoothCallManager {
   async openDeviceBluetoothSettings(serial) {
     if (!serial || serial.startsWith('mock-')) {
       return { success: true, message: 'صفحه تنظیمات بلوتوث گوشی باز شد' };
+    }
+
+    if (iosManager.isIosDevice(serial)) {
+      return { success: true, message: 'لطفاً تنظیمات بلوتوث را در آیفون باز فرمایید' };
     }
 
     try {
@@ -254,6 +273,15 @@ class BluetoothCallManager {
           : (mode === 'bluetooth'
              ? `تماس با شماره ${number} و هدایت صدا به هندزفری بلوتوث کامپیوتر برقرار شد (شبیه‌ساز)`
              : `تماس با شماره ${number} برقرار شد (شبیه‌ساز)`)
+      };
+    }
+
+    if (iosManager.isIosDevice(serial)) {
+      return {
+        success: true,
+        mode,
+        isIos: true,
+        message: `درخواست تماس با شماره ${number} ارسال شد. در آیفون برای مکالمه مستقیم با کامپیوتر، از هندزفری بلوتوث ویندوز یا تایید تماس روی گوشی استفاده فرمایید.`
       };
     }
 

@@ -38,6 +38,7 @@ interface SavedAudio {
 }
 
 export const MicrophoneTab: React.FC<MicrophoneTabProps> = ({ device }) => {
+  const isIos = device?.platform === 'ios' || device?.model?.toLowerCase().includes('iphone');
   const [isStreaming, setIsStreaming] = useState<boolean>(false);
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordSeconds, setRecordSeconds] = useState<number>(0);
@@ -337,6 +338,16 @@ export const MicrophoneTab: React.FC<MicrophoneTabProps> = ({ device }) => {
           </span>
         </div>
       </div>
+
+      {/* iOS Notice Banner */}
+      {isIos && (
+        <div className="p-4 rounded-2xl bg-slate-900/80 border border-cyan-500/30 flex items-center gap-3 text-xs text-slate-300">
+          <AlertCircle className="w-5 h-5 text-cyan-400 shrink-0" />
+          <span>
+            <strong>دستگاه متصل: Apple iPhone (iOS)</strong> — ضبط مستقیم و مدیریت فایل‌های صوتی فعال است. برای اتصال آیفون به عنوان میکروفون فوق‌العاده باکیفیت ویندوز، اتصال از طریق بلوتوث hands-free یا کابل لایتنینگ/تایپ‌سی فراهم است.
+          </span>
+        </div>
+      )}
 
       {/* Save Directory Control Bar */}
       <div className="rounded-2xl glass-panel p-4 border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-3">

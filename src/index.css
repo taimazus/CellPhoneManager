@@ -239,3 +239,105 @@
 .dot-typing span:nth-child(3) {
   animation-delay: 0.4s;
 }
+
+/* ==============================================================
+   Rich Notifications & Find My Phone Animations
+   ============================================================== */
+@keyframes slideDownBounce {
+  0% {
+    opacity: 0;
+    transform: translateY(-24px) scale(0.94);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(4px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slideLeftIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toastProgressBar {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+@keyframes bellRinging {
+  0%, 100% { transform: rotate(0deg); }
+  15% { transform: rotate(14deg); }
+  30% { transform: rotate(-14deg); }
+  45% { transform: rotate(10deg); }
+  60% { transform: rotate(-10deg); }
+  75% { transform: rotate(4deg); }
+  85% { transform: rotate(-4deg); }
+}
+
+@keyframes highlightGlowPulse {
+  0%, 100% {
+    border-color: rgba(234, 179, 8, 0.9);
+    box-shadow: 0 0 20px rgba(234, 179, 8, 0.45), inset 0 0 10px rgba(234, 179, 8, 0.2);
+    transform: scale(1.01);
+  }
+  50% {
+    border-color: rgba(234, 179, 8, 0.3);
+    box-shadow: 0 0 8px rgba(234, 179, 8, 0.15), inset 0 0 2px rgba(234, 179, 8, 0.05);
+    transform: scale(1);
+  }
+}
+
+@keyframes sirenFlash {
+  0%, 100% {
+    box-shadow: 0 0 35px rgba(239, 68, 68, 0.7), inset 0 0 20px rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.9);
+  }
+  50% {
+    box-shadow: 0 0 45px rgba(234, 179, 8, 0.75), inset 0 0 20px rgba(234, 179, 8, 0.35);
+    border-color: rgba(234, 179, 8, 0.9);
+  }
+}
+
+@keyframes soundWave {
+  0%, 100% { height: 8px; }
+  50% { height: 36px; }
+}
+
+.animate-slideDown {
+  animation: slideDownBounce 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slideLeft {
+  animation: slideLeftIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-toastProgress {
+  animation: toastProgressBar 6s linear forwards;
+}
+
+.animate-bellRing {
+  animation: bellRinging 1.2s ease-in-out infinite;
+}
+
+.animate-highlightGlow {
+  animation: highlightGlowPulse 1.8s ease-in-out 4 forwards;
+}
+
+.animate-siren {
+  animation: sirenFlash 1s ease-in-out infinite;
+}
+

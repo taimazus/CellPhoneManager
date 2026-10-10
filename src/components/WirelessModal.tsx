@@ -20,8 +20,10 @@ import {
   ArrowLeft,
   Apple,
   Printer,
-  Laptop
+  Laptop,
+  QrCode
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { safeFetchJson } from '../utils/api';
 
 interface WirelessModalProps {
@@ -42,13 +44,20 @@ interface ScannedDevice {
 }
 
 export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, onRefresh }) => {
-  const [tab, setTab] = useState<'scan' | 'pair' | 'direct' | 'guide'>('scan');
+  const [tab, setTab] = useState<'scan' | 'qr' | 'pair' | 'direct' | 'guide'>('scan');
   
   // Auto-scan state
   const [scannedDevices, setScannedDevices] = useState<ScannedDevice[]>([]);
   const [deviceFilter, setDeviceFilter] = useState<'all' | 'phones' | 'printers' | 'pcs'>('all');
   const [isScanning, setIsScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState<string | null>(null);
+
+  // QR Pairing state (Android 11+)
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [qrSession, setQrSession] = useState<{ serviceName: string; password: string; qrString: string } | null>(null);
+  const [isQrLoading, setIsQrLoading] = useState(false);
+  const [qrStatus, setQrStatus] = useState<string | null>(null);
+  const [isQrPairingSuccess, setIsQrPairingSuccess] = useState(false);
 
   // Pair mode state (Android 11+)
   const [pairIp, setPairIp] = useState('');
@@ -80,8 +89,6 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
     }
   }, [isOpen, tab]);
 
-  if (!isOpen) return null;
-
   const triggerScan = async () => {
     setIsScanning(true);
     setScanMessage(null);
@@ -109,9 +116,89 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
+  const initQrSession = async () => {
+    setIsQrLoading(true);
+    setQrStatus('در حال تولید نشست امن جفت‌سازی QR...');
+    setIsQrPairingSuccess(false);
+    try {
+      const res = await safeFetchJson('/api/devices/wireless/qr-session');
+      if (res?.success && res.session) {
+        setQrSession(res.session);
+        const url = await QRCode.toDataURL(res.session.qrString, {
+          width: 256,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#ffffff'
+          }
+        });
+        setQrDataUrl(url);
+        setQrStatus('آماده برای اسکن توسط دوربین گوشی...');
+      } else {
+        setQrStatus('خطا در ایجاد بارکد جفت‌سازی');
+      }
+    } catch (err: any) {
+      setQrStatus(`خطا: ${err.message}`);
+    } finally {
+      setIsQrLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen && tab === 'qr' && !qrSession && !isQrLoading) {
+      initQrSession();
+    }
+  }, [isOpen, tab]);
+
+  useEffect(() => {
+    if (!isOpen || tab !== 'qr' || !qrSession || isQrPairingSuccess) return;
+
+    let isMounted = true;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/devices/wireless/qr-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            serviceName: qrSession.serviceName,
+            password: qrSession.password
+          })
+        });
+        const data = await res.json();
+        if (!isMounted) return;
+
+        if (data.status === 'success') {
+          setIsQrPairingSuccess(true);
+          setQrStatus(`✅ ${data.message}`);
+          setStatus({ text: data.message, type: 'success' });
+          onRefresh();
+          clearInterval(interval);
+        } else if (data.status === 'error') {
+          setQrStatus(`⚠️ ${data.error}`);
+        } else {
+          setQrStatus(data.message || 'در انتظار اسکن بارکد توسط دوربین گوشی...');
+        }
+      } catch {
+        // network polling retry
+      }
+    }, 1800);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [tab, qrSession, isQrPairingSuccess]);
+
   const handlePair = async () => {
     if (!pairIp || !pairPort || !pairCode) {
       setStatus({ text: 'لطفاً آدرس IP، پورت و کد ۶ رقمی را وارد کنید.', type: 'error' });
+      return;
+    }
+    if (pairPort.trim() === '5555') {
+      setStatus({ 
+        text: '⚠️ پورت جفت‌سازی ۵۵۵۵ نیست! لطفاً پورت ۵ رقمی موقتی (مانند ۳۷۲۱۴) که در پنجره پاپ‌آپ گوشی کنار IP نمایش داده شده است را وارد نمایید.', 
+        type: 'error' 
+      });
       return;
     }
     setLoading(true);
@@ -228,6 +315,8 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
     );
   };
 
+  if (!isOpen) return null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
       <div className="relative w-full max-w-2xl bg-[#121319] border border-amber-500/30 rounded-3xl p-5 sm:p-6 shadow-2xl shadow-black/90 glass-panel text-right flex flex-col max-h-[92vh]">
@@ -255,7 +344,7 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
         </div>
 
         {/* Tab Selector */}
-        <div className="grid grid-cols-4 gap-1.5 sm:gap-2 my-4 p-1.5 bg-[#0a0a0f] rounded-2xl border border-amber-500/20 flex-shrink-0">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2 my-4 p-1.5 bg-[#0a0a0f] rounded-2xl border border-amber-500/20 flex-shrink-0">
           <button
             onClick={() => { setTab('scan'); setStatus(null); }}
             className={`py-2 px-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
@@ -269,6 +358,17 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
             <span>شبکه</span>
           </button>
           <button
+            onClick={() => { setTab('qr'); setStatus(null); }}
+            className={`py-2 px-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+              tab === 'qr'
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-black shadow-md shadow-amber-500/20'
+                : 'text-stone-400 hover:text-amber-200'
+            }`}
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            <span>اسکن QR Code</span>
+          </button>
+          <button
             onClick={() => { setTab('pair'); setStatus(null); }}
             className={`py-2 px-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
               tab === 'pair'
@@ -277,8 +377,7 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
             }`}
           >
             <Zap className="w-3.5 h-3.5" />
-            <span>جفت‌سازی</span>
-            <span className="hidden sm:inline">(کد ۶ رقمی)</span>
+            <span>کد ۶ رقمی</span>
           </button>
           <button
             onClick={() => { setTab('direct'); setStatus(null); }}
@@ -453,6 +552,16 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
                                 ADB پورت ۵۵۵۵ باز
                               </span>
                             )}
+                            {dev.deviceType === 'Smartphone' && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                                گوشی هوشمند (Wi-Fi)
+                              </span>
+                            )}
+                            {dev.deviceType === 'Android' && !dev.isAdbOpen && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                                اندروید
+                              </span>
+                            )}
                             {dev.deviceType === 'iOS' && (
                               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/40">
                                 Apple iOS
@@ -524,7 +633,80 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
             </div>
           )}
 
-          {/* TAB 2: PAIR WITH ANDROID 11+ */}
+          {/* TAB 2: PAIR WITH QR CODE (Android 11+) */}
+          {tab === 'qr' && (
+            <div className="space-y-4 animate-fadeIn">
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs text-stone-200 space-y-1.5 leading-relaxed">
+                <span className="font-bold text-yellow-300 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-yellow-400" />
+                  مراحل جفت‌سازی آسان با اسکن بارکد QR (اندروید ۱۱ و بالاتر):
+                </span>
+                <p>۱. گوشی و این کامپیوتر را به یک شبکه <strong>وای‌فای مشترک</strong> متصل کنید.</p>
+                <p>۲. در گوشی به مسیر <strong>تنظیمات &gt; گزینه‌های توسعه‌دهنده (Developer Options) &gt; خطایابی بی‌سیم (Wireless debugging)</strong> بروید.</p>
+                <p>۳. گزینه <strong>Pair device with QR code (جفت‌سازی دستگاه با کد QR)</strong> را لمس کنید تا دوربین فعال شود.</p>
+                <p>۴. دوربین گوشی را مقابل بارکد زیر بگیرید؛ سیستم به‌طور خودکار دستگاه را شناسایی، جفت و متصل خواهد کرد!</p>
+              </div>
+
+              <div className="flex flex-col items-center justify-center p-6 bg-[#0a0a0f] border border-amber-500/20 rounded-2xl relative overflow-hidden">
+                {isQrLoading ? (
+                  <div className="py-12 flex flex-col items-center gap-3">
+                    <RefreshCw className="w-8 h-8 text-amber-400 animate-spin" />
+                    <span className="text-xs text-stone-400">در حال تولید نشست امن جفت‌سازی QR...</span>
+                  </div>
+                ) : qrDataUrl ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="p-3 bg-white rounded-2xl shadow-xl shadow-amber-500/10 border-4 border-amber-500/30 relative">
+                      <img 
+                        src={qrDataUrl} 
+                        alt="ADB Wireless Pairing QR Code" 
+                        className="w-52 h-52 sm:w-60 sm:h-60 object-contain rounded-lg"
+                      />
+                      {isQrPairingSuccess && (
+                        <div className="absolute inset-0 bg-emerald-950/90 rounded-xl flex flex-col items-center justify-center gap-2 text-emerald-300 backdrop-blur-sm">
+                          <CheckCircle2 className="w-14 h-14 text-emerald-400 animate-bounce" />
+                          <span className="text-sm font-black">جفت‌سازی با موفقیت انجام شد!</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="text-center space-y-1">
+                      <div className="flex items-center justify-center gap-2 text-xs font-bold text-amber-300">
+                        <Activity className={`w-3.5 h-3.5 ${isQrPairingSuccess ? 'text-emerald-400' : 'text-amber-400 animate-pulse'}`} />
+                        <span>{qrStatus || 'در انتظار اسکن توسط دوربین گوشی...'}</span>
+                      </div>
+                      {qrSession && (
+                        <p className="text-[11px] text-stone-400 font-mono">
+                          شناسه سرویس: <span className="text-yellow-400 font-bold">{qrSession.serviceName}</span> | رمز: <span className="text-yellow-400 font-bold">{qrSession.password}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={initQrSession}
+                      disabled={isQrLoading}
+                      className="px-4 py-2 rounded-xl bg-stone-900 border border-amber-500/30 hover:border-amber-400 text-stone-300 hover:text-amber-300 text-xs font-bold flex items-center gap-2 transition-all"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isQrLoading ? 'animate-spin' : ''}`} />
+                      <span>تولید مجدد بارکد جدید</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="py-8 text-center">
+                    <AlertCircle className="w-8 h-8 text-rose-400 mx-auto mb-2" />
+                    <p className="text-xs text-rose-300 mb-3">{qrStatus || 'خطا در بارگذاری بارکد'}</p>
+                    <button
+                      onClick={initQrSession}
+                      className="px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 font-bold rounded-xl text-xs"
+                    >
+                      تلاش مجدد
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: PAIR WITH ANDROID 11+ (PIN) */}
           {tab === 'pair' && (
             <div className="space-y-4">
               <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs text-stone-200 space-y-1.5 leading-relaxed">
@@ -549,14 +731,17 @@ export const WirelessModal: React.FC<WirelessModalProps> = ({ isOpen, onClose, o
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] text-stone-400 block mb-1 font-semibold">پورت جفت‌سازی (Port):</label>
+                  <label className="text-[11px] text-stone-400 block mb-1 font-semibold">پورت جفت‌سازی (پورت ۵ رقمی):</label>
                   <input
                     type="text"
-                    placeholder="مثال: 37129"
+                    placeholder="مثال: 37129 (نه 5555)"
                     value={pairPort}
                     onChange={(e) => setPairPort(e.target.value)}
-                    className="w-full bg-[#0a0a0f] border border-amber-500/30 rounded-xl px-3 py-2 text-xs font-mono text-yellow-300 focus:outline-none focus:border-amber-400"
+                    className={`w-full bg-[#0a0a0f] border ${pairPort === '5555' ? 'border-red-500 text-red-300' : 'border-amber-500/30 text-yellow-300'} rounded-xl px-3 py-2 text-xs font-mono focus:outline-none focus:border-amber-400`}
                   />
+                  {pairPort === '5555' && (
+                    <p className="text-[10px] text-red-400 mt-1">⚠️ پورت ۵۵۵۵ اشتباه است! پورت ۵ رقمی داخل پاپ‌آپ گوشی را وارد کنید.</p>
+                  )}
                 </div>
               </div>
 

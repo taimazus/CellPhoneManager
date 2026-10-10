@@ -73,7 +73,9 @@ interface FilesTabProps {
 }
 
 export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
-  const [currentPath, setCurrentPath] = useState('/sdcard/');
+  const isIos = device?.type === 'ios';
+  const defaultRoot = isIos ? '/' : '/sdcard/';
+  const [currentPath, setCurrentPath] = useState(defaultRoot);
   const [items, setItems] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -114,7 +116,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
   const [renameInput, setRenameInput] = useState('');
 
   const [moveItem, setMoveItem] = useState<FileItem | null>(null);
-  const [targetMoveDir, setTargetMoveDir] = useState('/sdcard/');
+  const [targetMoveDir, setTargetMoveDir] = useState(defaultRoot);
 
   // Clipboard (Cut / Copy & Paste)
   const [clipboard, setClipboard] = useState<{ mode: 'cut' | 'copy'; item: FileItem; srcDir: string } | null>(null);
@@ -156,8 +158,11 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
   };
 
   useEffect(() => {
-    fetchFiles('/sdcard/');
-  }, [device?.id]);
+    const root = device?.type === 'ios' ? '/' : '/sdcard/';
+    setCurrentPath(root);
+    setTargetMoveDir(root);
+    fetchFiles(root);
+  }, [device?.id, device?.type]);
 
   const handleNavigate = (folderName: string) => {
     const newPath = currentPath.endsWith('/') 
@@ -167,11 +172,11 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
   };
 
   const handleGoUp = () => {
-    if (currentPath === '/' || currentPath === '/sdcard/') return;
-    const parts = currentPath.replace(/\/$/, '').split('/');
+    if (currentPath === '/' || currentPath === '/sdcard/' || !currentPath) return;
+    const parts = currentPath.replace(/\/$/, '').split('/').filter(Boolean);
     parts.pop();
-    const parentPath = parts.join('/') + '/';
-    fetchFiles(parentPath || '/sdcard/');
+    const parentPath = parts.length === 0 ? defaultRoot : '/' + parts.join('/') + '/';
+    fetchFiles(parentPath);
   };
 
   const handleBreadcrumbClick = (index: number, parts: string[]) => {
@@ -984,11 +989,11 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
           </button>
 
           <button
-            onClick={() => fetchFiles('/sdcard/')}
+            onClick={() => fetchFiles(defaultRoot)}
             className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-700 font-mono font-bold flex items-center gap-1.5 flex-shrink-0"
           >
             <HardDrive className="w-3.5 h-3.5" />
-            <span>حافظه اصلی</span>
+            <span>{isIos ? 'رسانه آیفون (Media Root)' : 'حافظه اصلی'}</span>
           </button>
 
           {breadcrumbParts.map((part, idx) => (
@@ -1010,7 +1015,15 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
 
         {/* Quick Shortcut Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 scrollbar-thin">
-          {[
+          {(isIos ? [
+            { name: 'تمام فایل‌ها', path: '/', icon: HardDrive },
+            { name: 'دوربین و عکس‌ها (DCIM)', path: '/DCIM/', icon: Camera },
+            { name: 'دانلودها', path: '/Downloads/', icon: Download },
+            { name: 'ضبط صدا (Recordings)', path: '/Recordings/', icon: Mic },
+            { name: 'موزیک', path: '/Music/', icon: Music },
+            { name: 'کتاب‌ها (Books)', path: '/Books/', icon: FileText },
+            { name: 'داده‌های تصاویر', path: '/PhotoData/', icon: Image }
+          ] : [
             { name: 'حافظه اصلی', path: '/sdcard/', icon: HardDrive },
             { name: 'دانلودها', path: '/sdcard/Download/', icon: Download },
             { name: 'فیلم و ویدیو', path: '/sdcard/Movies/', icon: Film },
@@ -1021,7 +1034,7 @@ export const FilesTab: React.FC<FilesTabProps> = ({ device }) => {
             { name: 'ضبط صدا', path: '/sdcard/Recordings/', icon: Mic },
             { name: 'اسکرین‌شات', path: '/sdcard/Pictures/Screenshots/', icon: Scissors },
             { name: 'بلوتوث', path: '/sdcard/Bluetooth/', icon: Share2 }
-          ].map(shortcut => {
+          ]).map(shortcut => {
             const Icon = shortcut.icon;
             const isActive = currentPath === shortcut.path;
             return (

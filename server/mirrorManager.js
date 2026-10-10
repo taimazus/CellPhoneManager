@@ -35,8 +35,12 @@ export class MirrorManager {
       args.push('--record', options.recordPath);
     }
 
-    if (options.noAudio) {
-      args.push('--no-audio');
+    // Audio safety handling:
+    // Screen mirroring must never hijack phone audio or mute it on device!
+    if (options.forwardAudio || options.enableAudio) {
+      args.push('--audio-dup'); // Forward to PC and duplicate on phone so phone is never muted
+    } else {
+      args.push('--no-audio'); // Completely disable scrcpy audio capture to keep in-call audio safe
     }
 
     // Direct Unicode text forwarding for Persian and multilingual typing

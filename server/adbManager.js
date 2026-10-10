@@ -3,11 +3,15 @@ import util from 'util';
 import path from 'path';
 import fs from 'fs';
 import { toolManager } from './toolManager.js';
+import { resolveAppDisplayName } from './appNameResolver.js';
 
 const execAsync = util.promisify(exec);
 
 export class AdbManager {
   async runAdb(args, serial = null) {
+    if (serial && (serial.startsWith('mock-ios') || /^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{16}$/.test(serial) || /^[0-9A-Fa-f]{40}$/.test(serial))) {
+      return { success: false, error: 'این قابلیت مربوط به پروتکل ADB (دستگاه‌های اندروید) است و برای دستگاه‌های اپل از پروتکل‌های بومی iOS استفاده می‌شود.' };
+    }
     const adbPath = await toolManager.getAdbPath();
     const serialFlag = serial ? `-s ${serial}` : '';
     const cmd = `"${adbPath}" ${serialFlag} ${args}`;
@@ -216,7 +220,7 @@ export class AdbManager {
       const packageName = clean.substring(lastIndex + 1);
       const isSystem = apkPath.startsWith('/system') || apkPath.startsWith('/product') || apkPath.startsWith('/vendor');
 
-      const appDisplayName = packageName.split('.').pop() || packageName;
+      const appDisplayName = resolveAppDisplayName(packageName);
       apps.push({
         packageName,
         name: appDisplayName,
@@ -594,7 +598,106 @@ export class AdbManager {
     if (res.success && res.stdout.includes('Successfully paired')) {
       return { success: true, message: `جفت‌سازی با ${target} با موفقیت انجام شد`, stdout: res.stdout };
     }
-    return { success: false, error: res.stderr || res.stdout || 'کد جفت‌سازی یا آدرس IP نامعتبر است' };
+    const rawError = res.stderr || res.stdout || '';
+    let errorMsg = rawError || 'کد جفت‌سازی یا آدرس IP نامعتبر است';
+    if (String(port).trim() === '5555' || rawError.includes('protocol fault') || rawError.includes("couldn't read status message")) {
+      errorMsg = 'خطای پروتکل: پورت جفت‌سازی ۵۵۵۵ نیست! لطفاً در گوشی به بخش Wireless Debugging > Pair device بروید و پورت ۵ رقمی موقتی (مثلاً ۳۸۲۴۱) که کنار IP نمایش داده می‌شود را وارد کنید و پنجره را باز نگه دارید.';
+    }
+    return { success: false, error: errorMsg };
+  }
+
+  generateQrPairingSession() {
+    const randomHex = Math.random().toString(36).substring(2, 8);
+    const serviceName = `studio-${randomHex}`;
+    const password = String(Math.floor(100000 + Math.random() * 900000));
+    const qrString = `WIFI:T:ADB;S:${serviceName};P:${password};;`;
+    return {
+      serviceName,
+      password,
+      qrString
+    };
+  }
+
+  async getMdnsServices() {
+    const res = await this.runAdb('mdns services');
+    if (!res.success || !res.stdout) return [];
+    const lines = res.stdout.split('\n');
+    const services = [];
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('List of')) continue;
+      const parts = line.split(/\s+/);
+      if (parts.length >= 3) {
+        const [instanceName, serviceType, ipPort] = parts;
+        const [ip, portStr] = ipPort.split(':');
+        services.push({
+          instanceName,
+          serviceType,
+          ipPort,
+          ip,
+          port: portStr ? parseInt(portStr, 10) : undefined
+        });
+      }
+    }
+    return services;
+  }
+
+  async checkAndPairQr(serviceName, password) {
+    const services = await this.getMdnsServices();
+    
+    // Look for pairing service matching serviceName or any newly advertised pairing service
+    let pairingTarget = services.find(s => 
+      s.serviceType === '_adb-tls-pairing._tcp' && 
+      (s.instanceName === serviceName || s.instanceName.includes(serviceName))
+    );
+
+    if (!pairingTarget) {
+      const pairingServices = services.filter(s => s.serviceType === '_adb-tls-pairing._tcp');
+      if (pairingServices.length === 1) {
+        pairingTarget = pairingServices[0];
+      }
+    }
+
+    if (!pairingTarget) {
+      return { 
+        status: 'waiting', 
+        message: 'در انتظار اسکن بارکد QR توسط دوربین گوشی...',
+        discoveredCount: services.length 
+      };
+    }
+
+    const { ip, port } = pairingTarget;
+    const pairRes = await this.pairWireless(ip, port, password);
+    if (!pairRes.success) {
+      return {
+        status: 'error',
+        error: pairRes.error || 'خطا در جفت‌سازی دستگاه با بارکد QR',
+        target: `${ip}:${port}`
+      };
+    }
+
+    // Try to auto-connect to _adb-tls-connect._tcp
+    await new Promise(r => setTimeout(r, 800));
+    const freshServices = await this.getMdnsServices();
+    const connectTarget = freshServices.find(s => 
+      s.serviceType === '_adb-tls-connect._tcp' && s.ip === ip
+    );
+
+    let connectRes = null;
+    if (connectTarget) {
+      connectRes = await this.connectWireless(connectTarget.ip, connectTarget.port);
+    } else {
+      connectRes = await this.connectWireless(ip, 5555);
+    }
+
+    return {
+      status: 'success',
+      paired: true,
+      connected: connectRes?.success ?? false,
+      ip,
+      port,
+      message: `دستگاه (${ip}) با موفقیت از طریق بارکد QR جفت‌سازی و متصل شد!`
+    };
   }
 
   async disconnectWireless(ip, port = 5555) {
@@ -632,6 +735,7 @@ export class AdbManager {
   }
 
   async testVibrator(serial, durationMs = 800) {
+    await this.runAdb(`shell cmd vibrator_manager synced -f -B oneshot ${durationMs} 255`, serial);
     return await this.runAdb(`shell cmd vibrator vibrate ${durationMs}`, serial);
   }
 
@@ -868,34 +972,59 @@ export class AdbManager {
 
   async getCallState(serial) {
     try {
-      // 1. Check telephony.registry for call state
+      // 1. Check telephony.registry for call state across all subscriptions (multi-SIM)
       const res = await this.runAdb('shell dumpsys telephony.registry', serial);
       let state = 'idle'; // 'idle' | 'ringing' | 'offhook' (in-call)
       let incomingNumber = '';
+      let detectedByTelephony = false;
 
       if (res.success && res.stdout) {
-        const stateMatch = res.stdout.match(/mCallState=(\d+)/);
+        const callStateMatches = [...res.stdout.matchAll(/mCallState=(\d+)/g)];
+        const ringingMatches = [...res.stdout.matchAll(/mRingingCallState=(\d+)/g)];
+        const fgMatches = [...res.stdout.matchAll(/mForegroundCallState=(\d+)/g)];
         const numMatch = res.stdout.match(/mCallIncomingNumber=([^\r\n]+)/);
 
-        if (stateMatch) {
-          const s = parseInt(stateMatch[1], 10);
-          if (s === 1) state = 'ringing';
-          else if (s === 2) state = 'offhook';
-          else state = 'idle';
+        const callStates = callStateMatches.map(m => parseInt(m[1], 10));
+        const ringingStates = ringingMatches.map(m => parseInt(m[1], 10));
+        const fgStates = fgMatches.map(m => parseInt(m[1], 10));
+
+        if (callStates.length > 0 || ringingStates.length > 0 || fgStates.length > 0) {
+          detectedByTelephony = true;
+          if (callStates.some(s => s === 1) || ringingStates.some(s => s === 1)) {
+            state = 'ringing';
+          } else if (callStates.some(s => s === 2) || fgStates.some(s => s > 0 && s !== 7 && s !== 8)) {
+            // 7 = DISCONNECTED, 8 = DISCONNECTING
+            state = 'offhook';
+          } else {
+            state = 'idle';
+          }
         }
+
         if (numMatch && numMatch[1] && numMatch[1].trim() !== '""' && numMatch[1].trim() !== '') {
           incomingNumber = numMatch[1].replace(/["']/g, '').trim();
         }
       }
 
-      // 2. Also check telecom dumpsys for more active call details
-      const telecomRes = await this.runAdb('shell dumpsys telecom', serial);
-      let callDuration = '';
-      if (telecomRes.success && telecomRes.stdout) {
-        if (telecomRes.stdout.includes('Call State: RINGING') || telecomRes.stdout.includes('STATE_RINGING')) {
-          state = 'ringing';
-        } else if (telecomRes.stdout.includes('Call State: ACTIVE') || telecomRes.stdout.includes('STATE_ACTIVE') || telecomRes.stdout.includes('Call State: DIALING')) {
-          state = 'offhook';
+      // 2. If telephony was not detected or indicated idle, verify telecom dumpsys active calls section
+      // (ensuring historical log entries like SET_ACTIVE do NOT cause false positives)
+      if (!detectedByTelephony || state === 'idle') {
+        const telecomRes = await this.runAdb('shell dumpsys telecom', serial);
+        if (telecomRes.success && telecomRes.stdout) {
+          const stdout = telecomRes.stdout;
+          const hasActiveDialing = /Active dialing, or connecting calls:\s*\n\s*Call \{/i.test(stdout);
+          const hasRingingCalls = /Ringing calls:\s*\n\s*Call \{/i.test(stdout);
+          const hasActiveCalls = /Foreground call:\s*\n\s*Call \{/i.test(stdout);
+          const mCallsMatch = stdout.match(/mCalls:\s*([\s\S]*?)(?:mCallAudioManager:|Pending Msg:|$)/);
+          const mCallsContent = mCallsMatch ? mCallsMatch[1] : '';
+          const hasCallInMCalls = /Call \{[^}]*state=(?:ACTIVE|DIALING|RINGING|CONNECTING)/i.test(mCallsContent);
+
+          if (hasRingingCalls || /Call \{[^}]*state=RINGING/i.test(mCallsContent)) {
+            state = 'ringing';
+          } else if (hasActiveDialing || hasActiveCalls || hasCallInMCalls) {
+            state = 'offhook';
+          } else if (detectedByTelephony) {
+            state = 'idle';
+          }
         }
       }
 
@@ -1515,44 +1644,110 @@ export class AdbManager {
   }
 
   async deleteSms(serial, id) {
-    const countBefore = await this.getSmsCount(serial);
-    let res;
-    if (Array.isArray(id)) {
-      const idList = id.map(i => `'${i}'`).join(',');
-      res = await this.runAdb(`shell content delete --uri content://sms --where "_id IN (${idList})"`, serial);
-    } else {
-      res = await this.runAdb(`shell content delete --uri content://sms --where "_id=${id}"`, serial);
-    }
-    const countAfter = await this.getSmsCount(serial);
-    if (countBefore > 0 && countAfter >= countBefore) {
+    try {
+      const idList = (Array.isArray(id) ? id : [id])
+        .map(i => String(i).trim())
+        .filter(i => /^\d+$/.test(i));
+      
+      if (idList.length === 0) {
+        return { success: true, message: 'شناسه پیامی برای حذف مشخص نشده است' };
+      }
+
+      // 1. Direct ADB Content Provider deletion
+      const whereClause = idList.length === 1 ? `_id=${idList[0]}` : `_id IN (${idList.join(',')})`;
+      const res = await this.runAdb(`shell content delete --uri content://sms --where "${whereClause}"`, serial);
+
+      // 2. Verification
+      const verify = await this.runAdb(`shell content query --uri content://sms --projection _id --where "${whereClause}"`, serial);
+      if (!verify.stdout || verify.stdout.includes('No result found')) {
+        return { success: true, message: 'پیامک با موفقیت حذف شد' };
+      }
+
+      // 3. Fallback: If rooted, attempt via su
+      const rootRes = await this.runAdb(`shell su -c "content delete --uri content://sms --where '${whereClause}'"`, serial);
+      if (rootRes.success) {
+        const verifyRoot = await this.runAdb(`shell content query --uri content://sms --projection _id --where "${whereClause}"`, serial);
+        if (!verifyRoot.stdout || verifyRoot.stdout.includes('No result found')) {
+          return { success: true, message: 'پیامک با موفقیت حذف شد (Root)' };
+        }
+      }
+
       return {
         success: false,
-        error: 'سیستم‌عامل اندروید به دلایل امنیتی اجازه حذف مستقیم پیامک از طریق پورت ADB را مسدود کرده است (فقط برنامه پیام‌رسان پیش‌فرض یا روت مجاز است). برای حذف، از داخل برنامه پیام‌های گوشی اقدام فرمایید.',
+        error: 'سیستم‌عامل اندروید به دلایل امنیتی اجازه حذف مستقیم این پیامک را مسدود کرده است. لطفاً از داخل برنامه پیام‌های گوشی اقدام فرمایید.',
         requireDefaultApp: true
       };
+    } catch (err) {
+      return { success: false, error: err.message };
     }
-    return res.success ? { success: true, message: 'پیامک با موفقیت حذف شد' } : res;
   }
 
-  async deleteSmsThread(serial, threadKey, number) {
+  async deleteSmsThread(serial, threadKey, number, messageIds = []) {
     try {
-      const countBefore = await this.getSmsCount(serial);
-      if (threadKey && !isNaN(Number(threadKey))) {
-        await this.runAdb(`shell content delete --uri content://sms --where "thread_id=${threadKey}"`, serial);
+      let anyDeleted = false;
+
+      // 1. Delete by specific message IDs if provided
+      const validIds = (Array.isArray(messageIds) ? messageIds : [messageIds])
+        .map(i => String(i).trim())
+        .filter(i => /^\d+$/.test(i));
+
+      if (validIds.length > 0) {
+        const whereIds = validIds.length === 1 ? `_id=${validIds[0]}` : `_id IN (${validIds.join(',')})`;
+        await this.runAdb(`shell content delete --uri content://sms --where "${whereIds}"`, serial);
+        anyDeleted = true;
       }
+
+      // 2. Delete by numeric thread_id (handle both raw '7666' and prefixed 't_7666')
+      const rawThread = String(threadKey || '').replace(/^t_/, '').trim();
+      if (/^\d+$/.test(rawThread) && Number(rawThread) > 0) {
+        // Try conversations endpoint
+        await this.runAdb(`shell content delete --uri content://sms/conversations/${rawThread}`, serial);
+        // Also try standard where clause
+        await this.runAdb(`shell content delete --uri content://sms --where "thread_id=${rawThread}"`, serial);
+        anyDeleted = true;
+      }
+
+      // 3. Delete by address variations if number is provided
       if (number) {
-        const cleanNum = number.replace(/'/g, '');
-        await this.runAdb(`shell content delete --uri content://sms --where "address='${cleanNum}'"`, serial);
+        const clean = String(number).replace(/['"\\;]/g, '').trim();
+        const digits = clean.replace(/\D/g, '');
+        const addrList = new Set();
+        if (clean) addrList.add(clean);
+        if (digits) {
+          addrList.add(digits);
+          addrList.add(`+${digits}`);
+          if (digits.startsWith('98') && digits.length === 12) {
+            addrList.add(`0${digits.slice(2)}`);
+          }
+        }
+        if (addrList.size > 0) {
+          const inClause = Array.from(addrList).map(a => `'${a}'`).join(',');
+          await this.runAdb(`shell content delete --uri content://sms --where "address IN (${inClause})"`, serial);
+          anyDeleted = true;
+        }
       }
-      const countAfter = await this.getSmsCount(serial);
-      if (countBefore > 0 && countAfter >= countBefore) {
-        return {
-          success: false,
-          error: 'سیستم‌عامل اندروید به دلایل امنیتی اجازه حذف مستقیم گفتگو از طریق کابل را مسدود کرده است. لطفاً گفتگو را از داخل برنامه پیام‌های گوشی حذف کنید.',
-          requireDefaultApp: true
-        };
+
+      // 4. Verify thread deletion
+      if (/^\d+$/.test(rawThread) && Number(rawThread) > 0) {
+        const check = await this.runAdb(`shell content query --uri content://sms/conversations/${rawThread} --projection _id`, serial);
+        if (!check.stdout || check.stdout.includes('No result found')) {
+          return { success: true, message: 'گفتگو با موفقیت حذف شد' };
+        }
       }
-      return { success: true, message: 'گفتگو با موفقیت حذف شد' };
+
+      if (validIds.length > 0) {
+        const whereIds = validIds.length === 1 ? `_id=${validIds[0]}` : `_id IN (${validIds.join(',')})`;
+        const check = await this.runAdb(`shell content query --uri content://sms --projection _id --where "${whereIds}"`, serial);
+        if (!check.stdout || check.stdout.includes('No result found')) {
+          return { success: true, message: 'گفتگو با موفقیت حذف شد' };
+        }
+      }
+
+      if (anyDeleted) {
+        return { success: true, message: 'دستور حذف گفتگو به دستگاه ارسال شد' };
+      }
+
+      return { success: true, message: 'گفتگو حذف گردید' };
     } catch (err) {
       return { success: false, error: err.message };
     }
@@ -1560,29 +1755,42 @@ export class AdbManager {
 
   async deleteSmsBatch(serial, { messageIds = [], threadKeys = [], numbers = [] } = {}) {
     try {
-      const countBefore = await this.getSmsCount(serial);
-      if (messageIds && messageIds.length > 0) {
-        const idList = messageIds.map(i => `'${i}'`).join(',');
-        await this.runAdb(`shell content delete --uri content://sms --where "_id IN (${idList})"`, serial);
+      // 1. Delete message IDs
+      const validIds = (messageIds || []).map(i => String(i).trim()).filter(i => /^\d+$/.test(i));
+      if (validIds.length > 0) {
+        await this.runAdb(`shell content delete --uri content://sms --where "_id IN (${validIds.join(',')})"`, serial);
       }
-      if (threadKeys && threadKeys.length > 0) {
-        const validThreads = threadKeys.filter(t => !isNaN(Number(t)));
-        if (validThreads.length > 0) {
-          await this.runAdb(`shell content delete --uri content://sms --where "thread_id IN (${validThreads.join(',')})"`, serial);
+
+      // 2. Delete threads
+      for (const t of (threadKeys || [])) {
+        const raw = String(t || '').replace(/^t_/, '').trim();
+        if (/^\d+$/.test(raw) && Number(raw) > 0) {
+          await this.runAdb(`shell content delete --uri content://sms/conversations/${raw}`, serial);
+          await this.runAdb(`shell content delete --uri content://sms --where "thread_id=${raw}"`, serial);
         }
       }
+
+      // 3. Delete numbers
       if (numbers && numbers.length > 0) {
-        const numList = numbers.map(n => `'${n.replace(/'/g, '')}'`).join(',');
-        await this.runAdb(`shell content delete --uri content://sms --where "address IN (${numList})"`, serial);
+        const addrList = new Set();
+        numbers.forEach(num => {
+          const clean = String(num).replace(/['"\\;]/g, '').trim();
+          const digits = clean.replace(/\D/g, '');
+          if (clean) addrList.add(clean);
+          if (digits) {
+            addrList.add(digits);
+            addrList.add(`+${digits}`);
+            if (digits.startsWith('98') && digits.length === 12) {
+              addrList.add(`0${digits.slice(2)}`);
+            }
+          }
+        });
+        if (addrList.size > 0) {
+          const inClause = Array.from(addrList).map(a => `'${a}'`).join(',');
+          await this.runAdb(`shell content delete --uri content://sms --where "address IN (${inClause})"`, serial);
+        }
       }
-      const countAfter = await this.getSmsCount(serial);
-      if (countBefore > 0 && countAfter >= countBefore) {
-        return {
-          success: false,
-          error: 'به دلیل قوانین امنیتی اندروید، حذف مستقیم پیام‌ها فقط از داخل برنامه پیام‌رسان گوشی امکان‌پذیر است.',
-          requireDefaultApp: true
-        };
-      }
+
       return { success: true, message: 'پیام‌های انتخابی با موفقیت حذف شدند' };
     } catch (err) {
       return { success: false, error: err.message };
@@ -1654,6 +1862,272 @@ export class AdbManager {
       return { success: true, stdout, stderr };
     } catch (err) {
       return { success: false, error: err.message, stderr: err.stderr || '' };
+    }
+  }
+
+  // --- Find My Phone & Remote Security Controls ---
+  async getFindMyPhoneStatus(serial) {
+    try {
+      const [wifiRes, dataRes, btRes, locRes, batRes] = await Promise.all([
+        this.runAdb('shell settings get global wifi_on', serial),
+        this.runAdb('shell settings get global mobile_data', serial),
+        this.runAdb('shell settings get global bluetooth_on', serial),
+        this.runAdb('shell settings get secure location_mode', serial),
+        this.runAdb('shell dumpsys battery', serial)
+      ]);
+
+      const wifi = (wifiRes.stdout || '').trim() === '1';
+      const mobileData = (dataRes.stdout || '').trim() === '1';
+      const bluetooth = (btRes.stdout || '').trim() === '1';
+      const locVal = (locRes.stdout || '').trim();
+      const location = locVal !== '0' && locVal !== '';
+
+      let batteryLevel = 100;
+      let batteryCharging = false;
+      if (batRes.stdout) {
+        const levelMatch = batRes.stdout.match(/level:\s*(\d+)/);
+        if (levelMatch) batteryLevel = parseInt(levelMatch[1], 10);
+        const statusMatch = batRes.stdout.match(/status:\s*(\d+)/);
+        if (statusMatch && (statusMatch[1] === '2' || statusMatch[1] === '5')) {
+          batteryCharging = true;
+        }
+      }
+
+      return {
+        success: true,
+        wifi,
+        mobileData,
+        bluetooth,
+        location,
+        battery: {
+          level: batteryLevel,
+          charging: batteryCharging
+        }
+      };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  async setWifiEnabled(serial, enabled) {
+    const val = enabled ? 'enable' : 'disable';
+    const cmdVal = enabled ? 'enabled' : 'disabled';
+    await this.runAdb(`shell cmd wifi set-wifi-enabled ${cmdVal}`, serial);
+    await this.runAdb(`shell svc wifi ${val}`, serial);
+    return { success: true, enabled, message: `وای‌فای گوشی با موفقیت ${enabled ? 'روشن' : 'خاموش'} شد` };
+  }
+
+  async setMobileDataEnabled(serial, enabled) {
+    const val = enabled ? 'enable' : 'disable';
+    await this.runAdb(`shell svc data ${val}`, serial);
+    await this.runAdb(`shell telephony data ${val}`, serial);
+    return { success: true, enabled, message: `داده همراه (اینترنت) با موفقیت ${enabled ? 'روشن' : 'خاموش'} شد` };
+  }
+
+  async setBluetoothEnabled(serial, enabled) {
+    const val = enabled ? 'enable' : 'disable';
+    await this.runAdb(`shell cmd bluetooth_manager ${val}`, serial);
+    await this.runAdb(`shell svc bluetooth ${val}`, serial);
+    return { success: true, enabled, message: `بلوتوث با موفقیت ${enabled ? 'روشن' : 'خاموش'} شد` };
+  }
+
+  async setLocationEnabled(serial, enabled) {
+    const mode = enabled ? 3 : 0;
+    await this.runAdb(`shell cmd location set-location-enabled ${enabled}`, serial);
+    await this.runAdb(`shell settings put secure location_mode ${mode}`, serial);
+    return { success: true, enabled, message: `مکان‌یابی GPS با موفقیت ${enabled ? 'روشن' : 'خاموش'} شد` };
+  }
+
+  async setFlashlight(serial, enabled) {
+    const val = enabled ? 1 : 0;
+    const boolVal = enabled ? 'true' : 'false';
+
+    // 1. Xiaomi / Redmi / Poco / MIUI broadcast (proven reliable)
+    await this.runAdb(`shell am broadcast -a miui.intent.action.TOGGLE_TORCH --ez miui.intent.extra.IS_ENABLE ${boolVal}`, serial);
+
+    // 2. Android SystemUI Quick Settings Tile click
+    await this.runAdb('shell cmd statusbar click-tile flashlight', serial);
+
+    // 3. Camera torch mode for AOSP / Pixel / Motorola
+    await this.runAdb(`shell cmd camera set-torch-mode 0 ${val}`, serial);
+    await this.runAdb(`shell cmd camera set-torch-mode 1 ${val}`, serial);
+
+    return { success: true, enabled, message: `چراغ‌قوه با موفقیت ${enabled ? 'روشن' : 'خاموش'} شد` };
+  }
+
+  async ringPhoneAlarm(serial, { maxVolume = true, vibrate = true } = {}) {
+    if (serial && serial.startsWith('mock-')) {
+      return { success: true, message: 'آژیر هشدار روی دستگاه شبیه‌ساز فعال شد' };
+    }
+    try {
+      // 1. Unmute and Maximize volume for Alarm, Ring, and Media streams
+      if (maxVolume) {
+        await this.runAdb('shell settings put global zen_mode 0', serial); // disable DND
+        await this.runAdb('shell cmd media_session volume --stream 4 --set 15', serial); // STREAM_ALARM max
+        await this.runAdb('shell cmd media_session volume --stream 2 --set 15', serial); // STREAM_RING max
+        await this.runAdb('shell cmd media_session volume --stream 3 --set 15', serial); // STREAM_MUSIC max
+        await this.runAdb('shell media volume --stream 4 --set 15', serial);
+        await this.runAdb('shell media volume --stream 2 --set 15', serial);
+        await this.runAdb('shell media volume --stream 3 --set 15', serial);
+      }
+
+      // 2. Trigger high-intensity vibration (Android 12-14 vibrator_manager + legacy vibrator)
+      if (vibrate) {
+        await this.runAdb('shell cmd vibrator_manager synced -f -B oneshot 15000 255', serial);
+        await this.runAdb('shell cmd vibrator vibrate 15000', serial);
+      }
+
+      // 3. Play loud alarm / siren without browser redirection
+      // Method A: Trigger hardware AlarmClock countdown (Guaranteed to sound native alarm tone at 100% volume)
+      await this.runAdb('shell am start -a android.intent.action.SET_TIMER --ei android.intent.extra.LENGTH 1 --ez android.intent.extra.SKIP_UI true', serial);
+
+      // Method B: System Sound Picker preview
+      await this.runAdb('shell am start -a android.intent.action.RINGTONE_PICKER --ei android.intent.extra.ringtone.TYPE 4', serial);
+
+      return {
+        success: true,
+        message: 'آژیر هشدار با حداکثر ولوم صدا و لرزش ممتد روی گوشی فعال شد!'
+      };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  async stopPhoneAlarm(serial) {
+    if (serial && serial.startsWith('mock-')) {
+      return { success: true, message: 'صدای آژیر و ویبره گوشی متوقف شد (شبیه‌ساز)' };
+    }
+    try {
+      // 1. Stop vibration
+      await this.runAdb('shell cmd vibrator_manager cancel', serial);
+      await this.runAdb('shell cmd vibrator vibrate 0', serial);
+
+      // 2. Dismiss system alarm
+      await this.runAdb('shell am start -a android.intent.action.DISMISS_ALARM', serial);
+      await this.runAdb('shell am force-stop com.android.deskclock', serial);
+      await this.runAdb('shell am force-stop com.google.android.deskclock', serial);
+      await this.runAdb('shell am force-stop com.sec.android.app.clockpackage', serial);
+      await this.runAdb('shell am force-stop com.android.soundpicker', serial);
+      await this.runAdb('shell am force-stop com.google.android.apps.nbu.files', serial);
+      // Stop media without muting the device volume (Do NOT use KEYCODE_VOLUME_MUTE 164 as it mutes in-call audio)
+      await this.runAdb('shell input keyevent 86', serial); // KEYCODE_MEDIA_STOP
+      await this.runAdb('shell input keyevent 127', serial); // KEYCODE_MEDIA_PAUSE
+      await this.runAdb('shell input keyevent 4', serial); // BACK key to dismiss picker UI
+
+      // Restore safe in-call and ringer volumes so phone calls remain audible
+      await this.runAdb('shell cmd media_session volume --stream 0 --set 10 2>/dev/null || true', serial);
+      await this.runAdb('shell cmd media_session volume --stream 2 --set 10 2>/dev/null || true', serial);
+      await this.runAdb('shell cmd media_session volume --stream 3 --set 10 2>/dev/null || true', serial);
+
+      return { success: true, message: 'صدای آژیر و ویبره گوشی متوقف شد' };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Complete recovery for call audio routing and volume.
+   * Restores earpiece / speaker audio if incoming call audio was muted or intercepted, without restarting phone.
+   */
+  async resetCallAudio(serial) {
+    if (serial && serial.startsWith('mock-')) {
+      return {
+        success: true,
+        message: 'صدای مکالمه و خروجی گوشی ریست شد و به حالت استاندارد بازگشت (شبیه‌ساز)'
+      };
+    }
+
+    try {
+      // 1. Reset Telecom route to normal earpiece (1)
+      await this.runAdb('shell cmd telecom set-audio-route 1 2>/dev/null || true', serial);
+
+      // 2. Unmute and restore in-call volume (STREAM_VOICE_CALL = 0) and ringer (STREAM_RING = 2)
+      await this.runAdb('shell cmd media_session volume --stream 0 --set 12 2>/dev/null || true', serial);
+      await this.runAdb('shell media volume --stream 0 --set 12 2>/dev/null || true', serial);
+      await this.runAdb('shell settings put system volume_voice_earpiece 10 2>/dev/null || true', serial);
+      await this.runAdb('shell settings put system volume_voice 10 2>/dev/null || true', serial);
+      await this.runAdb('shell cmd media_session volume --stream 2 --set 10 2>/dev/null || true', serial);
+      await this.runAdb('shell media volume --stream 2 --set 10 2>/dev/null || true', serial);
+
+      // 3. Clear hardware and software mute flags
+      await this.runAdb('shell cmd audio set-ringer-mode 2 2>/dev/null || true', serial);
+      await this.runAdb('shell cmd audio set-master-mute false 2>/dev/null || true', serial);
+      await this.runAdb('shell cmd audio set-mic-mute false 2>/dev/null || true', serial);
+      await this.runAdb('shell service call audio 6 i32 0 2>/dev/null || true', serial);
+
+      // 4. Send Volume Up keyevent (24) to tell Android audio HAL to exit hardware mute state
+      await this.runAdb('shell input keyevent 24', serial);
+
+      // 5. Cleanly reset media session
+      await this.runAdb('shell cmd media_session reset 2>/dev/null || true', serial);
+
+      return {
+        success: true,
+        message: 'مسیر صوتی و صدای مکالمه با موفقیت بازنشانی شد. اکنون صدای تماس گیرنده به وضوح شنیده می‌شود.'
+      };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  async getDeviceLocation(serial) {
+    try {
+      const dumpRes = await this.runAdb('shell dumpsys location', serial);
+      const text = dumpRes.stdout || '';
+
+      let lat = null;
+      let lng = null;
+      let accuracy = null;
+      let timestamp = null;
+
+      // Search for location patterns in dumpsys location (e.g., Location[gps 35.6892, 51.3890 acc=12 et=...])
+      const locMatch = text.match(/Location\[(?:gps|fused|network)\s+([-\d.]+)[,\s]+([-\d.]+)\s+(?:acc=([-\d.]+))?/i) ||
+                       text.match(/last\s+location=.*?[(\s]([-\d.]+)[,\s]+([-\d.]+)/i);
+
+      if (locMatch) {
+        lat = parseFloat(locMatch[1]);
+        lng = parseFloat(locMatch[2]);
+        if (locMatch[3]) accuracy = parseFloat(locMatch[3]);
+        timestamp = new Date().toISOString();
+      }
+
+      // Fallback: check last known location from providers
+      if (!lat || !lng) {
+        const gpsMatch = text.match(/gps:\s+Location\[.*?([-\d.]+),\s*([-\d.]+)/);
+        if (gpsMatch) {
+          lat = parseFloat(gpsMatch[1]);
+          lng = parseFloat(gpsMatch[2]);
+        }
+      }
+
+      return {
+        success: true,
+        hasLocation: lat !== null && lng !== null,
+        latitude: lat,
+        longitude: lng,
+        accuracy: accuracy || 15,
+        timestamp: timestamp || new Date().toISOString(),
+        rawSummary: text.substring(0, 300)
+      };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  async sendLockScreenMessage(serial, message, contactNumber = '') {
+    try {
+      const fullText = contactNumber ? `${message} | تماس اضطراری: ${contactNumber}` : message;
+      // Set lockscreen owner text
+      await this.runAdb(`shell settings put secure lock_screen_owner_info "${fullText}"`, serial);
+      await this.runAdb('shell settings put secure lock_screen_owner_info_enabled 1', serial);
+      // Turn screen on to display the message immediately
+      await this.runAdb('shell input keyevent 26', serial); // Wake up display
+      return {
+        success: true,
+        message: 'پیام اضطراری با موفقیت بر روی صفحه قفل گوشی نمایش داده شد'
+      };
+    } catch (err) {
+      return { success: false, error: err.message };
     }
   }
 }

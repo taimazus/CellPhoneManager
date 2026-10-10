@@ -29,4 +29,17 @@ describe('HardwareLabManager Test Suite', () => {
     expect(res.success).toBe(true);
     expect(res.enabled).toBe(true);
   });
+
+  it('should launch camera test on mock and live device gracefully', async () => {
+    const resStill = await hardwareLabManager.launchCameraTest('mock-device', 'still');
+    expect(resStill.success).toBe(true);
+
+    const resVideo = await hardwareLabManager.launchCameraTest('mock-device', 'video');
+    expect(resVideo.success).toBe(true);
+  });
+
+  it('should launch screen color test on mock device gracefully', async () => {
+    const res = await hardwareLabManager.launchScreenTest('mock-device', 'rgb');
+    expect(res.success).toBe(true);
+  });
 });

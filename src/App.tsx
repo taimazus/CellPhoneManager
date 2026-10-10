@@ -1,10 +1,16 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { DeviceHeader } from './components/DeviceHeader';
 import { OverviewTab } from './components/OverviewTab';
 import { WirelessModal } from './components/WirelessModal';
 import { UserGuideModal } from './components/UserGuideModal';
-import { Device } from './types';
+import { 
+  LiveNotificationCenter, 
+  playNotificationChime, 
+  showBrowserDesktopNotification, 
+  requestDesktopNotificationPermission 
+} from './components/LiveNotificationCenter';
+import { Device, LivePhoneEvent } from './types';
 
 // Lazy loaded tab components for on-demand bundle splitting
 const MirrorControlTab = lazy(() => import('./components/MirrorControlTab').then(m => ({ default: m.MirrorControlTab })));
@@ -17,6 +23,7 @@ const BackupTab = lazy(() => import('./components/BackupTab').then(m => ({ defau
 const FastbootTab = lazy(() => import('./components/FastbootTab').then(m => ({ default: m.FastbootTab })));
 const HardwareLabTab = lazy(() => import('./components/HardwareLabTab').then(m => ({ default: m.HardwareLabTab })));
 const MessagesTab = lazy(() => import('./components/MessagesTab').then(m => ({ default: m.MessagesTab })));
+const FindMyPhoneTab = lazy(() => import('./components/FindMyPhoneTab').then(m => ({ default: m.FindMyPhoneTab })));
 const CameraTab = lazy(() => import('./components/CameraTab').then(m => ({ default: m.CameraTab })));
 const MicrophoneTab = lazy(() => import('./components/MicrophoneTab').then(m => ({ default: m.MicrophoneTab })));
 const NetworkVpnTab = lazy(() => import('./components/NetworkVpnTab').then(m => ({ default: m.NetworkVpnTab })));
@@ -120,6 +127,24 @@ export function App() {
   const [isGuideModalOpen, setIsGuideModalOpen] = useState<boolean>(false);
   const [guideTopic, setGuideTopic] = useState<string>('getting_started');
 
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState<boolean>(false);
+  const [liveEvents, setLiveEvents] = useState<LivePhoneEvent[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [activeToast, setActiveToast] = useState<LivePhoneEvent | null>(null);
+  const [messagesNavigationTarget, setMessagesNavigationTarget] = useState<{
+    subTab?: 'calls' | 'contacts' | 'sms';
+    searchQuery?: string;
+    filter?: string;
+    targetItemKey?: string;
+    sender?: string;
+    text?: string;
+  } | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  const handleClearMessagesNavigationTarget = useCallback(() => {
+    setMessagesNavigationTarget(null);
+  }, []);
+
   const handleOpenGuide = (topic: string = 'getting_started') => {
     setGuideTopic(topic);
     setIsGuideModalOpen(true);
@@ -156,6 +181,176 @@ export function App() {
     const interval = setInterval(fetchDevices, 10000); // Polling every 10s
     return () => clearInterval(interval);
   }, []);
+
+  const fetchLiveEvents = useCallback(async (deviceId: string) => {
+    try {
+      const res = await fetch(`/api/devices/${deviceId}/live-events`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.success && Array.isArray(data.events)) {
+        setLiveEvents(data.events);
+        setUnreadCount(typeof data.unreadCount === 'number' ? data.unreadCount : data.events.filter((e: any) => !e.read).length);
+      }
+    } catch (err) {
+      console.error('Error fetching live events:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedDevice?.id) {
+      fetchLiveEvents(selectedDevice.id);
+    } else {
+      setLiveEvents([]);
+      setUnreadCount(0);
+      setActiveToast(null);
+    }
+  }, [selectedDevice?.id, fetchLiveEvents]);
+
+  // WebSocket for real-time live events (SMS, Incoming Calls, Notifications)
+  useEffect(() => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: any = null;
+
+    const connectWs = () => {
+      try {
+        ws = new WebSocket(wsUrl);
+        wsRef.current = ws;
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'PHONE_LIVE_EVENT' && data.event) {
+              const liveEv = data.event as LivePhoneEvent;
+              // 1. Play attractive audio chime
+              playNotificationChime(liveEv.category);
+              // 2. Trigger floating live toast across any active tab
+              setActiveToast(liveEv);
+              // 3. Dispatch native Windows Desktop Notification
+              showBrowserDesktopNotification(liveEv, handleOpenLiveEvent);
+              // 4. Update state and badge count
+              setLiveEvents(prev => {
+                const filtered = prev.filter(e => e.id !== liveEv.id);
+                return [liveEv, ...filtered].slice(0, 50);
+              });
+              setUnreadCount(prev => prev + 1);
+            }
+          } catch {
+            // Ignore non-json or unrelated frames
+          }
+        };
+
+        ws.onclose = () => {
+          reconnectTimeout = setTimeout(connectWs, 4000);
+        };
+      } catch (err) {
+        console.error('WebSocket connection error:', err);
+      }
+    };
+
+    connectWs();
+
+    return () => {
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
+    };
+  }, []);
+
+  const handleMarkEventRead = async (eventId: string) => {
+    if (!selectedDevice) return;
+    setLiveEvents(prev => prev.map(e => e.id === eventId ? { ...e, read: true } : e));
+    setUnreadCount(prev => Math.max(0, prev - 1));
+    try {
+      await fetch(`/api/devices/${selectedDevice.id}/live-events/mark-read`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ eventId })
+      });
+    } catch (err) {
+      console.error('Error marking event read:', err);
+    }
+  };
+
+  const handleMarkAllEventsRead = async () => {
+    if (!selectedDevice) return;
+    setLiveEvents(prev => prev.map(e => ({ ...e, read: true })));
+    setUnreadCount(0);
+    try {
+      await fetch(`/api/devices/${selectedDevice.id}/live-events/mark-all-read`, {
+        method: 'POST'
+      });
+    } catch (err) {
+      console.error('Error marking all events read:', err);
+    }
+  };
+
+  const handleClearAllEvents = async () => {
+    if (!selectedDevice) return;
+    setLiveEvents([]);
+    setUnreadCount(0);
+    setActiveToast(null);
+    try {
+      await fetch(`/api/devices/${selectedDevice.id}/live-events`, {
+        method: 'DELETE'
+      });
+    } catch (err) {
+      console.error('Error clearing events:', err);
+    }
+  };
+
+  const handleSimulateEvent = async (category: 'sms' | 'call' | 'notification') => {
+    if (!selectedDevice) return;
+    try {
+      await fetch(`/api/devices/${selectedDevice.id}/live-events/simulate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category })
+      });
+    } catch (err) {
+      console.error('Error simulating event:', err);
+    }
+  };
+
+  const handleOpenLiveEvent = (event: LivePhoneEvent) => {
+    handleMarkEventRead(event.id);
+    if (activeToast?.id === event.id) {
+      setActiveToast(null);
+    }
+    if (event.category === 'sms') {
+      let cleanQuery = event.searchQuery || event.sender || '';
+      if (!cleanQuery && event.title) {
+        cleanQuery = event.title.replace(/^[^:]*:\s*/, '').replace(/^[^\d+]*([+0-9]+).*$/, '$1').trim();
+      }
+      setMessagesNavigationTarget({
+        subTab: 'sms',
+        searchQuery: cleanQuery,
+        targetItemKey: event.targetItemKey,
+        sender: event.sender || cleanQuery,
+        text: event.text
+      });
+      setActiveTab('messages');
+    } else if (event.category === 'call') {
+      setMessagesNavigationTarget({
+        subTab: 'calls',
+        filter: event.isMissedCall ? 'missed' : 'all',
+        searchQuery: event.searchQuery || event.sender || event.title,
+        targetItemKey: event.targetItemKey
+      });
+      setActiveTab('messages');
+    } else if (event.category === 'system') {
+      if (event.targetTab) {
+        setActiveTab(event.targetTab);
+      } else {
+        setActiveTab('overview');
+      }
+    } else {
+      setActiveTab('notifications');
+    }
+  };
 
   const handleQuickAction = async (action: string, payload?: any) => {
     if (!selectedDevice) return;
@@ -254,6 +449,7 @@ export function App() {
           activeTab={activeTab} 
           setActiveTab={(tab) => {
             setActiveTab(tab);
+            setMessagesNavigationTarget(null);
             setIsMobileSidebarOpen(false);
           }} 
           deviceType={selectedDevice?.type} 
@@ -275,6 +471,8 @@ export function App() {
           onOpenGuideModal={handleOpenGuide}
           isRefreshing={isRefreshing}
           onToggleSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
+          onToggleNotificationCenter={() => setIsNotificationCenterOpen(prev => !prev)}
+          unreadCount={unreadCount}
         />
 
         {/* Viewport Content */}
@@ -304,7 +502,26 @@ export function App() {
                   <RemoteControllerTab device={selectedDevice} />
                 )}
                 {activeTab === 'notifications' && (
-                  <NotificationsTab device={selectedDevice} />
+                  <NotificationsTab 
+                    device={selectedDevice} 
+                    onNavigateToSms={(sender, text) => {
+                      handleOpenLiveEvent({
+                        id: `notif_sms_${Date.now()}`,
+                        key: `notif_sms_${Date.now()}`,
+                        packageName: 'com.android.mms',
+                        appName: 'پیامک',
+                        category: 'sms',
+                        title: sender || 'پیامک',
+                        text: text || '',
+                        sender: sender,
+                        timestamp: 'هم‌اکنون',
+                        icon: 'sms',
+                        targetTab: 'messages',
+                        actionLabel: 'مشاهده پیامک',
+                        read: true
+                      });
+                    }}
+                  />
                 )}
                 {activeTab === 'network' && (
                   <NetworkVpnTab device={selectedDevice} />
@@ -331,7 +548,14 @@ export function App() {
                   <AudioFxTab device={selectedDevice} />
                 )}
                 {activeTab === 'messages' && (
-                  <MessagesTab device={selectedDevice} />
+                  <MessagesTab 
+                    device={selectedDevice} 
+                    navigationTarget={messagesNavigationTarget}
+                    onClearNavigationTarget={handleClearMessagesNavigationTarget}
+                  />
+                )}
+                {activeTab === 'findmyphone' && (
+                  <FindMyPhoneTab device={selectedDevice} />
                 )}
                 {activeTab === 'battery' && (
                   <BatteryHealthTab device={selectedDevice} />
@@ -418,6 +642,21 @@ export function App() {
         isOpen={isGuideModalOpen}
         onClose={() => setIsGuideModalOpen(false)}
         initialTopic={guideTopic}
+      />
+
+      {/* Live Phone Notification & Incoming Call Center */}
+      <LiveNotificationCenter
+        isOpen={isNotificationCenterOpen}
+        onClose={() => setIsNotificationCenterOpen(false)}
+        events={liveEvents}
+        unreadCount={unreadCount}
+        activeToast={activeToast}
+        onDismissToast={() => setActiveToast(null)}
+        onOpenEvent={handleOpenLiveEvent}
+        onMarkRead={handleMarkEventRead}
+        onMarkAllRead={handleMarkAllEventsRead}
+        onClearAll={handleClearAllEvents}
+        onSimulate={handleSimulateEvent}
       />
     </div>
   );

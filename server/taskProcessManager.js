@@ -1,5 +1,6 @@
 import { adbManager } from './adbManager.js';
 import { mockDeviceManager } from './mockDeviceManager.js';
+import { resolveAppDisplayName } from './appNameResolver.js';
 
 export class TaskProcessManager {
   constructor() {
@@ -85,7 +86,7 @@ export class TaskProcessManager {
           tasks.push({
             pid: isNaN(pid) ? i : pid,
             packageName: name,
-            appName: name.split('.').pop() || name,
+            appName: resolveAppDisplayName(name),
             ramMb: ramMb > 0 ? ramMb : 12.5,
             cpu: Math.round((Math.random() * 2.5) * 10) / 10,
             isSystem,
@@ -142,7 +143,7 @@ export class TaskProcessManager {
             const isSystem = pkg.startsWith('com.android.') || pkg.startsWith('com.google.android.') || pkg.startsWith('android');
             startupApps.push({
               packageName: pkg,
-              appName: pkg.split('.').pop() || pkg,
+              appName: resolveAppDisplayName(pkg),
               receiver: recName || 'BootReceiver',
               bootEnabled: true,
               isSystem,
@@ -160,7 +161,7 @@ export class TaskProcessManager {
           for (const pkg of pkgs.slice(0, 15)) {
             startupApps.push({
               packageName: pkg,
-              appName: pkg.split('.').pop() || pkg,
+              appName: resolveAppDisplayName(pkg),
               receiver: `${pkg}.BootReceiver`,
               bootEnabled: true,
               isSystem: false,
@@ -211,7 +212,7 @@ export class TaskProcessManager {
           const isSystem = pkg.startsWith('com.android.') || pkg === 'system';
           services.push({
             packageName: pkg,
-            appName: pkg.split('.').pop() || pkg,
+            appName: resolveAppDisplayName(pkg),
             serviceCount: count,
             backgroundAllowed: true,
             batteryOptimized: !whitelist.includes(pkg),

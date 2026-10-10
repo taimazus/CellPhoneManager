@@ -61,15 +61,29 @@ import {
   Headphones,
   Settings,
   ExternalLink,
-  AlertTriangle
+  AlertTriangle,
+  RotateCcw,
+  ArrowDownLeft,
+  ArrowUpRight
 } from 'lucide-react';
 import { Device } from '../types';
 import { safeFetchJson } from '../utils/api';
 import { LoadingSpinner, ActionOverlay } from './LoadingSpinner';
 import { PaginationBar } from './PaginationBar';
 
+export interface MessagesNavigationTarget {
+  subTab?: 'calls' | 'contacts' | 'sms';
+  searchQuery?: string;
+  filter?: string;
+  targetItemKey?: string;
+  sender?: string;
+  text?: string;
+}
+
 interface MessagesTabProps {
   device: Device | null;
+  navigationTarget?: MessagesNavigationTarget | null;
+  onClearNavigationTarget?: () => void;
 }
 
 interface Contact {
@@ -128,10 +142,12 @@ interface CallState {
   isInCall: boolean;
 }
 
-export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
+export const MessagesTab: React.FC<MessagesTabProps> = ({ device, navigationTarget, onClearNavigationTarget }) => {
+  const isIos = device?.platform === 'ios' || device?.model?.toLowerCase().includes('iphone');
   const [subTab, setSubTab] = useState<'calls' | 'contacts' | 'sms'>('calls');
   const [loading, setLoading] = useState<boolean>(false);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [highlightedKey, setHighlightedKey] = useState<string | null>(null);
 
   // --- Live Call Telephony State ---
   const [callState, setCallState] = useState<CallState>({
@@ -235,6 +251,7 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
   const [ussdLoading, setUssdLoading] = useState<boolean>(false);
 
   const timerRef = useRef<any>(null);
+  const prevWasInCallRef = useRef<boolean>(false);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToast({ text, type });
@@ -345,19 +362,29 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     }
   };
 
-  // --- 0. Poll Call State (Every 2.5 seconds) ---
+  // --- 0. Poll Call State (Adaptive: 1s during active call/ringing, 2.5s idle) ---
   const pollCallState = async () => {
     if (!device) return;
     try {
-      const res = await fetch(`/api/devices/${device.id}/calls/state`);
+      const res = await fetch(`/api/devices/${encodeURIComponent(device.id)}/calls/state`);
       const data = await res.json();
       if (data && data.state) {
-        setCallState({
+        const isNowInCall = Boolean(data.isInCall || data.state === 'offhook');
+        const isNowRinging = Boolean(data.isRinging || data.state === 'ringing');
+
+        // Automatically detect call end / hangup on mobile:
+        if (prevWasInCallRef.current && !isNowInCall && !isNowRinging) {
+          fetchCalls(); // Immediately refresh call logs so finished call appears
+          showToast('تماس به پایان رسید', 'info');
+        }
+        prevWasInCallRef.current = isNowInCall;
+
+        setCallState(prev => ({
           state: data.state,
-          incomingNumber: data.incomingNumber || '',
-          isRinging: data.isRinging || data.state === 'ringing',
-          isInCall: data.isInCall || data.state === 'offhook'
-        });
+          incomingNumber: data.incomingNumber || (isNowInCall ? (prev.incomingNumber || 'تماس فعال') : ''),
+          isRinging: isNowRinging,
+          isInCall: isNowInCall
+        }));
       }
     } catch {
       // ignore polling errors quietly
@@ -367,9 +394,11 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
   useEffect(() => {
     if (!device) return;
     pollCallState();
-    const interval = setInterval(pollCallState, 2500);
+    // Fast 1000ms polling when call is in progress or ringing so call end is caught instantly
+    const intervalMs = (callState.isInCall || callState.isRinging) ? 1000 : 2500;
+    const interval = setInterval(pollCallState, intervalMs);
     return () => clearInterval(interval);
-  }, [device?.id]);
+  }, [device?.id, callState.isInCall, callState.isRinging]);
 
   // Handle in-call timer
   useEffect(() => {
@@ -397,9 +426,11 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     if (!device) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/devices/${device.id}/calls`);
+      const res = await fetch(`/api/devices/${encodeURIComponent(device.id)}/calls`);
       const data = await res.json();
-      if (data.calls) setCallLogs(data.calls);
+      if (data && data.calls && Array.isArray(data.calls)) {
+        setCallLogs(data.calls);
+      }
     } catch (err: any) {
       showToast(`خطا در دریافت لاگ تماس: ${err.message}`, 'error');
     } finally {
@@ -420,9 +451,11 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       });
     }
     try {
-      const res = await fetch(`/api/devices/${device.id}/contacts`);
+      const res = await fetch(`/api/devices/${encodeURIComponent(device.id)}/contacts`);
       const data = await res.json();
-      if (data.contacts) setContacts(data.contacts);
+      if (data && data.contacts && Array.isArray(data.contacts)) {
+        setContacts(data.contacts);
+      }
     } catch (err: any) {
       showToast(`خطا در دریافت مخاطبین: ${err.message}`, 'error');
     } finally {
@@ -431,17 +464,75 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     }
   };
 
+  const pendingNavTargetRef = useRef<MessagesNavigationTarget | null>(null);
+
+  const resolveSmsThread = (messages: SmsMessage[], target: MessagesNavigationTarget): boolean => {
+    if (!messages || messages.length === 0) return false;
+
+    const rawTargetId = target.targetItemKey ? String(target.targetItemKey).replace(/^(?:db_)?sms_/, '') : '';
+    const cleanDigits = (s?: string) => (s ? s.replace(/[^\d]/g, '') : '');
+    const targetDigits = cleanDigits(target.searchQuery || target.sender);
+    const targetSender = (target.sender || target.searchQuery || '').trim().toLowerCase();
+    const targetBodySnippet = (target.text || '').trim().slice(0, 35).toLowerCase();
+
+    // 1. Direct ID / threadId match
+    let matchedMsg = messages.find(m => {
+      const idStr = String(m.id || '');
+      const threadStr = String(m.threadId || '');
+      return Boolean(rawTargetId && (idStr === rawTargetId || threadStr === rawTargetId));
+    });
+
+    // 2. Phone number match (matching last 7 digits)
+    if (!matchedMsg && targetDigits.length >= 7) {
+      const last7 = targetDigits.slice(-7);
+      matchedMsg = messages.find(m => {
+        const mDigits = cleanDigits(m.number);
+        return mDigits.endsWith(last7) || (mDigits.length >= 7 && targetDigits.endsWith(mDigits.slice(-7)));
+      });
+    }
+
+    // 3. Sender / Name match
+    if (!matchedMsg && targetSender) {
+      matchedMsg = messages.find(m => {
+        const s = (m.sender || '').toLowerCase();
+        const n = (m.number || '').toLowerCase();
+        return (s && s.includes(targetSender)) || (n && n.includes(targetSender)) || (targetSender.includes(s) && s.length > 2);
+      });
+    }
+
+    // 4. Message text snippet match
+    if (!matchedMsg && targetBodySnippet) {
+      matchedMsg = messages.find(m => m.body && m.body.toLowerCase().includes(targetBodySnippet));
+    }
+
+    if (matchedMsg) {
+      const targetThreadKey = matchedMsg.threadId || matchedMsg.number;
+      setSelectedThread(targetThreadKey);
+      setHighlightedKey(String(matchedMsg.id));
+      setSmsCategoryFilter('all');
+      setSmsSearch(''); // Clear search filter so conversation list shows the thread
+      return true;
+    }
+
+    return false;
+  };
+
   // 3. Fetch SMS
   const fetchSms = async () => {
     if (!device) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/devices/${device.id}/sms`);
+      const res = await fetch(`/api/devices/${encodeURIComponent(device.id)}/sms`);
       const data = await res.json();
-      if (data.messages) {
+      if (data && data.messages && Array.isArray(data.messages)) {
         setSmsList(data.messages);
-        if (!selectedThread && data.messages.length > 0) {
-          setSelectedThread(data.messages[0].threadId);
+        if (pendingNavTargetRef.current) {
+          const resolved = resolveSmsThread(data.messages, pendingNavTargetRef.current);
+          if (resolved) {
+            pendingNavTargetRef.current = null;
+          }
+        } else if (!selectedThread && data.messages.length > 0) {
+          setSelectedThread(data.messages[0].threadId || data.messages[0].number);
         }
       }
     } catch (err: any) {
@@ -464,6 +555,55 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     if (subTab === 'contacts') fetchContacts();
     if (subTab === 'sms') fetchSms();
   }, [subTab]);
+
+  // --- Deep Navigation from Notifications & Live Events ---
+  const lastProcessedTargetRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!navigationTarget) return;
+
+    // Prevent duplicate re-execution of the same navigation target
+    const targetKey = JSON.stringify(navigationTarget);
+    if (lastProcessedTargetRef.current === targetKey) return;
+    lastProcessedTargetRef.current = targetKey;
+
+    if (navigationTarget.subTab) {
+      setSubTab(navigationTarget.subTab);
+    }
+
+    if (navigationTarget.subTab === 'sms') {
+      setSubTab('sms');
+      setSmsCategoryFilter('all');
+      setSmsSearch('');
+
+      const resolved = resolveSmsThread(smsList, navigationTarget);
+      if (!resolved) {
+        pendingNavTargetRef.current = navigationTarget;
+        fetchSms();
+      }
+    } else if (navigationTarget.subTab === 'calls') {
+      if (navigationTarget.filter) {
+        setCallFilter(navigationTarget.filter as any);
+      }
+      if (navigationTarget.searchQuery) {
+        setDialNumber(navigationTarget.searchQuery);
+        setHighlightedKey(navigationTarget.searchQuery);
+      }
+      if (navigationTarget.targetItemKey) {
+        setHighlightedKey(String(navigationTarget.targetItemKey));
+      }
+    }
+
+    // Immediately clear target in parent so user can freely navigate to contacts or sms
+    if (onClearNavigationTarget) {
+      onClearNavigationTarget();
+    }
+
+    const timer = setTimeout(() => {
+      setHighlightedKey(null);
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [navigationTarget, onClearNavigationTarget]);
 
   // --- Interactive Live Call Actions ---
   const handleAnswerCall = async () => {
@@ -524,6 +664,30 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       showToast(targetRoute === 'speaker' ? 'خروجی به اسپیکر/بلندگو تغییر یافت' : 'خروجی به گوشی تغییر یافت', 'success');
     } catch (err: any) {
       showToast(`خطا: ${err.message}`, 'error');
+    }
+  };
+
+  const [isResettingAudio, setIsResettingAudio] = useState<boolean>(false);
+
+  const handleResetCallAudio = async () => {
+    if (!device) return;
+    setIsResettingAudio(true);
+    try {
+      const res = await fetch(`/api/devices/${encodeURIComponent(device.id)}/calls/reset-audio`, {
+        method: 'POST'
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(data.message || 'مسیر صدای مکالمه با موفقیت بازنشانی شد و خروجی گوشی متصل گردید', 'success');
+        setIsSpeaker(false);
+        setIsMuted(false);
+      } else {
+        showToast(`خطا در بازنشانی صدا: ${data.error || 'ناشناخته'}`, 'error');
+      }
+    } catch (err: any) {
+      showToast(`خطا: ${err.message}`, 'error');
+    } finally {
+      setIsResettingAudio(false);
     }
   };
 
@@ -1115,9 +1279,10 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       const data = await res.json();
       if (data.success) {
         showToast('پیامک با موفقیت حذف شد', 'success');
+        setSmsList(prev => prev.filter(m => m.id !== messageId));
         fetchSms();
       } else {
-        showToast(data.error || 'خطا در حذف پیامک (محدودیت امنیتی اندروید)', 'error');
+        showToast(data.error || 'خطا در حذف پیامک', 'error');
         fetchSms();
       }
     } catch (err: any) {
@@ -1132,17 +1297,30 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     const displayName = number || threadKey;
     if (!confirm(`آیا از حذف کل این گفتگو (${displayName}) اطمینان دارید؟`)) return;
     try {
+      const msgs = smsThreads[threadKey] || [];
+      const messageIds = msgs.map(m => m.id).filter(Boolean);
+      const actualThreadId = msgs[0]?.threadId || threadKey;
+
       const res = await fetch(`/api/devices/${device.id}/sms/delete-thread`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ threadKey, number })
+        body: JSON.stringify({ threadKey: actualThreadId, number, messageIds })
       });
       const data = await res.json();
       if (data.success) {
         showToast('گفتگو با موفقیت حذف شد', 'success');
+        setSmsList(prev => prev.filter(m => {
+          if (messageIds.includes(m.id)) return false;
+          if (actualThreadId && m.threadId === actualThreadId) return false;
+          if (number && m.number === number) return false;
+          return true;
+        }));
+        if (selectedThread === threadKey || selectedThread === actualThreadId) {
+          setSelectedThread(null);
+        }
         fetchSms();
       } else {
-        showToast(data.error || 'خطا در حذف گفتگو (محدودیت امنیتی اندروید)', 'error');
+        showToast(data.error || 'خطا در حذف گفتگو', 'error');
         fetchSms();
       }
     } catch (err: any) {
@@ -1157,8 +1335,13 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
     try {
       const numbersToDelete: string[] = [];
       const threadKeysToDelete: string[] = [];
+      const messageIdsToDelete: (string | number)[] = [];
+
       selectedSmsThreads.forEach(key => {
-        const msgs = smsThreads[key];
+        const msgs = smsThreads[key] || [];
+        msgs.forEach(m => {
+          if (m.id) messageIdsToDelete.push(m.id);
+        });
         if (msgs && msgs[0]) {
           if (msgs[0].threadId) threadKeysToDelete.push(msgs[0].threadId);
           if (msgs[0].number) numbersToDelete.push(msgs[0].number);
@@ -1170,16 +1353,29 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
       const res = await fetch(`/api/devices/${device.id}/sms/delete-batch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ threadKeys: threadKeysToDelete, numbers: numbersToDelete })
+        body: JSON.stringify({
+          threadKeys: threadKeysToDelete,
+          numbers: numbersToDelete,
+          messageIds: messageIdsToDelete
+        })
       });
       const data = await res.json();
       if (data.success) {
         showToast(`${selectedSmsThreads.length} گفتگو با موفقیت حذف شدند`, 'success');
+        setSmsList(prev => prev.filter(m => {
+          if (messageIdsToDelete.includes(m.id)) return false;
+          if (threadKeysToDelete.includes(m.threadId)) return false;
+          if (m.number && numbersToDelete.includes(m.number)) return false;
+          return true;
+        }));
+        if (selectedThread && selectedSmsThreads.includes(selectedThread)) {
+          setSelectedThread(null);
+        }
         setSelectedSmsThreads([]);
         setIsSmsSelectMode(false);
         fetchSms();
       } else {
-        showToast(data.error || 'خطا در حذف گروهی (محدودیت امنیتی اندروید)', 'error');
+        showToast(data.error || 'خطا در حذف گروهی', 'error');
         fetchSms();
       }
     } catch (err: any) {
@@ -1674,6 +1870,17 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                 <span>{isSpeaker ? 'خروجی بلندگو' : 'خروجی گوشی'}</span>
               </button>
 
+              {/* Reset Call Audio (Earpiece Unmute / Fix) Button */}
+              <button
+                onClick={handleResetCallAudio}
+                disabled={isResettingAudio}
+                className="flex items-center gap-2 px-4 py-3 rounded-2xl font-bold text-xs transition-all border bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-lg shadow-emerald-500/10"
+                title="اگر صدای طرف مقابل شنیده نمی‌شود، برای اتصال فوری و خروج از حالت بی‌صدا کلیک کنید"
+              >
+                <RotateCcw className={`w-4 h-4 text-emerald-400 ${isResettingAudio ? 'animate-spin' : ''}`} />
+                <span>رفع قطعی صدای مکالمه</span>
+              </button>
+
               {/* Toggle DTMF Keypad */}
               <button
                 onClick={() => setShowDtmfKeypad(!showDtmfKeypad)}
@@ -1692,6 +1899,19 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
               >
                 <PhoneOff className="w-4 h-4" />
                 <span>قطع تماس (Hang Up)</span>
+              </button>
+
+              {/* Dismiss / Close Studio Card */}
+              <button
+                onClick={() => {
+                  setCallState({ state: 'idle', incomingNumber: '', isRinging: false, isInCall: false });
+                  fetchCalls();
+                }}
+                className="flex items-center gap-1.5 px-3.5 py-3 rounded-2xl bg-slate-900/90 hover:bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700 text-xs font-bold transition-all"
+                title="بستن پنل مکالمه (در صورتی که تماس روی گوشی پایان یافته است)"
+              >
+                <X className="w-4 h-4 text-slate-400" />
+                <span>بستن پنل</span>
               </button>
             </div>
           </div>
@@ -1723,16 +1943,18 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
         <div className="space-y-1 text-right">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <PhoneCall className="w-6 h-6 text-cyan-400" />
-            <span>مدیریت و کنترل کامل تماس‌ها، مخاطبین و پیامک‌ها</span>
+            <span>مدیریت و کنترل تماس‌ها، مخاطبین و پیامک‌ها</span>
           </h2>
           <p className="text-xs text-slate-400">
-            پاسخ‌دهی و برقراری تماس مستقیم از ویندوز، بی‌صدا کردن میکروفون، تعویض بلندگو، شماره‌گیر تلفن گویا، ویرایش مخاطبین و پیامک‌ها
+            {isIos
+              ? 'برقراری تماس مستقیم و هدایت به هندزفری بلوتوث کامپیوتر، شماره‌گیری سریع و مدیریت اطلاعات آیفون'
+              : 'پاسخ‌دهی و برقراری تماس مستقیم از ویندوز، بی‌صدا کردن میکروفون، تعویض بلندگو، شماره‌گیر تلفن گویا، ویرایش مخاطبین و پیامک‌ها'}
           </p>
         </div>
 
         {/* Subtabs Switcher & Simulator button */}
         <div className="flex items-center gap-2">
-          {(!callState.isRinging && !callState.isInCall) && (
+          {!isIos && (!callState.isRinging && !callState.isInCall) && (
             <button
               onClick={handleSimulateIncomingCall}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/30 text-xs font-bold transition-all shadow-sm"
@@ -1777,6 +1999,16 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
         </div>
       </div>
 
+      {/* iOS Notice Banner */}
+      {isIos && (
+        <div className="p-4 rounded-2xl bg-slate-900/80 border border-cyan-500/30 flex items-center gap-3 text-xs text-slate-300">
+          <AlertCircle className="w-5 h-5 text-cyan-400 shrink-0" />
+          <span>
+            <strong>دستگاه متصل: Apple iPhone (iOS)</strong> — به دلیل پروتکل‌های امنیتی اپل، شماره‌گیری از طریق هدایت تماس و هندزفری بلوتوث کامپیوتر فعال است. برای استخراج و پشتیبان‌گیری ساختاریافته از تمامی مخاطبین، پیام‌ها و فایل‌ها می‌توانید از تب <strong>«پشتیبان‌گیری و بازیابی جامع»</strong> و <strong>«استودیو اختصاصی آیفون»</strong> استفاده فرمایید.
+          </span>
+        </div>
+      )}
+
       {/* ========================================================= */}
       {/* 1. CALLS & DIALER VIEW */}
       {/* ========================================================= */}
@@ -1791,6 +2023,16 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                   <Phone className="w-4 h-4 text-cyan-400" />
                   <span>شماره‌گیر مستقیم و کدهای دستوری</span>
                 </h3>
+                <button
+                  type="button"
+                  onClick={handleResetCallAudio}
+                  disabled={isResettingAudio}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shadow-sm"
+                  title="بازنشانی مسیر صدای مکالمه و رفع بی‌صدا شدن تماس‌های دریافتی بدون نیاز به ریستارت گوشی"
+                >
+                  <RotateCcw className={`w-3.5 h-3.5 text-emerald-400 ${isResettingAudio ? 'animate-spin' : ''}`} />
+                  <span>تعمیر صدای تماس</span>
+                </button>
               </div>
 
               {/* SIM Card Preference Selector */}
@@ -2280,27 +2522,78 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
             ) : (
               <div className="space-y-3">
                 <div className="divide-y divide-slate-800/60 max-h-[480px] overflow-y-auto pr-1 font-sans text-xs">
-                  {paginatedCalls.map((call) => (
-                    <div key={call.id} className="flex items-center justify-between p-3.5 hover:bg-slate-800/40 transition-colors group">
-                      <div className="flex items-center gap-3">
-                        {/* Direction Icon */}
-                        <div className={`p-2.5 rounded-xl border ${
-                          call.type === 'incoming' 
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                            : call.type === 'outgoing'
-                            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                            : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                        }`}>
-                          {call.type === 'incoming' && <PhoneIncoming className="w-4 h-4" />}
-                          {call.type === 'outgoing' && <PhoneOutgoing className="w-4 h-4" />}
-                          {(call.type === 'missed' || call.type === 'rejected') && <PhoneMissed className="w-4 h-4" />}
-                        </div>
+                  {paginatedCalls.map((call) => {
+                    const isCallHighlighted = highlightedKey && (
+                      highlightedKey === call.id || 
+                      (call.number && (call.number.includes(highlightedKey) || highlightedKey.includes(call.number))) ||
+                      (call.name && (call.name.includes(highlightedKey) || highlightedKey.includes(call.name)))
+                    );
 
-                        <div className="text-right">
-                          <h4 className="font-bold text-white text-xs">{call.name}</h4>
-                          <p className="text-[11px] text-slate-400 font-mono mt-0.5 text-left" dir="ltr">{call.number}</p>
+                    const isIncoming = call.type === 'incoming';
+                    const isOutgoing = call.type === 'outgoing';
+                    const isMissed = call.type === 'missed';
+                    const isRejected = call.type === 'rejected';
+
+                    const callTheme = isIncoming
+                      ? {
+                          container: 'bg-emerald-950/25 hover:bg-emerald-900/35 border-r-4 border-r-emerald-500 border border-emerald-500/25',
+                          iconBox: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm shadow-emerald-500/10',
+                          badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+                          label: 'تماس دریافتی',
+                          Icon: PhoneIncoming
+                        }
+                      : isOutgoing
+                      ? {
+                          container: 'bg-cyan-950/25 hover:bg-cyan-900/35 border-r-4 border-r-cyan-500 border border-cyan-500/25',
+                          iconBox: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-sm shadow-cyan-500/10',
+                          badge: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
+                          label: 'تماس خروجی (ارسالی)',
+                          Icon: PhoneOutgoing
+                        }
+                      : isMissed
+                      ? {
+                          container: 'bg-rose-950/25 hover:bg-rose-900/35 border-r-4 border-r-rose-500 border border-rose-500/25',
+                          iconBox: 'bg-rose-500/20 text-rose-300 border-rose-500/40 shadow-sm shadow-rose-500/10',
+                          badge: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+                          label: 'تماس بی‌پاسخ',
+                          Icon: PhoneMissed
+                        }
+                      : {
+                          container: 'bg-amber-950/25 hover:bg-amber-900/35 border-r-4 border-r-amber-500 border border-amber-500/25',
+                          iconBox: 'bg-amber-500/20 text-amber-300 border-amber-500/40 shadow-sm shadow-amber-500/10',
+                          badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+                          label: 'تماس رد شده',
+                          Icon: PhoneOff
+                        };
+
+                    const DirectionIcon = callTheme.Icon;
+
+                    return (
+                      <div 
+                        key={call.id} 
+                        className={`flex items-center justify-between p-3.5 my-1.5 transition-all group rounded-2xl ${
+                          isCallHighlighted 
+                            ? 'animate-highlightGlow bg-amber-500/20 border-2 border-amber-400 shadow-lg shadow-amber-500/20' 
+                            : callTheme.container
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {/* Direction Icon */}
+                          <div className={`p-2.5 rounded-xl border ${callTheme.iconBox}`}>
+                            <DirectionIcon className="w-4 h-4" />
+                          </div>
+
+                          <div className="text-right">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-white text-xs">{call.name}</h4>
+                              <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border flex items-center gap-1 ${callTheme.badge}`}>
+                                <DirectionIcon className="w-2.5 h-2.5" />
+                                <span>{callTheme.label}</span>
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-400 font-mono mt-0.5 text-left" dir="ltr">{call.number}</p>
+                          </div>
                         </div>
-                      </div>
 
                       <div className="flex items-center gap-4">
                         <div className="text-left text-[11px] text-slate-400 font-mono">
@@ -2327,7 +2620,8 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                         </button>
                       </div>
                     </div>
-                  ))}
+                  );
+                })}
                 </div>
 
                 {filteredCalls.length > callPageSize && (
@@ -2975,6 +3269,11 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                     const lastMsg = msgs[0];
                     const isSelected = selectedThread === threadKey;
                     const isItemChecked = selectedSmsThreads.includes(threadKey);
+                    const isThreadHighlighted = highlightedKey && (
+                      highlightedKey === threadKey || 
+                      (lastMsg?.number && (lastMsg.number.includes(highlightedKey) || highlightedKey.includes(lastMsg.number))) ||
+                      (lastMsg?.sender && (lastMsg.sender.includes(highlightedKey) || highlightedKey.includes(lastMsg.sender)))
+                    );
 
                     return (
                       <div
@@ -2987,7 +3286,9 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                           }
                         }}
                         className={`group relative p-3 rounded-xl cursor-pointer transition-all border text-right flex items-start justify-between gap-2 ${
-                          isSelected 
+                          isThreadHighlighted
+                            ? 'animate-highlightGlow bg-amber-500/20 border-2 border-amber-400 text-amber-200 shadow-lg shadow-amber-500/20'
+                            : isSelected 
                             ? 'bg-cyan-500/10 border-cyan-500/40 text-cyan-300' 
                             : 'bg-slate-900/60 hover:bg-slate-800/60 border-slate-800/80 text-slate-300'
                         } ${isItemChecked ? 'ring-1 ring-cyan-500/60 bg-cyan-950/30' : ''}`}
@@ -3017,8 +3318,21 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                             </span>
                           </div>
 
-                          {/* Category Tag Badge */}
+                          {/* Category & Direction Tag Badges */}
                           <div className="flex items-center gap-1 flex-wrap">
+                            {/* Direction: Received vs Sent */}
+                            {lastMsg.type === 'inbox' ? (
+                              <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[9px] font-sans font-bold border border-emerald-500/35 flex items-center gap-0.5">
+                                <ArrowDownLeft className="w-2.5 h-2.5 text-emerald-400" />
+                                <span>دریافتی</span>
+                              </span>
+                            ) : lastMsg.type === 'sent' ? (
+                              <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-[9px] font-sans font-bold border border-cyan-500/35 flex items-center gap-0.5">
+                                <ArrowUpRight className="w-2.5 h-2.5 text-cyan-400" />
+                                <span>ارسالی</span>
+                              </span>
+                            ) : null}
+
                             {lastMsg.isBank && (
                               <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[9px] font-sans border border-amber-500/30">
                                 💳 بانکی
@@ -3119,21 +3433,55 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                 <div className="flex-1 overflow-y-auto p-3 space-y-3.5 max-h-[380px] my-2 bg-slate-950/40 rounded-2xl border border-slate-900/80">
                   {activeThreadMessages.map((msg, idx) => {
                     const isSent = msg.type === 'sent';
+                    const isMsgHighlighted = Boolean(highlightedKey && (
+                      highlightedKey === String(msg.id) ||
+                      (msg.number && highlightedKey.includes(msg.number))
+                    ));
                     return (
                       <div
                         key={msg.id || idx}
                         className={`flex flex-col ${isSent ? 'items-start' : 'items-end'}`}
                       >
                         <div
-                          className={`relative group/msg max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed shadow-md ${
+                          className={`relative group/msg max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed shadow-md transition-all ${
+                            isMsgHighlighted
+                              ? 'ring-4 ring-amber-400 shadow-2xl shadow-amber-400/40 animate-highlightGlow'
+                              : ''
+                          } ${
                             isSent
-                              ? 'bg-cyan-600 text-slate-950 font-medium rounded-br-none shadow-cyan-600/10'
-                              : 'bg-slate-800/90 text-slate-200 rounded-bl-none border border-slate-700/60'
+                              ? 'bg-gradient-to-br from-cyan-600 via-sky-600 to-blue-600 text-slate-950 font-medium rounded-br-none shadow-cyan-600/25 border border-cyan-400/40'
+                              : 'bg-gradient-to-br from-emerald-950/70 via-slate-900/90 to-teal-950/50 text-emerald-50 rounded-bl-none border border-emerald-500/40 shadow-emerald-950/40'
                           }`}
                         >
+                          {/* Direction Header Indicator */}
+                          <div className={`flex items-center justify-between gap-1.5 text-[10px] font-bold mb-1.5 pb-1 border-b ${
+                            isSent ? 'text-slate-950 border-slate-950/20' : 'text-emerald-400 border-emerald-500/25'
+                          }`}>
+                            <div className="flex items-center gap-1.5">
+                              {isSent ? (
+                                <>
+                                  <ArrowUpRight className="w-3 h-3 text-slate-950" />
+                                  <span>پیامک ارسالی (خروجی)</span>
+                                </>
+                              ) : (
+                                <>
+                                  <ArrowDownLeft className="w-3 h-3 text-emerald-400" />
+                                  <span>پیامک دریافتی (ورودی)</span>
+                                </>
+                              )}
+                            </div>
+                            {isMsgHighlighted && (
+                              <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[9px] shadow-sm animate-pulse">
+                                ⭐ پیام بازشده از اعلان
+                              </span>
+                            )}
+                          </div>
+
                           {/* Tags Indicator */}
                           {(msg.isBank || msg.isOtp || msg.isSpam || msg.isBlocked || msg.type === 'draft') && (
-                            <div className="flex items-center gap-1.5 mb-2 flex-wrap pb-1.5 border-b border-slate-700/40">
+                            <div className={`flex items-center gap-1.5 mb-2 flex-wrap pb-1.5 border-b ${
+                              isSent ? 'border-slate-950/20' : 'border-emerald-500/20'
+                            }`}>
                               {msg.isBank && (
                                 <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[10px] font-sans border border-amber-500/30 flex items-center gap-1">
                                   <CreditCard className="w-3 h-3 text-amber-400" />
@@ -3168,13 +3516,17 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                           )}
 
                           {/* Full Message Text Body */}
-                          <p className="whitespace-pre-wrap select-text font-sans break-words text-right leading-relaxed" dir="auto">
+                          <p className={`whitespace-pre-wrap select-text font-sans break-words text-right leading-relaxed ${
+                            isSent ? 'text-slate-950 font-medium' : 'text-slate-100'
+                          }`} dir="auto">
                             {msg.body || '(بدون محتوا)'}
                           </p>
 
                           {/* Bottom Message Info & 1-Click Copy */}
-                          <div className="flex items-center justify-between gap-3 mt-2.5 pt-1.5 border-t border-slate-700/30 text-[10px]">
-                            <div className={`flex items-center gap-1 font-mono ${isSent ? 'text-slate-900/80' : 'text-slate-400'}`}>
+                          <div className={`flex items-center justify-between gap-3 mt-2.5 pt-1.5 border-t text-[10px] ${
+                            isSent ? 'border-slate-950/20' : 'border-emerald-500/20'
+                          }`}>
+                            <div className={`flex items-center gap-1 font-mono ${isSent ? 'text-slate-950/90 font-bold' : 'text-emerald-300/80'}`}>
                               <span>{msg.timestamp}</span>
                               {isSent && <CheckCheck className="w-3 h-3 inline text-slate-950 font-bold" />}
                             </div>
@@ -3185,8 +3537,8 @@ export const MessagesTab: React.FC<MessagesTabProps> = ({ device }) => {
                                 onClick={() => handleCopyMessageText(msg.id, msg.body)}
                                 className={`flex items-center gap-1 px-2 py-0.5 rounded-lg transition-all border ${
                                   isSent
-                                    ? 'bg-slate-900/40 text-slate-950 border-slate-900/30 hover:bg-slate-900/60'
-                                    : 'bg-slate-900 text-slate-300 border-slate-700 hover:text-cyan-300 hover:border-cyan-500/40'
+                                    ? 'bg-slate-950/20 text-slate-950 border-slate-950/30 hover:bg-slate-950/30'
+                                    : 'bg-slate-900/80 text-emerald-300 border-emerald-500/30 hover:bg-emerald-900/40'
                                 }`}
                                 title="کپی متن کامل پیامک"
                               >

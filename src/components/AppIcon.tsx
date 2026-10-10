@@ -36,6 +36,7 @@ import {
   Cpu,
   Feather
 } from 'lucide-react';
+import { resolveAppDisplayName } from '../utils/appNameResolver';
 
 export interface AppIconProps {
   packageName?: string;
@@ -64,7 +65,7 @@ export const AppIcon: React.FC<AppIconProps> = ({
   const [imgLoaded, setImgLoaded] = useState<boolean>(false);
 
   const effectivePkg = packageName || pkg || icon || '';
-  const effectiveName = appName || name || effectivePkg.split('.').pop() || '';
+  const effectiveName = resolveAppDisplayName(effectivePkg, appName || name);
   const pkgLower = effectivePkg.toLowerCase();
   const nameLower = effectiveName.toLowerCase();
 

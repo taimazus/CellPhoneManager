@@ -18,7 +18,8 @@ import {
   Shield,
   Activity,
   Crown,
-  ExternalLink
+  ExternalLink,
+  Bell
 } from 'lucide-react';
 import { Device } from '../types';
 import { APP_VERSION } from '../constants';
@@ -33,6 +34,8 @@ interface DeviceHeaderProps {
   onOpenGuideModal: (topic?: string) => void;
   isRefreshing: boolean;
   onToggleSidebar?: () => void;
+  onToggleNotificationCenter?: () => void;
+  unreadCount?: number;
 }
 
 export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
@@ -44,7 +47,9 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
   onOpenWirelessModal,
   onOpenGuideModal,
   isRefreshing,
-  onToggleSidebar
+  onToggleSidebar,
+  onToggleNotificationCenter,
+  unreadCount = 0
 }) => {
   const getOemBadge = () => {
     if (!selectedDevice) return null;
@@ -182,6 +187,32 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
           <Wifi className="w-3.5 h-3.5 text-yellow-400 group-hover:scale-110 transition-transform" />
           <span>اتصال Wi-Fi</span>
         </button>
+
+        {/* Live Notification Center Bell Button */}
+        {onToggleNotificationCenter && (
+          <button
+            onClick={onToggleNotificationCenter}
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border text-xs font-bold transition-all group shrink-0 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none ${
+              unreadCount > 0 
+                ? 'bg-amber-500/15 border-amber-500/40 text-yellow-300 hover:bg-amber-500/25 shadow-sm shadow-amber-500/20' 
+                : 'bg-[#14151b] border-amber-500/20 text-stone-300 hover:text-yellow-300 hover:bg-[#1e1f29]'
+            }`}
+            title="مرکز اعلان‌ها، پیامک‌ها و تماس‌های زنده گوشی"
+            aria-label="مرکز اعلان‌ها و تماس‌ها"
+          >
+            <div className="relative flex items-center">
+              <Bell className={`w-3.5 h-3.5 ${unreadCount > 0 ? 'text-yellow-400 animate-bounce' : 'text-stone-400 group-hover:text-yellow-400'}`} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-2 -right-2.5 min-w-[16px] h-[16px] px-1 rounded-full bg-rose-500 text-white font-mono text-[9px] font-black flex items-center justify-center shadow-md shadow-rose-950 animate-pulse">
+                  {unreadCount > 99 ? '+99' : unreadCount}
+                </span>
+              )}
+            </div>
+            <span className="hidden xl:inline text-[11px]">
+              {unreadCount > 0 ? `${unreadCount} اعلان جدید` : 'اعلان‌ها'}
+            </span>
+          </button>
+        )}
       </div>
 
       {/* Telemetry Badges & Quick Action Tools */}
@@ -215,6 +246,26 @@ export const DeviceHeader: React.FC<DeviceHeaderProps> = ({
             <span className="text-stone-500 text-[10px] hidden md:inline">| {selectedDevice.battery.temperature}°C</span>
           </div>
         )}
+
+        {/* Live Notification Center Trigger */}
+        <button
+          onClick={onToggleNotificationCenter}
+          className={`relative flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl border text-xs font-bold transition-all shadow-sm shrink-0 active:scale-95 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none ${
+            unreadCount > 0
+              ? 'bg-amber-500/20 text-yellow-300 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
+              : 'bg-[#14151b] hover:bg-[#1a1b22] text-stone-300 hover:text-yellow-300 border-amber-500/20 hover:border-amber-500/40'
+          }`}
+          title="مرکز اعلان‌های زنده، پیامک‌ها و تماس‌ها"
+          aria-label="مرکز اعلان‌های زنده، پیامک‌ها و تماس‌ها"
+        >
+          <Bell className={`w-3.5 h-3.5 shrink-0 ${unreadCount > 0 ? 'text-yellow-400 animate-bounce' : 'text-yellow-400/80'}`} />
+          <span className="hidden sm:inline">اعلان‌ها</span>
+          {unreadCount > 0 && (
+            <span className="flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-black rounded-full bg-gradient-to-r from-amber-500 to-rose-500 text-stone-950 font-mono shadow-md animate-pulse">
+              {unreadCount > 99 ? '+99' : unreadCount}
+            </span>
+          )}
+        </button>
 
         {/* User Guide Button */}
         <button

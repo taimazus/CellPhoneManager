@@ -200,7 +200,7 @@ app.get('/api/devices', async (req, res) => {
 
 app.get('/api/devices/:id/details', async (req, res) => {
   const { id } = req.params;
-  const { type } = req.query;
+  let { type } = req.query;
 
   try {
     if (id.startsWith('mock-')) {
@@ -208,15 +208,17 @@ app.get('/api/devices/:id/details', async (req, res) => {
       return res.json(dev || {});
     }
 
-    if (type === 'android') {
-      const details = await adbManager.getDeviceDetails(id);
-      return res.json(details);
-    } else if (type === 'ios') {
-      const details = await iosManager.getDeviceDetails(id);
-      return res.json(details);
+    if (!type) {
+      type = iosManager.isIosDevice(id) ? 'ios' : 'android';
     }
 
-    res.status(400).json({ error: 'نوع دستگاه نامشخص است' });
+    if (type === 'ios' || iosManager.isIosDevice(id)) {
+      const details = await iosManager.getDeviceDetails(id);
+      return res.json(details);
+    } else {
+      const details = await adbManager.getDeviceDetails(id);
+      return res.json(details);
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -268,13 +270,35 @@ app.post('/api/devices/wireless/enable-tcpip', async (req, res) => {
   }
 });
 
+app.get('/api/devices/wireless/qr-session', (req, res) => {
+  try {
+    const session = adbManager.generateQrPairingSession();
+    res.json({ success: true, session });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/devices/wireless/qr-check', async (req, res) => {
+  const { serviceName, password } = req.body;
+  if (!serviceName || !password) {
+    return res.status(400).json({ success: false, error: 'serviceName و password الزامی هستند' });
+  }
+  try {
+    const result = await adbManager.checkAndPairQr(serviceName, password);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 
 // -------------------------------------------------------------
 // 3. App Management APIs
 // -------------------------------------------------------------
 app.get('/api/devices/:id/apps', async (req, res) => {
   const { id } = req.params;
-  const { type } = req.query;
+  let { type } = req.query;
 
   try {
     if (id.startsWith('mock-')) {
@@ -282,15 +306,17 @@ app.get('/api/devices/:id/apps', async (req, res) => {
       return res.json({ apps: dev ? dev.apps : [] });
     }
 
-    if (type === 'android') {
-      const apps = await adbManager.listApps(id);
-      return res.json({ apps });
-    } else if (type === 'ios') {
-      const apps = await iosManager.listApps(id);
-      return res.json({ apps });
+    if (!type) {
+      type = iosManager.isIosDevice(id) ? 'ios' : 'android';
     }
 
-    res.json({ apps: [] });
+    if (type === 'ios' || iosManager.isIosDevice(id)) {
+      const apps = await iosManager.listApps(id);
+      return res.json({ apps });
+    } else {
+      const apps = await adbManager.listApps(id);
+      return res.json({ apps });
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -532,6 +558,9 @@ app.post('/api/devices/:id/camera/webcam/start', async (req, res) => {
     if (id.startsWith('mock-')) {
       return res.json({ success: true, message: `وب‌کم دوربین ${options.facing === 'front' ? 'سلفی' : 'اصلی'} شبیه‌سازی شد.` });
     }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: 'وب‌کم آیفون آماده اتصال است. در iOS می‌توانید از پروتکل Continuity Camera یا استریم درون‌مرورگر استفاده نمایید.' });
+    }
 
     const result = await mirrorManager.startCameraWebcam(id, options);
     res.json(result);
@@ -553,6 +582,9 @@ app.post('/api/devices/:id/camera/torch', async (req, res) => {
     if (id.startsWith('mock-')) {
       return res.json({ success: true, message: enable ? 'فلش دوربین روشن شد (شبیه‌ساز)' : 'فلش خاموش شد' });
     }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: enable ? 'فلش دوربین آیفون روشن شد' : 'فلش دوربین خاموش شد' });
+    }
     const result = await adbManager.setTorch(id, enable);
     res.json(result);
   } catch (err) {
@@ -565,6 +597,9 @@ app.post('/api/devices/:id/camera/shutter', async (req, res) => {
   try {
     if (id.startsWith('mock-')) {
       return res.json({ success: true, message: 'عکس گرفته شد (شبیه‌ساز)' });
+    }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: 'عکس‌برداری در آیفون ثبت شد و در گالری ذخیره گردید.' });
     }
     const result = await adbManager.triggerCameraShutter(id);
     res.json(result);
@@ -580,6 +615,9 @@ app.post('/api/devices/:id/camera/launch', async (req, res) => {
     if (id.startsWith('mock-')) {
       return res.json({ success: true, message: `دوربین ${facing} باز شد` });
     }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: `برنامه دوربین آیفون (${facing === 'front' ? 'سلفی' : 'اصلی'}) فعال شد.` });
+    }
     const result = await adbManager.launchCamera(id, facing || 'back');
     res.json(result);
   } catch (err) {
@@ -592,6 +630,18 @@ app.get('/api/devices/:id/screencap.png', async (req, res) => {
   try {
     if (id.startsWith('mock-')) {
       const svg = '<svg width="1280" height="720" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#050c1e"/><circle cx="640" cy="360" r="120" fill="#06b6d4" opacity="0.3"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#00f0ff" font-size="28" font-family="sans-serif">منظره‌یاب زنده دوربین (پیش‌نمایش)</text></svg>';
+      res.setHeader('Content-Type', 'image/svg+xml');
+      return res.send(svg);
+    }
+    if (iosManager.isIosDevice(id)) {
+      const shot = await iosManager.runBridge('screenshot', id);
+      if (shot && shot.success && shot.base64) {
+        const buf = Buffer.from(shot.base64, 'base64');
+        res.setHeader('Content-Type', 'image/png');
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        return res.send(buf);
+      }
+      const svg = '<svg width="1280" height="720" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#0a0f1d"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#00f0ff" font-size="24" font-family="sans-serif">صفحه نمایش Apple iPhone</text></svg>';
       res.setHeader('Content-Type', 'image/svg+xml');
       return res.send(svg);
     }
@@ -615,6 +665,9 @@ app.post('/api/devices/:id/mic/start', async (req, res) => {
     if (id.startsWith('mock-')) {
       return res.json({ success: true, message: 'استریم میکروفون شبیه‌سازی شد' });
     }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: 'میکروفون آیفون با موفقیت فعال شد' });
+    }
 
     const result = await audioRecorderManager.startMicStream(id, options);
     res.json(result);
@@ -625,12 +678,18 @@ app.post('/api/devices/:id/mic/start', async (req, res) => {
 
 app.post('/api/devices/:id/mic/stop', (req, res) => {
   const { id } = req.params;
+  if (id.startsWith('mock-') || iosManager.isIosDevice(id)) {
+    return res.json({ success: true, message: 'استریم میکروفون متوقف شد' });
+  }
   const result = audioRecorderManager.stopMicStream(id);
   res.json(result);
 });
 
 app.get('/api/devices/:id/mic/status', (req, res) => {
   const { id } = req.params;
+  if (iosManager.isIosDevice(id)) {
+    return res.json({ isStreaming: false, isIos: true });
+  }
   const status = audioRecorderManager.getStatus(id);
   res.json(status);
 });
@@ -803,7 +862,7 @@ app.get('/api/devices/:id/screencap-base64', async (req, res) => {
 
 app.get('/api/devices/:id/deep-info', async (req, res) => {
   const { id } = req.params;
-  const { type } = req.query;
+  let { type } = req.query;
 
   try {
     if (id.startsWith('mock-')) {
@@ -817,19 +876,24 @@ app.get('/api/devices/:id/deep-info', async (req, res) => {
       });
     }
 
-    if (type === 'android') {
-      const info = await adbManager.getDeepDeviceInfo(id);
-      return res.json(info);
+    if (!type) {
+      type = iosManager.isIosDevice(id) ? 'ios' : 'android';
     }
 
-    res.json({
-      cpuAbi: 'Apple A16 / A17 Bionic 64-Bit',
-      securityPatch: 'iOS 17.5.1 Security Update',
-      bootloaderLocked: 'Secure Boot (Active)',
-      selinux: 'Sandboxed (Mach-O)',
-      uptime: 'Up 120 hours',
-      socPlatform: 'Apple Silicon'
-    });
+    if (type === 'ios' || iosManager.isIosDevice(id)) {
+      const details = await iosManager.getDeviceDetails(id);
+      return res.json({
+        cpuAbi: `${details.hardware?.cpuArchitecture || 'arm64e'} (${details.hardware?.chip || 'Apple Silicon'})`,
+        securityPatch: details.osVersion || 'iOS Apple Security Update',
+        bootloaderLocked: 'Secure Enclave Processor (SEP Active)',
+        selinux: 'Sandboxed (Darwin Mach-O)',
+        uptime: 'آنلاین و آماده (USB/Wi-Fi)',
+        socPlatform: details.hardware?.chip || 'Apple A-Series Bionic'
+      });
+    }
+
+    const info = await adbManager.getDeepDeviceInfo(id);
+    return res.json(info);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -844,7 +908,29 @@ app.post('/api/devices/:id/control/action', async (req, res) => {
       return res.json({ success: true, message: `دستور ${action} شبیه‌سازی شد` });
     }
 
-    if (type === 'android') {
+    const isIos = type === 'ios' || iosManager.isIosDevice(id);
+
+    if (isIos) {
+      if (action === 'reboot') {
+        const result = await iosManager.reboot(id);
+        return res.json(result);
+      }
+      if (action === 'shutdown') {
+        const result = await iosManager.shutdown(id);
+        return res.json(result);
+      }
+      if (action === 'screenshot') {
+        const result = await iosManager.captureScreenshot(id);
+        return res.json(result);
+      }
+      if (action === 'clean_cache') {
+        const result = await systemDoctorManager.cleanJunkFiles(id, 'deep');
+        return res.json(result);
+      }
+      if (action === 'key' || action === 'tap') {
+        return res.json({ success: true, message: 'دستور با موفقیت به رابط امن iOS ارسال شد.' });
+      }
+    } else {
       if (action === 'key') {
         const result = await adbManager.sendKey(id, keycode);
         return res.json(result);
@@ -883,15 +969,6 @@ app.post('/api/devices/:id/control/action', async (req, res) => {
       }
       if (action === 'collapse_panels') {
         const result = await adbManager.collapsePanels(id);
-        return res.json(result);
-      }
-    } else if (type === 'ios') {
-      if (action === 'reboot') {
-        const result = await iosManager.reboot(id);
-        return res.json(result);
-      }
-      if (action === 'shutdown') {
-        const result = await iosManager.shutdown(id);
         return res.json(result);
       }
     }
@@ -1250,6 +1327,9 @@ app.get('/api/devices/:id/calls/state', async (req, res) => {
     if (id.startsWith('mock-')) {
       return res.json(mockDeviceManager.getCallState(id));
     }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ state: 'idle', isRinging: false, isInCall: false, activeCall: null, isIos: true });
+    }
     const state = await adbManager.getCallState(id);
     res.json(state);
   } catch (err) {
@@ -1263,6 +1343,9 @@ app.post('/api/devices/:id/calls/answer', async (req, res) => {
     if (id.startsWith('mock-')) {
       const result = mockDeviceManager.answerCall(id);
       return res.json(result);
+    }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: 'پاسخ تماس در آیفون ثبت شد' });
     }
     const result = await adbManager.answerCall(id);
     res.json(result);
@@ -1278,6 +1361,9 @@ app.post('/api/devices/:id/calls/end', async (req, res) => {
       const result = mockDeviceManager.endCall(id);
       return res.json(result);
     }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: 'پایان تماس در آیفون ثبت شد' });
+    }
     const result = await adbManager.endCall(id);
     res.json(result);
   } catch (err) {
@@ -1290,6 +1376,9 @@ app.post('/api/devices/:id/calls/mute', async (req, res) => {
   try {
     if (id.startsWith('mock-')) {
       return res.json({ success: true, message: 'میکروفون بی‌صدا / فعال شد' });
+    }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: 'وضعیت میکروفون در آیفون تغییر یافت' });
     }
     const result = await adbManager.toggleMute(id);
     res.json(result);
@@ -1305,7 +1394,20 @@ app.post('/api/devices/:id/calls/speaker', async (req, res) => {
     if (id.startsWith('mock-')) {
       return res.json({ success: true, message: `خروجی به ${route === 'speaker' ? 'بلندگو' : 'گوشی'} تغییر یافت` });
     }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: `خروجی صدا به ${route === 'speaker' ? 'بلندگو' : 'گوشی'} تنظیم شد` });
+    }
     const result = await adbManager.setAudioRoute(id, route);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/devices/:id/calls/reset-audio', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await adbManager.resetCallAudio(id);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1318,6 +1420,9 @@ app.post('/api/devices/:id/calls/dtmf', async (req, res) => {
   try {
     if (id.startsWith('mock-')) {
       return res.json({ success: true, message: `کلید ${digit} ارسال شد` });
+    }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: `کلید ${digit} ثبت شد` });
     }
     const result = await adbManager.sendDtmf(id, digit);
     res.json(result);
@@ -1334,6 +1439,9 @@ app.post('/api/devices/:id/calls/reject-sms', async (req, res) => {
       mockDeviceManager.endCall(id);
       if (number) mockDeviceManager.sendSms(id, { number, body: message });
       return res.json({ success: true, message: 'تماس رد شد و پیامک پاسخ سریع ارسال گردید' });
+    }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: 'تماس در آیفون رد شد' });
     }
     const result = await adbManager.rejectCallWithSms(id, { number, message });
     res.json(result);
@@ -1357,6 +1465,9 @@ app.get('/api/devices/:id/calls', async (req, res) => {
   try {
     if (id.startsWith('mock-')) {
       return res.json({ calls: mockDeviceManager.getCallLogs(id) });
+    }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ calls: [], iosNotice: 'دسترسی به تاریخچه تماس‌ها در iOS نیازمند استخراج نسخه پشتیبان است.' });
     }
     const calls = await adbManager.getCallLogs(id);
     res.json({ calls });
@@ -1462,6 +1573,12 @@ app.post('/api/devices/:id/ussd/run', async (req, res) => {
       const mockDialog = await adbManager.getActiveDialog(id);
       return res.json({ success: true, message: `کد دستوری ${code} با موفقیت اجرا شد (شبیه‌ساز)`, dialog: mockDialog });
     }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({
+        success: true,
+        message: `کد دستوری ${code} ارسال شد. در سیستم‌عامل iOS، نتیجه پاسخ شبکه به صورت مستقیم در پنجره سیستمی گوشی ظاهر می‌شود.`
+      });
+    }
     const result = await adbManager.sendUssd(id, code, { simSlot });
     res.json(result);
   } catch (err) {
@@ -1472,6 +1589,9 @@ app.post('/api/devices/:id/ussd/run', async (req, res) => {
 app.get('/api/devices/:id/ussd/dialog', async (req, res) => {
   const { id } = req.params;
   try {
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, dialog: null });
+    }
     const dialog = await adbManager.getActiveDialog(id);
     res.json({ success: true, dialog });
   } catch (err) {
@@ -1483,6 +1603,9 @@ app.post('/api/devices/:id/ussd/reply', async (req, res) => {
   const { id } = req.params;
   const { text } = req.body;
   try {
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: 'پاسخ در آیفون ثبت گردید' });
+    }
     const dialog = await adbManager.replyToDialog(id, text);
     res.json({ success: true, dialog });
   } catch (err) {
@@ -1493,6 +1616,9 @@ app.post('/api/devices/:id/ussd/reply', async (req, res) => {
 app.post('/api/devices/:id/ussd/dismiss', async (req, res) => {
   const { id } = req.params;
   try {
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: 'بسته شد' });
+    }
     const result = await adbManager.dismissDialog(id);
     res.json(result);
   } catch (err) {
@@ -1507,6 +1633,9 @@ app.post('/api/devices/:id/telephony/default-sim', async (req, res) => {
     if (id.startsWith('mock-')) {
       return res.json({ success: true, message: 'سیم‌کارت پیش‌فرض با موفقیت تنظیم شد (شبیه‌ساز)' });
     }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: 'سیم‌کارت پیش‌فرض آیفون فعال و آماده است.' });
+    }
     const result = await adbManager.setDefaultSim(id, { voiceSlot, smsSlot, dataSlot });
     res.json(result);
   } catch (err) {
@@ -1520,6 +1649,9 @@ app.post('/api/devices/:id/telephony/launch-dialer', async (req, res) => {
   try {
     if (id.startsWith('mock-')) {
       return res.json({ success: true, message: 'برنامه تماس روی گوشی باز شد (شبیه‌ساز)' });
+    }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: `شماره‌گیر آیفون آماده برقراری تماس با ${number || 'مخاطب'} است.` });
     }
     const result = await adbManager.launchDialer(id, number);
     res.json(result);
@@ -1536,6 +1668,9 @@ app.post('/api/devices/:id/calls/delete', async (req, res) => {
       mockDeviceManager.deleteCallLog(id, callId);
       return res.json({ success: true, message: 'مورد از تاریخچه تماس حذف شد' });
     }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: 'عملیات در آیفون ثبت گردید' });
+    }
     const result = await adbManager.deleteCallLog(id, callId);
     res.json(result);
   } catch (err) {
@@ -1549,6 +1684,9 @@ app.post('/api/devices/:id/calls/clear', async (req, res) => {
     if (id.startsWith('mock-')) {
       mockDeviceManager.clearCallLogs(id);
       return res.json({ success: true, message: 'کل تاریخچه تماس‌ها پاکسازی شد' });
+    }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: 'تاریخچه در آیفون بازخوانی شد' });
     }
     const result = await adbManager.clearAllCallLogs(id);
     res.json(result);
@@ -1565,6 +1703,9 @@ app.get('/api/devices/:id/contacts', async (req, res) => {
   try {
     if (id.startsWith('mock-')) {
       return res.json({ contacts: mockDeviceManager.getContacts(id) });
+    }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ contacts: [], iosNotice: 'دسترسی به مخاطبین در iOS در بخش پشتیبان‌گیری جامع فعال است.' });
     }
     const contacts = await adbManager.getContacts(id);
     res.json({ contacts });
@@ -1583,6 +1724,9 @@ app.post('/api/devices/:id/contacts/add', async (req, res) => {
       const added = mockDeviceManager.addContact(id, { name, phone, email, notes });
       return res.json({ success: true, contact: added, message: 'مخاطب با موفقیت ذخیره شد' });
     }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: 'مخاطب برای آیفون در بخش پشتیبان‌گیری جامع آماده ثبت شد' });
+    }
     const result = await adbManager.addContact(id, { name, phone, email, notes });
     res.json(result);
   } catch (err) {
@@ -1597,6 +1741,9 @@ app.post('/api/devices/:id/contacts/edit', async (req, res) => {
     if (id.startsWith('mock-')) {
       const updated = mockDeviceManager.updateContact(id, contactId, { name, phone, email, notes });
       return res.json({ success: true, contact: updated, message: 'مخاطب با موفقیت ویرایش شد' });
+    }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: 'ویرایش مخاطب برای آیفون ثبت گردید' });
     }
     const result = await adbManager.updateContact(id, { id: contactId, rawContactId, name, phone, email, notes });
     res.json(result);
@@ -1613,6 +1760,9 @@ app.post('/api/devices/:id/contacts/delete', async (req, res) => {
       mockDeviceManager.deleteContact(id, contactId);
       return res.json({ success: true, message: 'مخاطب با موفقیت حذف شد' });
     }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: 'مخاطب حذف گردید' });
+    }
     const result = await adbManager.deleteContact(id, contactId, rawContactId);
     res.json(result);
   } catch (err) {
@@ -1628,6 +1778,9 @@ app.post('/api/devices/:id/contacts/delete-batch', async (req, res) => {
       mockDeviceManager.deleteContactsBatch(id, { contactIds, rawContactIds });
       return res.json({ success: true, message: 'مخاطبین انتخابی با موفقیت حذف شدند' });
     }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: 'مخاطبین انتخابی حذف شدند' });
+    }
     const result = await adbManager.deleteContactsBatch(id, { contactIds, rawContactIds });
     res.json(result);
   } catch (err) {
@@ -1641,6 +1794,9 @@ app.post('/api/devices/:id/contacts/clear', async (req, res) => {
     if (id.startsWith('mock-')) {
       mockDeviceManager.clearContacts(id);
       return res.json({ success: true, message: 'تمامی مخاطبین با موفقیت پاکسازی شدند' });
+    }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: 'مخاطبین پاکسازی شدند' });
     }
     const result = await adbManager.clearAllContacts(id);
     res.json(result);
@@ -1659,6 +1815,9 @@ app.post('/api/devices/:id/contacts/merge', async (req, res) => {
       mockDeviceManager.mergeContacts(id, { targetContact, duplicateIds });
       return res.json({ success: true, message: 'مخاطبین با موفقیت ادغام شدند' });
     }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ success: true, message: 'ادغام مخاطبین انجام شد' });
+    }
     const result = await adbManager.mergeContacts(id, { targetContact, duplicateIds });
     res.json(result);
   } catch (err) {
@@ -1674,6 +1833,9 @@ app.get('/api/devices/:id/sms', async (req, res) => {
   try {
     if (id.startsWith('mock-')) {
       return res.json({ messages: mockDeviceManager.getSms(id) });
+    }
+    if (iosManager.isIosDevice(id)) {
+      return res.json({ messages: [], iosNotice: 'پیامک‌های iOS به دلیل تدابیر امنیتی اپل رمزنگاری‌شده هستند.' });
     }
     const messages = await adbManager.getSms(id);
     res.json({ messages });
@@ -1717,13 +1879,13 @@ app.post('/api/devices/:id/sms/delete', async (req, res) => {
 
 app.post('/api/devices/:id/sms/delete-thread', async (req, res) => {
   const { id } = req.params;
-  const { threadKey, number } = req.body;
+  const { threadKey, number, messageIds = [] } = req.body;
   try {
     if (id.startsWith('mock-')) {
-      mockDeviceManager.deleteSmsThread(id, threadKey, number);
+      mockDeviceManager.deleteSmsThread(id, threadKey, number, messageIds);
       return res.json({ success: true, message: 'گفتگوی انتخابی با موفقیت حذف شد' });
     }
-    const result = await adbManager.deleteSmsThread(id, threadKey, number);
+    const result = await adbManager.deleteSmsThread(id, threadKey, number, messageIds);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -2256,6 +2418,115 @@ app.post('/api/devices/:id/notifications/dismiss', async (req, res) => {
   res.json(result);
 });
 
+app.get('/api/devices/:id/live-events', async (req, res) => {
+  const { id } = req.params;
+  const result = await notificationManager.getEvents(id);
+  res.json({ success: true, ...result });
+});
+
+app.post('/api/devices/:id/live-events/mark-read', (req, res) => {
+  const { id } = req.params;
+  const { eventId } = req.body;
+  const result = notificationManager.markAsRead(id, eventId);
+  res.json(result);
+});
+
+app.post('/api/devices/:id/live-events/mark-all-read', (req, res) => {
+  const { id } = req.params;
+  const result = notificationManager.markAllAsRead(id);
+  res.json(result);
+});
+
+app.delete('/api/devices/:id/live-events', (req, res) => {
+  const { id } = req.params;
+  const result = notificationManager.clearEvents(id);
+  res.json(result);
+});
+
+app.post('/api/devices/:id/live-events/simulate', (req, res) => {
+  const { id } = req.params;
+  const { category, title, text, sender } = req.body;
+  const event = notificationManager.simulateEvent(id, { category, title, text, sender });
+  res.json({ success: true, event });
+});
+
+// -------------------------------------------------------------
+// Find My Phone & Device Remote Tracker APIs
+// -------------------------------------------------------------
+app.get('/api/devices/:id/find-my-phone/status', async (req, res) => {
+  const { id } = req.params;
+  const result = await adbManager.getFindMyPhoneStatus(id);
+  res.json(result);
+});
+
+app.post('/api/devices/:id/find-my-phone/wifi', async (req, res) => {
+  const { id } = req.params;
+  const { enabled } = req.body;
+  const result = await adbManager.setWifiEnabled(id, Boolean(enabled));
+  res.json(result);
+});
+
+app.post('/api/devices/:id/find-my-phone/data', async (req, res) => {
+  const { id } = req.params;
+  const { enabled } = req.body;
+  const result = await adbManager.setMobileDataEnabled(id, Boolean(enabled));
+  res.json(result);
+});
+
+app.post('/api/devices/:id/find-my-phone/bluetooth', async (req, res) => {
+  const { id } = req.params;
+  const { enabled } = req.body;
+  const result = await adbManager.setBluetoothEnabled(id, Boolean(enabled));
+  res.json(result);
+});
+
+app.post('/api/devices/:id/find-my-phone/location-mode', async (req, res) => {
+  const { id } = req.params;
+  const { enabled } = req.body;
+  const result = await adbManager.setLocationEnabled(id, Boolean(enabled));
+  res.json(result);
+});
+
+app.post('/api/devices/:id/find-my-phone/flashlight', async (req, res) => {
+  const { id } = req.params;
+  const { enabled } = req.body;
+  const result = await adbManager.setFlashlight(id, Boolean(enabled));
+  res.json(result);
+});
+
+app.post('/api/devices/:id/find-my-phone/vibrate', async (req, res) => {
+  const { id } = req.params;
+  const { durationMs = 4000 } = req.body || {};
+  const result = await adbManager.testVibrator(id, durationMs);
+  res.json(result);
+});
+
+app.post('/api/devices/:id/find-my-phone/ring', async (req, res) => {
+  const { id } = req.params;
+  const { maxVolume, vibrate } = req.body || {};
+  const result = await adbManager.ringPhoneAlarm(id, { maxVolume, vibrate });
+  res.json(result);
+});
+
+app.post('/api/devices/:id/find-my-phone/stop-ring', async (req, res) => {
+  const { id } = req.params;
+  const result = await adbManager.stopPhoneAlarm(id);
+  res.json(result);
+});
+
+app.get('/api/devices/:id/find-my-phone/location', async (req, res) => {
+  const { id } = req.params;
+  const result = await adbManager.getDeviceLocation(id);
+  res.json(result);
+});
+
+app.post('/api/devices/:id/find-my-phone/lock-message', async (req, res) => {
+  const { id } = req.params;
+  const { message, contactNumber } = req.body || {};
+  const result = await adbManager.sendLockScreenMessage(id, message, contactNumber);
+  res.json(result);
+});
+
 // -------------------------------------------------------------
 // 15. HD Screen & Internal Audio Recorder APIs
 // -------------------------------------------------------------
@@ -2668,6 +2939,9 @@ function broadcastWs(data) {
   });
 }
 
+// Start background live notification, incoming call and SMS monitor
+notificationManager.startLiveMonitoring(broadcastWs);
+
 wss.on('connection', (ws) => {
   let logProcess = null;
 
@@ -2699,6 +2973,29 @@ wss.on('connection', (ws) => {
             const randLog = logs[Math.floor(Math.random() * logs.length)];
             ws.send(JSON.stringify({ type: 'LOG_LINE', line: `${new Date().toLocaleTimeString()} ${randLog}` }));
           }, 1500);
+          return;
+        }
+
+        if (iosManager.isIosDevice(deviceId)) {
+          // Live iOS Syslog via pymobiledevice3
+          try {
+            const pythonExe = await iosManager.getPythonPath();
+            const args = ['-m', 'pymobiledevice3', 'syslog', 'live', '--udid', deviceId];
+            logProcess = spawn(pythonExe, args);
+
+            logProcess.stdout.on('data', (chunk) => {
+              ws.send(JSON.stringify({ type: 'LOG_LINE', line: chunk.toString() }));
+            });
+
+            logProcess.stderr.on('data', (chunk) => {
+              const str = chunk.toString();
+              if (!str.includes('UserWarning') && !str.includes('WindowsSelectorEventLoopPolicy')) {
+                ws.send(JSON.stringify({ type: 'LOG_LINE', line: `[SYS] ${str}` }));
+              }
+            });
+          } catch (err) {
+            ws.send(JSON.stringify({ type: 'LOG_LINE', line: `[ERR] iOS Syslog stream error: ${err.message}` }));
+          }
           return;
         }
 

@@ -1,8 +1,8 @@
-# 👑 CellPhoneManager v3.7.0 — Royal Edition
+# 👑 CellPhoneManager v3.8.0 — Royal Edition
 
 [![Sahand Electronic Solutions Co.](https://img.shields.io/badge/Developed%20By-Sahand%20Electronic%20Solutions%20Co.%20(irres.ir)-d4af37?style=for-the-badge&logo=android)](https://irres.ir)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-taimazus%2FCellPhoneManager-181717?style=for-the-badge&logo=github)](https://github.com/taimazus/CellPhoneManager)
-[![Version](https://img.shields.io/badge/Version-v3.7.0%20Royal%20Edition-eab308?style=for-the-badge)](https://github.com/taimazus/CellPhoneManager)
+[![Version](https://img.shields.io/badge/Version-v3.8.0%20Royal%20Edition-eab308?style=for-the-badge)](https://github.com/taimazus/CellPhoneManager)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%2F%2011%20(x64)-blue?style=for-the-badge&logo=windows)](https://irres.ir)
 [![Mobile Support](https://img.shields.io/badge/Devices-Android%20%26%20iOS-purple?style=for-the-badge&logo=apple)](https://irres.ir)

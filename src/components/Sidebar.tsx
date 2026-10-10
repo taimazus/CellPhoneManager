@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Smartphone, 
+  Radar,
   Layers, 
   Sliders, 
   Activity, 
@@ -84,6 +85,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'overview', label: 'داشبورد و وضعیت', icon: LayoutDashboard, desc: 'مشخصات، باتری و سخت‌افزار', platform: 'universal', category: 'core' },
     { id: 'ai', label: 'دستیار هوش مصنوعی', icon: Bot, desc: 'پزشک هوشمند و عیب‌یابی گوشی', platform: 'universal', category: 'core' },
     { id: 'mirror', label: 'نمایش و کنترل زنده', icon: Smartphone, desc: 'استریم زنده درون وب و Scrcpy', platform: 'universal', category: 'core' },
+    { id: 'findmyphone', label: 'یافتن و ردیابی گوشی گمشده', icon: Radar, desc: 'آژیر بلند، مکان‌یابی، اینترنت، GPS و فلش', platform: 'universal', category: 'core' },
     { id: 'gamepad', label: 'دسته بازی و ماوس PC', icon: Gamepad2, desc: 'تبدیل به گیم‌پد و تاچ‌پد', platform: 'android', category: 'core' },
     { id: 'notifications', label: 'اعلان‌ها و پاسخ فوری', icon: BellRing, desc: 'نوتیفیکیشن‌های زنده روی ویندوز', platform: 'universal', category: 'core' },
     { id: 'multidevice', label: 'کنترل همزمان چند دستگاه', icon: Layers, desc: 'مدیریت و سینک گروهی گوشی‌ها', platform: 'universal', category: 'core' },
